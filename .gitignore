@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+!.env.example
+*.local
+
+apps/api/generated/
+apps/api/uploads/
+
+.DS_Store
+*.log
+npm-debug.log*

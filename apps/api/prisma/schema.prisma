@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ClientPrefix {
+  NONE
+  MR
+  MS
+}
+
+enum MediaType {
+  IMAGE
+  DOCUMENT
+}
+
+enum QuoteLanguage {
+  PT
+  EN
+  ES
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(USER)
+  status       AccountStatus @default(PENDING)
+  active       Boolean       @default(true)
+  phone        String?
+  jobTitle     String?
+  signatureUrl String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  priceTableUpdates PriceTableEntry[] @relation("PriceTableUpdatedBy")
+  quotes            Quote[]           @relation("QuoteCreatedBy")
+
+  @@map("users")
+}
+
+model PriceTableEntry {
+  id          String   @id @default(uuid())
+  sku         String   @unique
+  sector      String
+  description String
+  priceBRL    Decimal? @db.Decimal(12, 2)
+  priceUSD    Decimal? @db.Decimal(12, 2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedById String?
+  updatedBy   User?   @relation("PriceTableUpdatedBy", fields: [updatedById], references: [id])
+
+  @@map("price_table_entries")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  sku         String   @unique
+  name        String
+  description String?
+  weightKg    Decimal? @db.Decimal(10, 3)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  media           ProductMedia[]
+  customizations  ProductCustomization[]
+  quoteItems      QuoteItem[]
+
+  @@map("products")
+}
+
+model ProductMedia {
+  id        String    @id @default(uuid())
+  productId String
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  type      MediaType
+  isPrimary Boolean   @default(false)
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@map("product_media")
+}
+
+model ProductCustomization {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  options     Json
+  createdAt   DateTime @default(now())
+
+  @@map("product_customizations")
+}
+
+model Quote {
+  id           String        @id @default(uuid())
+  quoteNumber  String        @unique
+  language     QuoteLanguage @default(PT)
+  clientPrefix ClientPrefix  @default(NONE)
+  clientName   String
+  notes        String?
+  freight      Decimal?      @db.Decimal(12, 2)
+  discount     Decimal       @db.Decimal(12, 2) @default(0)
+  subtotal     Decimal       @db.Decimal(12, 2)
+  total        Decimal       @db.Decimal(12, 2)
+  pdfUrl       String?
+  xlsxUrl      String?
+  createdAt    DateTime      @default(now())
+
+  createdById String
+  createdBy   User   @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+
+  items QuoteItem[]
+
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id         String  @id @default(uuid())
+  quoteId    String
+  quote      Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  sku        String
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(12, 2)
+  lineTotal  Decimal @db.Decimal(12, 2)
+
+  @@map("quote_items")
+}

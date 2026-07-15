@@ -1,0 +1,279 @@
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { ClientPrefix, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
+import { api } from '../lib/api'
+
+interface DraftItem {
+  sku: string
+  quantity: number
+}
+
+async function fetchQuotes() {
+  const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
+  return data.quotes
+}
+
+const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>> = {
+  PT: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
+  EN: { NONE: '—', MR: 'Mr.', MS: 'Ms.' },
+  ES: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
+}
+
+const languageLabel: Record<QuoteLanguage, string> = {
+  PT: 'Português',
+  EN: 'English',
+  ES: 'Español',
+}
+
+export function Quotes() {
+  const queryClient = useQueryClient()
+  const { data: quotes, isLoading } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
+
+  const [language, setLanguage] = useState<QuoteLanguage>('PT')
+  const [clientPrefix, setClientPrefix] = useState<ClientPrefix>('NONE')
+  const [clientName, setClientName] = useState('')
+  const [notes, setNotes] = useState('')
+  const [items, setItems] = useState<DraftItem[]>([{ sku: '', quantity: 1 }])
+  const [freight, setFreight] = useState('')
+  const [discount, setDiscount] = useState('0')
+  const [error, setError] = useState<string | null>(null)
+
+  const createQuote = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<{ quote: QuoteDTO }>('/quotes', {
+        language,
+        clientPrefix,
+        clientName,
+        notes: notes || undefined,
+        items: items.filter((i) => i.sku.trim()),
+        freight: freight === '' ? undefined : Number(freight),
+        discount: Number(discount),
+      })
+      return data.quote
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] })
+      setClientPrefix('NONE')
+      setClientName('')
+      setNotes('')
+      setItems([{ sku: '', quantity: 1 }])
+      setFreight('')
+      setDiscount('0')
+      setError(null)
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        'Não foi possível gerar o orçamento.'
+      setError(message)
+    },
+  })
+
+  function updateItem(index: number, patch: Partial<DraftItem>) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+  }
+
+  const currentPrefixLabels = prefixLabelsByLanguage[language]
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-ink-900">Orçamentos</h1>
+      <p className="mt-1 text-neutral-500">Gere orçamentos automáticos em PDF ou Excel a partir do SKU do produto.</p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          createQuote.mutate()
+        }}
+        className="mt-4 max-w-2xl rounded-xl border border-neutral-200 bg-white p-4"
+      >
+        <h2 className="mb-3 text-sm font-semibold text-neutral-700">Novo orçamento</h2>
+
+        {error && <div className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>}
+
+        <div className="mb-3 flex gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Idioma</label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as QuoteLanguage)}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            >
+              <option value="PT">Português</option>
+              <option value="EN">English</option>
+              <option value="ES">Español</option>
+            </select>
+            <p className="mt-1 text-[11px] text-neutral-400">
+              Moeda: {language === 'PT' ? 'BRL' : 'USD'}
+            </p>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Prefixo</label>
+            <select
+              value={clientPrefix}
+              onChange={(e) => setClientPrefix(e.target.value as ClientPrefix)}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            >
+              <option value="NONE">{currentPrefixLabels.NONE}</option>
+              <option value="MR">{currentPrefixLabels.MR}</option>
+              <option value="MS">{currentPrefixLabels.MS}</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Nome do cliente</label>
+            <input
+              required
+              placeholder="ex: Margarida Cunha"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {items.map((item, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                placeholder="SKU"
+                required
+                value={item.sku}
+                onChange={(e) => updateItem(index, { sku: e.target.value })}
+                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              />
+              <input
+                type="number"
+                min={1}
+                required
+                value={item.quantity}
+                onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                className="w-24 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              />
+              {items.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                  className="text-xs text-brand-600 hover:underline"
+                >
+                  remover
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setItems((prev) => [...prev, { sku: '', quantity: 1 }])}
+            className="text-xs font-medium text-brand-600 hover:underline"
+          >
+            + adicionar item
+          </button>
+        </div>
+
+        <div className="mt-3 flex gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Frete</label>
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              placeholder="A definir"
+              value={freight}
+              onChange={(e) => setFreight(e.target.value)}
+              className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Desconto</label>
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+              className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <label className="mb-1 mt-3 block text-xs font-medium text-neutral-600">
+          Observações (opcional — se deixar em branco, usamos um texto padrão)
+        </label>
+        <textarea
+          rows={3}
+          placeholder={'ex: Prazo estimado, forma de pagamento, validade do orçamento...'}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+
+        <button
+          type="submit"
+          disabled={createQuote.isPending}
+          className="mt-4 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+        >
+          {createQuote.isPending ? 'Gerando…' : 'Gerar orçamento'}
+        </button>
+      </form>
+
+      <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <table className="min-w-full divide-y divide-neutral-200 text-sm">
+          <thead className="bg-neutral-50">
+            <tr>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Número</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Cliente</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Idioma</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Data</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Itens</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Total</th>
+              <th className="px-4 py-2 text-right font-medium text-neutral-500">Arquivos</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {isLoading && (
+              <tr>
+                <td colSpan={7} className="px-4 py-4 text-center text-neutral-400">
+                  Carregando…
+                </td>
+              </tr>
+            )}
+            {quotes?.map((q) => (
+              <tr key={q.id}>
+                <td className="px-4 py-2 font-medium text-ink-900">{q.quoteNumber}</td>
+                <td className="px-4 py-2 text-neutral-600">
+                  {q.clientPrefix !== 'NONE' && `${prefixLabelsByLanguage[q.language][q.clientPrefix]} `}
+                  {q.clientName}
+                </td>
+                <td className="px-4 py-2 text-neutral-500">{languageLabel[q.language]}</td>
+                <td className="px-4 py-2 text-neutral-500">{new Date(q.createdAt).toLocaleDateString('pt-BR')}</td>
+                <td className="px-4 py-2 text-neutral-600">{q.items.map((i) => `${i.sku} ×${i.quantity}`).join(', ')}</td>
+                <td className="px-4 py-2 text-ink-900">{Number(q.total).toFixed(2)}</td>
+                <td className="px-4 py-2 text-right space-x-2">
+                  {q.pdfUrl && (
+                    <a
+                      href={q.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-brand-600 hover:underline"
+                    >
+                      PDF
+                    </a>
+                  )}
+                  {q.xlsxUrl && (
+                    <a
+                      href={q.xlsxUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-brand-600 hover:underline"
+                    >
+                      Excel
+                    </a>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
