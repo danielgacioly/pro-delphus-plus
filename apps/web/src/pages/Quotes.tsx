@@ -1,16 +1,23 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ClientPrefix, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
+import type { ClientPrefix, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 
 interface DraftItem {
   sku: string
+  query: string
   quantity: number
+  description: string
 }
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
   return data.quotes
+}
+
+async function searchProducts(search: string) {
+  const { data } = await api.get<{ products: ProductDTO[] }>('/products', { params: { search } })
+  return data.products
 }
 
 const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>> = {
@@ -25,6 +32,8 @@ const languageLabel: Record<QuoteLanguage, string> = {
   ES: 'Español',
 }
 
+const emptyItem: DraftItem = { sku: '', query: '', quantity: 1, description: '' }
+
 export function Quotes() {
   const queryClient = useQueryClient()
   const { data: quotes, isLoading } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
@@ -33,10 +42,18 @@ export function Quotes() {
   const [clientPrefix, setClientPrefix] = useState<ClientPrefix>('NONE')
   const [clientName, setClientName] = useState('')
   const [notes, setNotes] = useState('')
-  const [items, setItems] = useState<DraftItem[]>([{ sku: '', quantity: 1 }])
+  const [items, setItems] = useState<DraftItem[]>([{ ...emptyItem }])
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [freight, setFreight] = useState('')
   const [discount, setDiscount] = useState('0')
   const [error, setError] = useState<string | null>(null)
+
+  const activeQuery = activeIndex !== null ? items[activeIndex].query.trim() : ''
+  const { data: suggestions } = useQuery({
+    queryKey: ['product-search', activeQuery],
+    queryFn: () => searchProducts(activeQuery),
+    enabled: activeIndex !== null && activeQuery.length > 0,
+  })
 
   const createQuote = useMutation({
     mutationFn: async () => {
@@ -45,7 +62,9 @@ export function Quotes() {
         clientPrefix,
         clientName,
         notes: notes || undefined,
-        items: items.filter((i) => i.sku.trim()),
+        items: items
+          .filter((i) => i.sku.trim())
+          .map((i) => ({ sku: i.sku, quantity: i.quantity, description: i.description || undefined })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
       })
@@ -56,7 +75,7 @@ export function Quotes() {
       setClientPrefix('NONE')
       setClientName('')
       setNotes('')
-      setItems([{ sku: '', quantity: 1 }])
+      setItems([{ ...emptyItem }])
       setFreight('')
       setDiscount('0')
       setError(null)
@@ -73,12 +92,17 @@ export function Quotes() {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
 
+  function selectProduct(index: number, product: ProductDTO) {
+    updateItem(index, { sku: product.sku, query: `${product.name} (${product.sku})` })
+    setActiveIndex(null)
+  }
+
   const currentPrefixLabels = prefixLabelsByLanguage[language]
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-ink-900">Orçamentos</h1>
-      <p className="mt-1 text-neutral-500">Gere orçamentos automáticos em PDF ou Excel a partir do SKU do produto.</p>
+      <p className="mt-1 text-neutral-500">Gere orçamentos automáticos em PDF ou Excel buscando por nome ou SKU.</p>
 
       <form
         onSubmit={(e) => {
@@ -133,36 +157,66 @@ export function Quotes() {
 
         <div className="space-y-2">
           {items.map((item, index) => (
-            <div key={index} className="flex gap-2">
+            <div key={index} className="rounded-lg border border-neutral-100 p-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    placeholder="Buscar por nome ou SKU"
+                    required
+                    value={item.query}
+                    onFocus={() => setActiveIndex(index)}
+                    onChange={(e) => {
+                      updateItem(index, { query: e.target.value, sku: '' })
+                      setActiveIndex(index)
+                    }}
+                    onBlur={() => setTimeout(() => setActiveIndex((cur) => (cur === index ? null : cur)), 150)}
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                  />
+                  {activeIndex === index && suggestions && suggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-lg">
+                      {suggestions.map((product) => (
+                        <button
+                          type="button"
+                          key={product.id}
+                          onMouseDown={() => selectProduct(index, product)}
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50"
+                        >
+                          <span className="font-medium text-ink-900">{product.name}</span>{' '}
+                          <span className="text-neutral-400">— {product.sku}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={item.quantity}
+                  onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                  className="w-24 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                />
+                {items.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                    className="text-xs text-brand-600 hover:underline"
+                  >
+                    remover
+                  </button>
+                )}
+              </div>
               <input
-                placeholder="SKU"
-                required
-                value={item.sku}
-                onChange={(e) => updateItem(index, { sku: e.target.value })}
-                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                placeholder="Descrição customizada para este item (opcional — senão usa a do produto)"
+                value={item.description}
+                onChange={(e) => updateItem(index, { description: e.target.value })}
+                className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-xs"
               />
-              <input
-                type="number"
-                min={1}
-                required
-                value={item.quantity}
-                onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                className="w-24 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-              />
-              {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-xs text-brand-600 hover:underline"
-                >
-                  remover
-                </button>
-              )}
             </div>
           ))}
           <button
             type="button"
-            onClick={() => setItems((prev) => [...prev, { sku: '', quantity: 1 }])}
+            onClick={() => setItems((prev) => [...prev, { ...emptyItem }])}
             className="text-xs font-medium text-brand-600 hover:underline"
           >
             + adicionar item
@@ -245,7 +299,7 @@ export function Quotes() {
                 </td>
                 <td className="px-4 py-2 text-neutral-500">{languageLabel[q.language]}</td>
                 <td className="px-4 py-2 text-neutral-500">{new Date(q.createdAt).toLocaleDateString('pt-BR')}</td>
-                <td className="px-4 py-2 text-neutral-600">{q.items.map((i) => `${i.sku} ×${i.quantity}`).join(', ')}</td>
+                <td className="px-4 py-2 text-neutral-600">{q.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}</td>
                 <td className="px-4 py-2 text-ink-900">{Number(q.total).toFixed(2)}</td>
                 <td className="px-4 py-2 text-right space-x-2">
                   {q.pdfUrl && (

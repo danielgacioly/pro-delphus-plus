@@ -8,6 +8,8 @@ export type QuoteLanguage = 'PT' | 'EN' | 'ES'
 
 export type MediaType = 'IMAGE' | 'DOCUMENT'
 
+export type ProductKind = 'COMPLETE_MODEL' | 'COMPONENT'
+
 export interface UserDTO {
   id: string
   name: string
@@ -19,17 +21,6 @@ export interface UserDTO {
   jobTitle: string | null
   signatureUrl: string | null
   createdAt: string
-}
-
-export interface PriceTableEntryDTO {
-  id: string
-  sku: string
-  sector: string
-  description: string
-  priceBRL: string | null
-  priceUSD: string | null
-  active: boolean
-  updatedAt: string
 }
 
 export interface ProductMediaDTO {
@@ -51,8 +42,14 @@ export interface ProductDTO {
   sku: string
   name: string
   description: string | null
+  sector: string
+  kind: ProductKind
   weightKg: string | null
+  priceBRL: string | null
+  priceUSD: string | null
+  priceUSDDistributor: string | null
   active: boolean
+  updatedAt: string
   media: ProductMediaDTO[]
   customizations: ProductCustomizationDTO[]
 }
@@ -60,6 +57,7 @@ export interface ProductDTO {
 export interface QuoteItemInput {
   sku: string
   quantity: number
+  description?: string
 }
 
 export interface QuoteDTO {
@@ -82,5 +80,8 @@ export interface QuoteDTO {
     unitPrice: string
     lineTotal: string
     productName: string
+    description: string
   }>
 }
+
+export * from './sectors.js'

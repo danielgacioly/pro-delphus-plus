@@ -18,8 +18,7 @@ export const COMPANY = {
 }
 
 export interface QuotePdfItem {
-  sku: string
-  productName: string
+  description: string
   quantity: number
   unitPrice: number
   lineTotal: number
@@ -67,7 +66,7 @@ function renderHtml(data: QuotePdfData) {
         <tr>
           <td class="num">${index + 1}</td>
           <td class="num">${item.quantity}</td>
-          <td><strong>${escapeHtml(item.sku)}</strong> - ${escapeHtml(item.productName)}</td>
+          <td>${escapeHtml(item.description)}</td>
           <td class="photo-cell">${
             item.photoDataUri ? `<img src="${item.photoDataUri}" alt="" />` : ''
           }</td>
@@ -115,11 +114,11 @@ function renderHtml(data: QuotePdfData) {
   .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 12px; font-weight: 700; color: #ef1818; border-bottom: 1px solid #e5e3da; }
   .totals-row span:first-child { color: #1a1a1a; }
   .totals-row.grand { font-size: 15px; border-bottom: none; }
-  .signature { margin-top: 40px; display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; }
+  .signature { margin-top: 40px; display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid #e5e3da; }
   .signature .sig-logo { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 18px; }
   .signature .sig-logo img { width: 60px; height: auto; }
-  .signature .sig-signature { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 16px; border-left: 1px solid #e5e3da; }
-  .signature .sig-signature img { max-width: 100px; max-height: 48px; }
+  .signature .sig-signature { flex: 1; background: #ffffff; display: flex; align-items: center; padding: 10px 24px; border-left: 1px solid #e5e3da; }
+  .signature .sig-signature img { max-width: 220px; max-height: 70px; }
   .signature .sig-bar { flex: 1; background: #1a1a1a; color: #ffffff; padding: 12px 20px 12px 24px; display: flex; flex-direction: column; justify-content: center; gap: 2px; border-left: 8px solid #ef1818; }
   .signature .sig-name { font-size: 14px; font-weight: 700; }
   .signature .sig-role { font-size: 10.5px; color: #c9c9c9; margin-bottom: 6px; }
@@ -180,15 +179,14 @@ function renderHtml(data: QuotePdfData) {
     ${
       data.signature.signatureImageDataUri
         ? `<div class="sig-signature"><img src="${data.signature.signatureImageDataUri}" alt="" /></div>`
-        : ''
-    }
-    <div class="sig-bar">
+        : `<div class="sig-bar">
       <div class="sig-name">${escapeHtml(data.signature.name)}</div>
       <div class="sig-role">${escapeHtml(data.signature.jobTitle ?? 'Sales Assistant')}</div>
       ${data.signature.phone ? `<div class="sig-contact">${escapeHtml(data.signature.phone)}</div>` : ''}
       <div class="sig-contact">${escapeHtml(data.signature.email)}</div>
       <div class="sig-contact">${escapeHtml(COMPANY.website)}</div>
-    </div>
+    </div>`
+    }
   </div>
 </body>
 </html>`

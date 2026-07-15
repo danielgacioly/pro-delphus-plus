@@ -1,5 +1,4 @@
 import type {
-  PriceTableEntry,
   Product,
   ProductCustomization,
   ProductMedia,
@@ -23,19 +22,6 @@ export function toUserDTO(user: User) {
   }
 }
 
-export function toPriceTableEntryDTO(entry: PriceTableEntry) {
-  return {
-    id: entry.id,
-    sku: entry.sku,
-    sector: entry.sector,
-    description: entry.description,
-    priceBRL: entry.priceBRL?.toString() ?? null,
-    priceUSD: entry.priceUSD?.toString() ?? null,
-    active: entry.active,
-    updatedAt: entry.updatedAt.toISOString(),
-  }
-}
-
 export function toProductDTO(
   product: Product & { media: ProductMedia[]; customizations: ProductCustomization[] },
 ) {
@@ -44,8 +30,14 @@ export function toProductDTO(
     sku: product.sku,
     name: product.name,
     description: product.description,
+    sector: product.sector,
+    kind: product.kind,
     weightKg: product.weightKg?.toString() ?? null,
+    priceBRL: product.priceBRL?.toString() ?? null,
+    priceUSD: product.priceUSD?.toString() ?? null,
+    priceUSDDistributor: product.priceUSDDistributor?.toString() ?? null,
     active: product.active,
+    updatedAt: product.updatedAt.toISOString(),
     media: product.media
       .sort((a, b) => a.order - b.order)
       .map((m) => ({ id: m.id, url: m.url, type: m.type, order: m.order, isPrimary: m.isPrimary })),
@@ -78,6 +70,7 @@ export function toQuoteDTO(quote: Quote & { items: (QuoteItem & { product: Produ
       unitPrice: item.unitPrice.toString(),
       lineTotal: item.lineTotal.toString(),
       productName: item.product.name,
+      description: item.description,
     })),
   }
 }

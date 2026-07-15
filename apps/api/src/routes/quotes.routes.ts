@@ -73,6 +73,7 @@ const createQuoteSchema = z.object({
       z.object({
         sku: z.string().min(1),
         quantity: z.coerce.number().int().positive(),
+        description: z.string().optional(),
       }),
     )
     .min(1),
@@ -87,19 +88,17 @@ quotesRouter.post(
     const currency = data.language === 'PT' ? 'BRL' : 'USD'
 
     const skus = data.items.map((i) => i.sku)
-    const [priceEntries, products, requester] = await Promise.all([
-      prisma.priceTableEntry.findMany({ where: { sku: { in: skus }, active: true } }),
-      prisma.product.findMany({ where: { sku: { in: skus } }, include: { media: true } }),
+    const [products, requester] = await Promise.all([
+      prisma.product.findMany({ where: { sku: { in: skus }, active: true }, include: { media: true } }),
       prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } }),
     ])
 
-    const priceBySku = new Map(priceEntries.map((p) => [p.sku, p]))
     const productBySku = new Map(products.map((p) => [p.sku, p]))
 
     const missing = skus.filter((sku) => {
-      const price = priceBySku.get(sku)
-      const priceValue = currency === 'BRL' ? price?.priceBRL : price?.priceUSD
-      return !priceValue || !productBySku.has(sku)
+      const product = productBySku.get(sku)
+      const priceValue = currency === 'BRL' ? product?.priceBRL : product?.priceUSD
+      return !priceValue
     })
     if (missing.length > 0) {
       throw new HttpError(
@@ -110,10 +109,10 @@ quotesRouter.post(
 
     const lineItems = await Promise.all(
       data.items.map(async (item) => {
-        const price = priceBySku.get(item.sku)!
         const product = productBySku.get(item.sku)!
-        const unitPrice = Number(currency === 'BRL' ? price.priceBRL : price.priceUSD)
+        const unitPrice = Number(currency === 'BRL' ? product.priceBRL : product.priceUSD)
         const lineTotal = unitPrice * item.quantity
+        const description = item.description || product.description || product.name
         const primaryImage =
           product.media.find((m) => m.type === 'IMAGE' && m.isPrimary) ??
           product.media.filter((m) => m.type === 'IMAGE').sort((a, b) => a.order - b.order)[0]
@@ -124,7 +123,7 @@ quotesRouter.post(
           quantity: item.quantity,
           unitPrice,
           lineTotal,
-          productName: product.name,
+          description,
           photoDataUri,
         }
       }),
@@ -156,8 +155,7 @@ quotesRouter.post(
         clientName: data.clientName,
         notes,
         items: lineItems.map((i) => ({
-          sku: i.sku,
-          productName: i.productName,
+          description: i.description,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
           lineTotal: i.lineTotal,
@@ -176,10 +174,13 @@ quotesRouter.post(
         clientPrefix: data.clientPrefix,
         clientName: data.clientName,
         notes,
-        items: lineItems.map((i) => ({ sku: i.sku, productName: i.productName, quantity: i.quantity, unitPrice: i.unitPrice })),
+        items: lineItems.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
         freight: data.freight ?? null,
         discount: data.discount,
+        subtotal,
+        total,
         currency,
+        signature,
       }),
     ])
 
@@ -213,6 +214,7 @@ quotesRouter.post(
             quantity: i.quantity,
             unitPrice: i.unitPrice,
             lineTotal: i.lineTotal,
+            description: i.description,
           })),
         },
       },

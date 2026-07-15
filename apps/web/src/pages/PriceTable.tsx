@@ -1,238 +1,144 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { PriceTableEntryDTO } from '@prodelphusplus/shared'
+import { useQuery } from '@tanstack/react-query'
+import type { ProductDTO, ProductKind } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
-import { useAuth } from '../context/AuthContext'
 
-async function fetchEntries(search: string) {
-  const { data } = await api.get<{ entries: PriceTableEntryDTO[] }>('/price-table', {
+async function fetchProducts(search: string) {
+  const { data } = await api.get<{ products: ProductDTO[] }>('/products', {
     params: { search: search || undefined },
   })
-  return data.entries
+  return data.products
 }
 
 function formatPrice(value: string | null, currency: string) {
   return value === null ? '—' : `${currency} ${Number(value).toFixed(2)}`
 }
 
-type MarketFilter = 'ALL' | 'NATIONAL' | 'INTERNATIONAL'
+const kindLabel: Record<ProductKind, string> = {
+  COMPLETE_MODEL: 'Modelo completo',
+  COMPONENT: 'Componentes / Peças',
+}
+
+interface PriceColumns {
+  brl: boolean
+  usd: boolean
+  usdDistributor: boolean
+}
 
 export function PriceTable() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'ADMIN'
-  const queryClient = useQueryClient()
-
   const [search, setSearch] = useState('')
-  const [marketFilter, setMarketFilter] = useState<MarketFilter>('ALL')
+  const [columns, setColumns] = useState<PriceColumns>({ brl: true, usd: true, usdDistributor: false })
 
-  const [newEntry, setNewEntry] = useState({
-    sku: '',
-    sector: '',
-    description: '',
-    priceBRL: '',
-    priceUSD: '',
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products-price-table', search],
+    queryFn: () => fetchProducts(search),
   })
-
-  const { data: entries, isLoading } = useQuery({
-    queryKey: ['price-table', search],
-    queryFn: () => fetchEntries(search),
-  })
-
-  const showBRL = marketFilter !== 'INTERNATIONAL'
-  const showUSD = marketFilter !== 'NATIONAL'
 
   const grouped = useMemo(() => {
-    const filtered = (entries ?? []).filter((entry) => {
-      if (marketFilter === 'NATIONAL') return entry.priceBRL !== null
-      if (marketFilter === 'INTERNATIONAL') return entry.priceUSD !== null
-      return true
-    })
-
-    const bySector = new Map<string, PriceTableEntryDTO[]>()
-    for (const entry of filtered) {
-      const list = bySector.get(entry.sector) ?? []
-      list.push(entry)
-      bySector.set(entry.sector, list)
+    const bySector = new Map<string, { COMPLETE_MODEL: ProductDTO[]; COMPONENT: ProductDTO[] }>()
+    for (const product of products ?? []) {
+      const group = bySector.get(product.sector) ?? { COMPLETE_MODEL: [], COMPONENT: [] }
+      group[product.kind].push(product)
+      bySector.set(product.sector, group)
     }
-    return Array.from(bySector.entries())
-  }, [entries, marketFilter])
+    return Array.from(bySector.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [products])
 
-  const createEntry = useMutation({
-    mutationFn: async () => {
-      await api.post('/price-table', {
-        sku: newEntry.sku,
-        sector: newEntry.sector,
-        description: newEntry.description,
-        priceBRL: newEntry.priceBRL ? Number(newEntry.priceBRL) : undefined,
-        priceUSD: newEntry.priceUSD ? Number(newEntry.priceUSD) : undefined,
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['price-table'] })
-      setNewEntry({ sku: '', sector: '', description: '', priceBRL: '', priceUSD: '' })
-    },
-  })
+  function toggleColumn(key: keyof PriceColumns) {
+    setColumns((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
-  const updatePrice = useMutation({
-    mutationFn: async ({ id, priceBRL, priceUSD }: { id: string; priceBRL: number | null; priceUSD: number | null }) => {
-      await api.patch(`/price-table/${id}`, { priceBRL, priceUSD })
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['price-table'] }),
-  })
-
-  const removeEntry = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/price-table/${id}`)
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['price-table'] }),
-  })
+  const columnCount = 2 + Number(columns.brl) + Number(columns.usd) + Number(columns.usdDistributor)
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-ink-900">Tabela de Preços</h1>
       <p className="mt-1 text-neutral-500">
-        Consulte os preços em reais e em dólar dos produtos Pro Delphus, organizados por setor.
+        Consulta de preços por setor. Para alterar um preço, edite o produto correspondente.
       </p>
 
-      <div className="mt-4 flex gap-3">
-        <select
-          value={marketFilter}
-          onChange={(e) => setMarketFilter(e.target.value as MarketFilter)}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-        >
-          <option value="ALL">Nacional e internacional</option>
-          <option value="NATIONAL">Nacional (BRL)</option>
-          <option value="INTERNATIONAL">Internacional (USD)</option>
-        </select>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
         <input
-          placeholder="Buscar por SKU, descrição ou setor"
+          placeholder="Buscar por SKU, nome ou setor"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
         />
+        <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+          <span className="text-xs font-medium uppercase text-neutral-400">Colunas</span>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={columns.brl} onChange={() => toggleColumn('brl')} />
+            Final BRL
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={columns.usd} onChange={() => toggleColumn('usd')} />
+            Final USD
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={columns.usdDistributor} onChange={() => toggleColumn('usdDistributor')} />
+            Distribuidor USD
+          </label>
+        </div>
       </div>
-
-      {isAdmin && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            createEntry.mutate()
-          }}
-          className="mt-4 grid max-w-3xl grid-cols-4 gap-3 rounded-xl border border-neutral-200 bg-white p-4"
-        >
-          <h2 className="col-span-4 text-sm font-semibold text-neutral-700">Novo item</h2>
-          <input
-            placeholder="SKU"
-            required
-            value={newEntry.sku}
-            onChange={(e) => setNewEntry((s) => ({ ...s, sku: e.target.value }))}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-          <input
-            placeholder="Setor (ex: Laparoscopy)"
-            required
-            list="sectors"
-            value={newEntry.sector}
-            onChange={(e) => setNewEntry((s) => ({ ...s, sector: e.target.value }))}
-            className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-          <datalist id="sectors">
-            {grouped.map(([sector]) => (
-              <option key={sector} value={sector} />
-            ))}
-          </datalist>
-          <input
-            placeholder="Descrição"
-            required
-            value={newEntry.description}
-            onChange={(e) => setNewEntry((s) => ({ ...s, description: e.target.value }))}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-          <input
-            placeholder="Preço em reais (BRL)"
-            type="number"
-            step="0.01"
-            value={newEntry.priceBRL}
-            onChange={(e) => setNewEntry((s) => ({ ...s, priceBRL: e.target.value }))}
-            className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-          <input
-            placeholder="Preço em dólar (USD)"
-            type="number"
-            step="0.01"
-            value={newEntry.priceUSD}
-            onChange={(e) => setNewEntry((s) => ({ ...s, priceUSD: e.target.value }))}
-            className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={createEntry.isPending}
-            className="col-span-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-          >
-            Adicionar item
-          </button>
-        </form>
-      )}
 
       {isLoading && <p className="mt-6 text-neutral-400">Carregando…</p>}
 
-      <div className="mt-6 space-y-6">
-        {grouped.map(([sector, items]) => (
-          <div key={sector} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">{sector}</h3>
-            </div>
-            <table className="min-w-full divide-y divide-neutral-100 text-sm">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium text-neutral-500">SKU</th>
-                  <th className="px-4 py-2 text-left font-medium text-neutral-500">Descrição</th>
-                  {showBRL && <th className="px-4 py-2 text-left font-medium text-neutral-500">Preço BRL</th>}
-                  {showUSD && <th className="px-4 py-2 text-left font-medium text-neutral-500">Preço USD</th>}
-                  {isAdmin && <th className="px-4 py-2 text-right font-medium text-neutral-500">Ações</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {items.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="px-4 py-2 font-medium text-ink-900">{entry.sku}</td>
-                    <td className="px-4 py-2 text-neutral-600">{entry.description}</td>
-                    {showBRL && <td className="px-4 py-2 text-ink-900">{formatPrice(entry.priceBRL, 'BRL')}</td>}
-                    {showUSD && <td className="px-4 py-2 text-ink-900">{formatPrice(entry.priceUSD, 'USD')}</td>}
-                    {isAdmin && (
-                      <td className="px-4 py-2 text-right space-x-2">
-                        <button
-                          onClick={() => {
-                            const brl = window.prompt('Novo preço em BRL (deixe vazio para manter):', entry.priceBRL ?? '')
-                            const usd = window.prompt('Novo preço em USD (deixe vazio para manter):', entry.priceUSD ?? '')
-                            updatePrice.mutate({
-                              id: entry.id,
-                              priceBRL: brl ? Number(brl) : entry.priceBRL ? Number(entry.priceBRL) : null,
-                              priceUSD: usd ? Number(usd) : entry.priceUSD ? Number(entry.priceUSD) : null,
-                            })
-                          }}
-                          className="text-xs font-medium text-brand-600 hover:underline"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => removeEntry.mutate(entry.id)}
-                          className="text-xs font-medium text-brand-600 hover:underline"
-                        >
-                          Excluir
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="mt-6 space-y-8">
+        {grouped.map(([sector, groups]) => (
+          <div key={sector}>
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-900">{sector}</h2>
+            {(['COMPLETE_MODEL', 'COMPONENT'] as ProductKind[]).map((kind) => {
+              const items = groups[kind]
+              if (items.length === 0) return null
+              return (
+                <div key={kind} className="mb-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+                  <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                      {kindLabel[kind]}
+                    </h3>
+                  </div>
+                  <table className="min-w-full divide-y divide-neutral-100 text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-neutral-500">SKU</th>
+                        <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome</th>
+                        {columns.brl && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final BRL</th>}
+                        {columns.usd && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final USD</th>}
+                        {columns.usdDistributor && (
+                          <th className="px-4 py-2 text-left font-medium text-neutral-500">Distribuidor USD</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {items.map((product) => (
+                        <tr key={product.id}>
+                          <td className="px-4 py-2 font-medium text-ink-900">{product.sku}</td>
+                          <td className="px-4 py-2 text-neutral-600">{product.name}</td>
+                          {columns.brl && (
+                            <td className="px-4 py-2 text-ink-900">{formatPrice(product.priceBRL, 'BRL')}</td>
+                          )}
+                          {columns.usd && (
+                            <td className="px-4 py-2 text-ink-900">{formatPrice(product.priceUSD, 'USD')}</td>
+                          )}
+                          {columns.usdDistributor && (
+                            <td className="px-4 py-2 text-ink-900">
+                              {formatPrice(product.priceUSDDistributor, 'USD')}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })}
           </div>
         ))}
-        {!isLoading && grouped.length === 0 && (
-          <p className="text-neutral-400">Nenhum item encontrado.</p>
-        )}
+        {!isLoading && grouped.length === 0 && <p className="text-neutral-400">Nenhum item encontrado.</p>}
       </div>
+      {columnCount === 2 && (
+        <p className="mt-4 text-xs text-neutral-400">Selecione ao menos uma coluna de preço para visualizar.</p>
+      )}
     </div>
   )
 }

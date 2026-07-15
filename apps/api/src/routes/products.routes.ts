@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import { PREDEFINED_SECTORS } from '@prodelphusplus/shared'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
@@ -24,14 +25,27 @@ productsRouter.get(
               OR: [
                 { sku: { contains: search, mode: 'insensitive' as const } },
                 { name: { contains: search, mode: 'insensitive' as const } },
+                { sector: { contains: search, mode: 'insensitive' as const } },
               ],
             }
           : {}),
       },
       include,
-      orderBy: { name: 'asc' },
+      orderBy: [{ sector: 'asc' }, { kind: 'asc' }, { name: 'asc' }],
     })
     res.json({ products: products.map(toProductDTO) })
+  }),
+)
+
+productsRouter.get(
+  '/sectors',
+  asyncHandler(async (_req, res) => {
+    const rows = await prisma.product.findMany({ distinct: ['sector'], select: { sector: true } })
+    const dbSectors = rows.map((r) => r.sector)
+    const merged = Array.from(new Set([...PREDEFINED_SECTORS, ...dbSectors])).sort((a, b) =>
+      a.localeCompare(b),
+    )
+    res.json({ sectors: merged })
   }),
 )
 
@@ -44,12 +58,21 @@ productsRouter.get(
   }),
 )
 
-const createProductSchema = z.object({
-  sku: z.string().min(1),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  weightKg: z.coerce.number().positive().optional(),
-})
+const createProductSchema = z
+  .object({
+    sku: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().optional(),
+    sector: z.string().min(1),
+    kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).default('COMPLETE_MODEL'),
+    weightKg: z.coerce.number().positive().optional(),
+    priceBRL: z.coerce.number().positive().optional(),
+    priceUSD: z.coerce.number().positive().optional(),
+    priceUSDDistributor: z.coerce.number().positive().optional(),
+  })
+  .refine((data) => data.priceBRL !== undefined || data.priceUSD !== undefined, {
+    message: 'Informe ao menos um preço final (BRL ou USD)',
+  })
 
 productsRouter.post(
   '/',
@@ -60,15 +83,24 @@ productsRouter.post(
     const existing = await prisma.product.findUnique({ where: { sku: data.sku } })
     if (existing) throw new HttpError(409, 'Já existe um produto com este SKU')
 
-    const product = await prisma.product.create({ data, include })
+    const product = await prisma.product.create({
+      data: { ...data, updatedById: req.user!.id },
+      include,
+    })
     res.status(201).json({ product: toProductDTO(product) })
   }),
 )
 
 const updateProductSchema = z.object({
+  sku: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
-  weightKg: z.coerce.number().positive().optional(),
+  sector: z.string().min(1).optional(),
+  kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).optional(),
+  weightKg: z.coerce.number().positive().optional().nullable(),
+  priceBRL: z.coerce.number().positive().optional().nullable(),
+  priceUSD: z.coerce.number().positive().optional().nullable(),
+  priceUSDDistributor: z.coerce.number().positive().optional().nullable(),
   active: z.boolean().optional(),
 })
 
@@ -77,7 +109,19 @@ productsRouter.patch(
   requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const data = updateProductSchema.parse(req.body)
-    const product = await prisma.product.update({ where: { id: req.params.id }, data, include })
+
+    if (data.sku) {
+      const existing = await prisma.product.findUnique({ where: { sku: data.sku } })
+      if (existing && existing.id !== req.params.id) {
+        throw new HttpError(409, 'Já existe um produto com este SKU')
+      }
+    }
+
+    const product = await prisma.product.update({
+      where: { id: req.params.id },
+      data: { ...data, updatedById: req.user!.id },
+      include,
+    })
     res.json({ product: toProductDTO(product) })
   }),
 )

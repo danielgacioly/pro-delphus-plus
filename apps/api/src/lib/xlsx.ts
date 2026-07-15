@@ -1,12 +1,25 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import ExcelJS from 'exceljs'
 import { LABELS, type QuoteLanguage } from './quoteI18n.js'
 import { COMPANY } from './pdf.js'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const logoBuffer = fs.readFileSync(path.join(__dirname, '../assets/logo-company.png'))
+
 export interface QuoteXlsxItem {
-  sku: string
-  productName: string
+  description: string
   quantity: number
   unitPrice: number
+}
+
+export interface QuoteXlsxSignature {
+  name: string
+  jobTitle: string | null
+  phone: string | null
+  email: string
+  signatureImageDataUri: string | null
 }
 
 export interface QuoteXlsxData {
@@ -18,93 +31,173 @@ export interface QuoteXlsxData {
   items: QuoteXlsxItem[]
   freight: number | null
   discount: number
+  subtotal: number
+  total: number
   currency: string
+  signature: QuoteXlsxSignature
 }
 
-const BRAND_RED = 'FFEF1818'
+const RED = 'FFEF1818'
+const INK = 'FF1A1A1A'
 const HEADER_FILL = 'FFF1EFE9'
+const BORDER_COLOR = 'FFE5E3DA'
+const thinBorder = {
+  top: { style: 'thin' as const, color: { argb: BORDER_COLOR } },
+  bottom: { style: 'thin' as const, color: { argb: BORDER_COLOR } },
+  left: { style: 'thin' as const, color: { argb: BORDER_COLOR } },
+  right: { style: 'thin' as const, color: { argb: BORDER_COLOR } },
+}
 
 export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   const t = LABELS[data.language]
+
   const workbook = new ExcelJS.Workbook()
-  const sheet = workbook.addWorksheet(t.quote)
+  const sheet = workbook.addWorksheet(t.quote, { views: [{ showGridLines: false }] })
 
   sheet.columns = [
     { width: 6 },
-    { width: 16 },
-    { width: 45 },
-    { width: 10 },
-    { width: 16 },
-    { width: 16 },
+    { width: 8 },
+    { width: 52 },
+    { width: 18 },
+    { width: 18 },
   ]
 
-  sheet.mergeCells('A1:F1')
-  sheet.getCell('A1').value = COMPANY.name
-  sheet.getCell('A1').font = { bold: true, size: 14 }
+  const logoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
+  sheet.addImage(logoImageId, { tl: { col: 0, row: 0.1 }, ext: { width: 70, height: 57 } })
 
-  sheet.mergeCells('A2:F2')
-  sheet.getCell('A2').value = `${t.quote} #${data.quoteNumber}`
-  sheet.getCell('A2').font = { bold: true, size: 12, color: { argb: BRAND_RED } }
+  sheet.mergeCells('B1:C1')
+  sheet.getCell('B1').value = COMPANY.name
+  sheet.getCell('B1').font = { bold: true, size: 13, color: { argb: INK } }
+
+  sheet.mergeCells('B2:C2')
+  sheet.getCell('B2').value = COMPANY.cnpj
+  sheet.mergeCells('B3:C3')
+  sheet.getCell('B3').value = COMPANY.addressLine1
+  sheet.mergeCells('B4:C4')
+  sheet.getCell('B4').value = `${COMPANY.addressLine2}  ·  ${COMPANY.phone}`
+  ;['B2', 'B3', 'B4'].forEach((ref) => {
+    sheet.getCell(ref).font = { size: 9, color: { argb: 'FF4A4A4A' } }
+  })
+
+  sheet.mergeCells('D1:E1')
+  const titleCell = sheet.getCell('D1')
+  titleCell.value = t.quote
+  titleCell.font = { bold: true, size: 22, color: { argb: INK } }
+  titleCell.alignment = { horizontal: 'right' }
+
+  sheet.mergeCells('D2:E2')
+  const numberCell = sheet.getCell('D2')
+  numberCell.value = `#${data.quoteNumber}`
+  numberCell.font = { bold: true, size: 12, color: { argb: INK } }
+  numberCell.alignment = { horizontal: 'right' }
 
   const prefix = t.prefix[data.clientPrefix]
-  sheet.mergeCells('A3:F3')
-  sheet.getCell('A3').value = `${t.to}: ${[prefix, data.clientName].filter(Boolean).join(' ')}`
-  sheet.getCell('A3').font = { bold: true }
+  sheet.mergeCells('A6:E6')
+  const toCell = sheet.getCell('A6')
+  toCell.value = `${t.to}: ${[prefix, data.clientName].filter(Boolean).join(' ')}`
+  toCell.font = { bold: true, size: 12, color: { argb: INK } }
 
-  const headerRowIndex = 5
+  const headerRowIndex = 8
   const headerRow = sheet.getRow(headerRowIndex)
-  headerRow.values = [t.item, 'SKU', t.description, t.qty, t.unitPrice, t.total]
+  headerRow.values = [t.item, t.qty, t.description, t.unitPrice, t.total]
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true }
+    cell.font = { bold: true, size: 10, color: { argb: INK } }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+    cell.border = thinBorder
+    cell.alignment = { vertical: 'middle' }
   })
 
   data.items.forEach((item, index) => {
     const rowIndex = headerRowIndex + 1 + index
     const row = sheet.getRow(rowIndex)
-    row.values = [index + 1, item.sku, item.productName, item.quantity, item.unitPrice, { formula: `D${rowIndex}*E${rowIndex}` }]
+    row.values = [index + 1, item.quantity, item.description, item.unitPrice, { formula: `D${rowIndex}*B${rowIndex}` }]
+    row.getCell(1).alignment = { horizontal: 'center' }
+    row.getCell(2).alignment = { horizontal: 'center' }
+    row.getCell(4).numFmt = `"${data.currency}" #,##0.00`
     row.getCell(5).numFmt = `"${data.currency}" #,##0.00`
-    row.getCell(6).numFmt = `"${data.currency}" #,##0.00`
-    row.getCell(6).font = { color: { argb: BRAND_RED }, bold: true }
-    row.eachCell((cell) => {
-      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
-    })
+    row.getCell(5).font = { color: { argb: RED }, bold: true }
+    row.eachCell((cell) => (cell.border = thinBorder))
   })
 
   const lastItemRow = headerRowIndex + data.items.length
-  let cursor = lastItemRow + 2
+  const summaryTop = lastItemRow + 1
 
   if (data.notes) {
-    sheet.mergeCells(`A${cursor}:C${cursor + 4}`)
-    const notesCell = sheet.getCell(`A${cursor}`)
+    sheet.mergeCells(`A${summaryTop}:C${summaryTop + 5}`)
+    const notesCell = sheet.getCell(`A${summaryTop}`)
     notesCell.value = data.notes
-    notesCell.alignment = { wrapText: true, vertical: 'top' }
+    notesCell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' }
     notesCell.font = { size: 9, color: { argb: 'FF4A4A4A' } }
+    notesCell.border = thinBorder
   }
 
-  const summaryStartRow = cursor
-  sheet.getCell(`E${summaryStartRow}`).value = t.shipping
-  sheet.getCell(`F${summaryStartRow}`).value = data.freight ?? t.toBeDefined
-  if (data.freight !== null) sheet.getCell(`F${summaryStartRow}`).numFmt = `"${data.currency}" #,##0.00`
-  cursor++
+  let row = summaryTop
+  sheet.mergeCells(`D${row}:D${row}`)
+  sheet.getCell(`D${row}`).value = t.shipping
+  sheet.getCell(`D${row}`).font = { bold: true, color: { argb: INK } }
+  sheet.getCell(`D${row}`).border = thinBorder
+  sheet.getCell(`E${row}`).value = data.freight ?? t.toBeDefined
+  if (data.freight !== null) sheet.getCell(`E${row}`).numFmt = `"${data.currency}" #,##0.00`
+  sheet.getCell(`E${row}`).font = { bold: true, color: { argb: RED } }
+  sheet.getCell(`E${row}`).border = thinBorder
+  const freightRow = row
+  row++
 
+  let discountRow: number | null = null
   if (data.discount > 0) {
-    sheet.getCell(`E${cursor}`).value = t.discount
-    sheet.getCell(`F${cursor}`).value = -data.discount
-    sheet.getCell(`F${cursor}`).numFmt = `"${data.currency}" #,##0.00`
-    cursor++
+    sheet.getCell(`D${row}`).value = t.discount
+    sheet.getCell(`D${row}`).font = { bold: true, color: { argb: INK } }
+    sheet.getCell(`D${row}`).border = thinBorder
+    sheet.getCell(`E${row}`).value = -data.discount
+    sheet.getCell(`E${row}`).numFmt = `"${data.currency}" #,##0.00`
+    sheet.getCell(`E${row}`).font = { bold: true, color: { argb: RED } }
+    sheet.getCell(`E${row}`).border = thinBorder
+    discountRow = row
+    row++
   }
 
-  sheet.getCell(`E${cursor}`).value = t.total
-  sheet.getCell(`E${cursor}`).font = { bold: true }
-  const freightRef = data.freight !== null ? `F${summaryStartRow}` : '0'
-  const discountRef = data.discount > 0 ? `+F${cursor - 1}` : ''
-  sheet.getCell(`F${cursor}`).value = {
-    formula: `SUM(F${headerRowIndex + 1}:F${lastItemRow})+${freightRef}${discountRef}`,
+  sheet.getCell(`D${row}`).value = t.total
+  sheet.getCell(`D${row}`).font = { bold: true, size: 12, color: { argb: INK } }
+  sheet.getCell(`D${row}`).border = thinBorder
+  const freightRef = data.freight !== null ? `E${freightRow}` : '0'
+  const discountRef = discountRow ? `+E${discountRow}` : ''
+  sheet.getCell(`E${row}`).value = {
+    formula: `SUM(E${headerRowIndex + 1}:E${lastItemRow})+${freightRef}${discountRef}`,
   }
-  sheet.getCell(`F${cursor}`).numFmt = `"${data.currency}" #,##0.00`
-  sheet.getCell(`F${cursor}`).font = { bold: true, color: { argb: BRAND_RED } }
+  sheet.getCell(`E${row}`).numFmt = `"${data.currency}" #,##0.00`
+  sheet.getCell(`E${row}`).font = { bold: true, size: 12, color: { argb: RED } }
+  sheet.getCell(`E${row}`).border = thinBorder
+
+  const sigTop = Math.max(row + 3, summaryTop + 7)
+  sheet.mergeCells(`A${sigTop}:E${sigTop + 3}`)
+  sheet.getCell(`A${sigTop}`).border = {
+    top: { style: 'thin', color: { argb: BORDER_COLOR } },
+  }
+
+  const sigLogoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
+  sheet.addImage(sigLogoImageId, { tl: { col: 0.2, row: sigTop - 1 + 0.3 }, ext: { width: 55, height: 45 } })
+
+  if (data.signature.signatureImageDataUri) {
+    const base64 = data.signature.signatureImageDataUri.split(',')[1] ?? ''
+    const ext = data.signature.signatureImageDataUri.includes('image/png') ? 'png' : 'jpeg'
+    const sigImageId = workbook.addImage({ base64, extension: ext as 'png' | 'jpeg' })
+    sheet.addImage(sigImageId, { tl: { col: 1.3, row: sigTop - 1 + 0.4 }, ext: { width: 140, height: 50 } })
+  } else {
+    const nameCell = sheet.getCell(`B${sigTop}`)
+    nameCell.value = data.signature.name
+    nameCell.font = { bold: true, size: 11, color: { argb: INK } }
+
+    const roleCell = sheet.getCell(`B${sigTop + 1}`)
+    roleCell.value = data.signature.jobTitle ?? 'Sales Assistant'
+    roleCell.font = { size: 9, color: { argb: 'FF6A6A6A' } }
+
+    const contactLines = [data.signature.phone, data.signature.email, COMPANY.website].filter(Boolean)
+    contactLines.forEach((line, i) => {
+      const cell = sheet.getCell(`B${sigTop + 2 + i}`)
+      cell.value = line ?? ''
+      cell.font = { size: 9, color: { argb: 'FF4A4A4A' } }
+    })
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)
