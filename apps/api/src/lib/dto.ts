@@ -1,4 +1,5 @@
 import type {
+  Order,
   Product,
   ProductCustomization,
   ProductMedia,
@@ -49,11 +50,14 @@ export function toProductDTO(
   }
 }
 
-export function toQuoteDTO(quote: Quote & { items: (QuoteItem & { product: Product }) [] }) {
+export function toQuoteDTO(
+  quote: Quote & { items: (QuoteItem & { product: Product })[]; createdBy: Pick<User, 'id' | 'name'> },
+) {
   return {
     id: quote.id,
     quoteNumber: quote.quoteNumber,
     language: quote.language,
+    priceTier: quote.priceTier,
     clientPrefix: quote.clientPrefix,
     clientName: quote.clientName,
     notes: quote.notes,
@@ -64,6 +68,7 @@ export function toQuoteDTO(quote: Quote & { items: (QuoteItem & { product: Produ
     pdfUrl: quote.pdfUrl,
     xlsxUrl: quote.xlsxUrl,
     createdAt: quote.createdAt.toISOString(),
+    createdBy: { id: quote.createdBy.id, name: quote.createdBy.name },
     items: quote.items.map((item) => ({
       sku: item.sku,
       quantity: item.quantity,
@@ -72,5 +77,45 @@ export function toQuoteDTO(quote: Quote & { items: (QuoteItem & { product: Produ
       productName: item.product.name,
       description: item.description,
     })),
+  }
+}
+
+export function toOrderDTO(
+  order: Order & {
+    createdBy: Pick<User, 'id' | 'name'>
+    quote: Quote & { items: (QuoteItem & { product: Product })[]; createdBy: Pick<User, 'id' | 'name'> }
+  },
+) {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    quoteId: order.quoteId,
+    quoteNumber: order.quote.quoteNumber,
+    purchaseOrder: order.purchaseOrder,
+    orderedByEmail: order.orderedByEmail,
+    shipDate: order.shipDate?.toISOString() ?? null,
+    invoiceDate: order.invoiceDate.toISOString(),
+    billToText: order.billToText,
+    shipToText: order.shipToText,
+    shipToNote: order.shipToNote,
+    numberOfPackages: order.numberOfPackages,
+    netWeightKg: order.netWeightKg?.toString() ?? null,
+    grossWeightKg: order.grossWeightKg?.toString() ?? null,
+    awbNumber: order.awbNumber,
+    incoterms: order.incoterms,
+    prepaymentBy: order.prepaymentBy,
+    paypalFee: order.paypalFee?.toString() ?? null,
+    nfNumber: order.nfNumber,
+    nfDate: order.nfDate?.toISOString() ?? null,
+    nfDocumentUrl: order.nfDocumentUrl,
+    awbDocumentUrl: order.awbDocumentUrl,
+    exchangeRate: order.exchangeRate?.toString() ?? null,
+    invoicePdfUrl: order.invoicePdfUrl,
+    packingListPdfUrl: order.packingListPdfUrl,
+    packingListBoxPdfUrl: order.packingListBoxPdfUrl,
+    exportDocXlsxUrl: order.exportDocXlsxUrl,
+    createdAt: order.createdAt.toISOString(),
+    createdBy: { id: order.createdBy.id, name: order.createdBy.name },
+    quote: toQuoteDTO(order.quote),
   }
 }

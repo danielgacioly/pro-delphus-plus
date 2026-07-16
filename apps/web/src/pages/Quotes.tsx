@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ClientPrefix, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
+import type { ClientPrefix, PriceTier, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 
 interface DraftItem {
-  sku: string
+  productId: string
   query: string
   quantity: number
   description: string
@@ -32,13 +33,30 @@ const languageLabel: Record<QuoteLanguage, string> = {
   ES: 'Español',
 }
 
-const emptyItem: DraftItem = { sku: '', query: '', quantity: 1, description: '' }
+const emptyItem: DraftItem = { productId: '', query: '', quantity: 1, description: '' }
+
+const monthLabels = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+]
 
 export function Quotes() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const { data: quotes, isLoading } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
 
   const [language, setLanguage] = useState<QuoteLanguage>('PT')
+  const [priceTier, setPriceTier] = useState<PriceTier>('FINAL')
   const [clientPrefix, setClientPrefix] = useState<ClientPrefix>('NONE')
   const [clientName, setClientName] = useState('')
   const [notes, setNotes] = useState('')
@@ -47,6 +65,25 @@ export function Quotes() {
   const [freight, setFreight] = useState('')
   const [discount, setDiscount] = useState('0')
   const [error, setError] = useState<string | null>(null)
+
+  const [yearFilter, setYearFilter] = useState('all')
+  const [monthFilter, setMonthFilter] = useState('all')
+  const [onlyMine, setOnlyMine] = useState(false)
+
+  const availableYears = useMemo(() => {
+    const years = new Set((quotes ?? []).map((q) => new Date(q.createdAt).getFullYear()))
+    return Array.from(years).sort((a, b) => b - a)
+  }, [quotes])
+
+  const filteredQuotes = useMemo(() => {
+    return (quotes ?? []).filter((q) => {
+      const date = new Date(q.createdAt)
+      if (yearFilter !== 'all' && date.getFullYear() !== Number(yearFilter)) return false
+      if (monthFilter !== 'all' && date.getMonth() !== Number(monthFilter)) return false
+      if (onlyMine && q.createdBy.id !== user?.id) return false
+      return true
+    })
+  }, [quotes, yearFilter, monthFilter, onlyMine, user?.id])
 
   const activeQuery = activeIndex !== null ? items[activeIndex].query.trim() : ''
   const { data: suggestions } = useQuery({
@@ -59,12 +96,13 @@ export function Quotes() {
     mutationFn: async () => {
       const { data } = await api.post<{ quote: QuoteDTO }>('/quotes', {
         language,
+        priceTier: language === 'PT' ? 'FINAL' : priceTier,
         clientPrefix,
         clientName,
         notes: notes || undefined,
         items: items
-          .filter((i) => i.sku.trim())
-          .map((i) => ({ sku: i.sku, quantity: i.quantity, description: i.description || undefined })),
+          .filter((i) => i.productId.trim())
+          .map((i) => ({ productId: i.productId, quantity: i.quantity, description: i.description || undefined })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
       })
@@ -93,7 +131,7 @@ export function Quotes() {
   }
 
   function selectProduct(index: number, product: ProductDTO) {
-    updateItem(index, { sku: product.sku, query: `${product.name} (${product.sku})` })
+    updateItem(index, { productId: product.id, query: `${product.name} (${product.sku})` })
     setActiveIndex(null)
   }
 
@@ -131,6 +169,19 @@ export function Quotes() {
               Moeda: {language === 'PT' ? 'BRL' : 'USD'}
             </p>
           </div>
+          {language !== 'PT' && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-neutral-600">Preço</label>
+              <select
+                value={priceTier}
+                onChange={(e) => setPriceTier(e.target.value as PriceTier)}
+                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              >
+                <option value="FINAL">Final</option>
+                <option value="DISTRIBUTOR">Distribuidor</option>
+              </select>
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Prefixo</label>
             <select
@@ -166,7 +217,7 @@ export function Quotes() {
                     value={item.query}
                     onFocus={() => setActiveIndex(index)}
                     onChange={(e) => {
-                      updateItem(index, { query: e.target.value, sku: '' })
+                      updateItem(index, { query: e.target.value, productId: '' })
                       setActiveIndex(index)
                     }}
                     onBlur={() => setTimeout(() => setActiveIndex((cur) => (cur === index ? null : cur)), 150)}
@@ -269,7 +320,39 @@ export function Quotes() {
         </button>
       </form>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <h2 className="text-sm font-semibold text-neutral-700">Histórico</h2>
+        <select
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+        >
+          <option value="all">Todos os anos</option>
+          {availableYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+        <select
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+        >
+          <option value="all">Todos os meses</option>
+          {monthLabels.map((label, index) => (
+            <option key={label} value={index}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5 text-sm text-neutral-600">
+          <input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} />
+          Meus orçamentos
+        </label>
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
         <table className="min-w-full divide-y divide-neutral-200 text-sm">
           <thead className="bg-neutral-50">
             <tr>
@@ -277,6 +360,7 @@ export function Quotes() {
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Cliente</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Idioma</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Data</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Criado por</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Itens</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Total</th>
               <th className="px-4 py-2 text-right font-medium text-neutral-500">Arquivos</th>
@@ -285,20 +369,35 @@ export function Quotes() {
           <tbody className="divide-y divide-neutral-100">
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-4 py-4 text-center text-neutral-400">
                   Carregando…
                 </td>
               </tr>
             )}
-            {quotes?.map((q) => (
+            {!isLoading && filteredQuotes.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-4 text-center text-neutral-400">
+                  Nenhum orçamento encontrado para o filtro selecionado.
+                </td>
+              </tr>
+            )}
+            {filteredQuotes.map((q) => (
               <tr key={q.id}>
                 <td className="px-4 py-2 font-medium text-ink-900">{q.quoteNumber}</td>
                 <td className="px-4 py-2 text-neutral-600">
                   {q.clientPrefix !== 'NONE' && `${prefixLabelsByLanguage[q.language][q.clientPrefix]} `}
                   {q.clientName}
                 </td>
-                <td className="px-4 py-2 text-neutral-500">{languageLabel[q.language]}</td>
+                <td className="px-4 py-2 text-neutral-500">
+                  {languageLabel[q.language]}
+                  {q.priceTier === 'DISTRIBUTOR' && (
+                    <span className="ml-1.5 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+                      Distribuidor
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-neutral-500">{new Date(q.createdAt).toLocaleDateString('pt-BR')}</td>
+                <td className="px-4 py-2 text-neutral-500">{q.createdBy.name}</td>
                 <td className="px-4 py-2 text-neutral-600">{q.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}</td>
                 <td className="px-4 py-2 text-ink-900">{Number(q.total).toFixed(2)}</td>
                 <td className="px-4 py-2 text-right space-x-2">

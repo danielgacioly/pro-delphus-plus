@@ -20,16 +20,40 @@ const kindLabel: Record<ProductKind, string> = {
 }
 
 interface PriceColumns {
+  description: boolean
   brl: boolean
   usd: boolean
   usdDistributor: boolean
 }
 
+const COLUMNS_STORAGE_KEY = 'price-table-columns'
+
+const defaultColumns: PriceColumns = {
+  description: true,
+  brl: true,
+  usd: true,
+  usdDistributor: false,
+}
+
+function loadStoredColumns(): PriceColumns {
+  try {
+    const raw = localStorage.getItem(COLUMNS_STORAGE_KEY)
+    if (!raw) return defaultColumns
+    return { ...defaultColumns, ...JSON.parse(raw) }
+  } catch {
+    return defaultColumns
+  }
+}
+
 export function PriceTable() {
   const [search, setSearch] = useState('')
-  const [columns, setColumns] = useState<PriceColumns>({ brl: true, usd: true, usdDistributor: false })
+  const [columns, setColumns] = useState<PriceColumns>(loadStoredColumns)
 
-  const { data: products, isLoading } = useQuery({
+  const {
+    data: products,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['products-price-table', search],
     queryFn: () => fetchProducts(search),
   })
@@ -45,7 +69,15 @@ export function PriceTable() {
   }, [products])
 
   function toggleColumn(key: keyof PriceColumns) {
-    setColumns((prev) => ({ ...prev, [key]: !prev[key] }))
+    setColumns((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      try {
+        localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(next))
+      } catch {
+        // storage indisponível (modo privado etc.) — seleção vale só para a sessão
+      }
+      return next
+    })
   }
 
   const columnCount = 2 + Number(columns.brl) + Number(columns.usd) + Number(columns.usdDistributor)
@@ -59,13 +91,17 @@ export function PriceTable() {
 
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <input
-          placeholder="Buscar por SKU, nome ou setor"
+          placeholder="Buscar por SKU, nome, setor ou descrição"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
         />
         <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
           <span className="text-xs font-medium uppercase text-neutral-400">Colunas</span>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={columns.description} onChange={() => toggleColumn('description')} />
+            Descrição
+          </label>
           <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={columns.brl} onChange={() => toggleColumn('brl')} />
             Final BRL
@@ -82,6 +118,11 @@ export function PriceTable() {
       </div>
 
       {isLoading && <p className="mt-6 text-neutral-400">Carregando…</p>}
+      {isError && (
+        <p className="mt-6 text-brand-600">
+          Não foi possível carregar a tabela de preços. Verifique sua conexão e tente novamente.
+        </p>
+      )}
 
       <div className="mt-6 space-y-8">
         {grouped.map(([sector, groups]) => (
@@ -102,6 +143,9 @@ export function PriceTable() {
                       <tr>
                         <th className="px-4 py-2 text-left font-medium text-neutral-500">SKU</th>
                         <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome</th>
+                        {columns.description && (
+                          <th className="px-4 py-2 text-left font-medium text-neutral-500">Descrição</th>
+                        )}
                         {columns.brl && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final BRL</th>}
                         {columns.usd && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final USD</th>}
                         {columns.usdDistributor && (
@@ -114,6 +158,11 @@ export function PriceTable() {
                         <tr key={product.id}>
                           <td className="px-4 py-2 font-medium text-ink-900">{product.sku}</td>
                           <td className="px-4 py-2 text-neutral-600">{product.name}</td>
+                          {columns.description && (
+                            <td className="max-w-md px-4 py-2 text-xs text-neutral-500">
+                              {product.description ?? '—'}
+                            </td>
+                          )}
                           {columns.brl && (
                             <td className="px-4 py-2 text-ink-900">{formatPrice(product.priceBRL, 'BRL')}</td>
                           )}
@@ -134,7 +183,9 @@ export function PriceTable() {
             })}
           </div>
         ))}
-        {!isLoading && grouped.length === 0 && <p className="text-neutral-400">Nenhum item encontrado.</p>}
+        {!isLoading && !isError && grouped.length === 0 && (
+          <p className="text-neutral-400">Nenhum item encontrado.</p>
+        )}
       </div>
       {columnCount === 2 && (
         <p className="mt-4 text-xs text-neutral-400">Selecione ao menos uma coluna de preço para visualizar.</p>

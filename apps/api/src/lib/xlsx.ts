@@ -9,6 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const logoBuffer = fs.readFileSync(path.join(__dirname, '../assets/logo-company.png'))
 
 export interface QuoteXlsxItem {
+  title: string
   description: string
   quantity: number
   unitPrice: number
@@ -110,9 +111,17 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   data.items.forEach((item, index) => {
     const rowIndex = headerRowIndex + 1 + index
     const row = sheet.getRow(rowIndex)
-    row.values = [index + 1, item.quantity, item.description, item.unitPrice, { formula: `D${rowIndex}*B${rowIndex}` }]
+    row.values = [index + 1, item.quantity, '', item.unitPrice, { formula: `D${rowIndex}*B${rowIndex}` }]
+    const description = item.description.trim()
+    row.getCell(3).value = {
+      richText: [
+        { text: item.title, font: { bold: true, color: { argb: INK } } },
+        ...(description ? [{ text: ` - ${description}`, font: { color: { argb: INK } } }] : []),
+      ],
+    }
     row.getCell(1).alignment = { horizontal: 'center' }
     row.getCell(2).alignment = { horizontal: 'center' }
+    row.getCell(3).alignment = { wrapText: true, vertical: 'top' }
     row.getCell(4).numFmt = `"${data.currency}" #,##0.00`
     row.getCell(5).numFmt = `"${data.currency}" #,##0.00`
     row.getCell(5).font = { color: { argb: RED }, bold: true }
@@ -169,20 +178,24 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   sheet.getCell(`E${row}`).border = thinBorder
 
   const sigTop = Math.max(row + 3, summaryTop + 7)
-  sheet.mergeCells(`A${sigTop}:E${sigTop + 3}`)
-  sheet.getCell(`A${sigTop}`).border = {
-    top: { style: 'thin', color: { argb: BORDER_COLOR } },
-  }
-
-  const sigLogoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
-  sheet.addImage(sigLogoImageId, { tl: { col: 0.2, row: sigTop - 1 + 0.3 }, ext: { width: 55, height: 45 } })
+  // A plain top border (not a merge) draws the same divider line without
+  // clobbering the independent name/role/contact values written below —
+  // merging A:E across every row here previously made every write share
+  // one cell, so only the last line (the email) ever survived.
+  ;['A', 'B', 'C', 'D', 'E'].forEach((col) => {
+    sheet.getCell(`${col}${sigTop}`).border = { top: { style: 'thin', color: { argb: BORDER_COLOR } } }
+  })
 
   if (data.signature.signatureImageDataUri) {
+    // Own signature replaces the company logo + text block entirely.
     const base64 = data.signature.signatureImageDataUri.split(',')[1] ?? ''
     const ext = data.signature.signatureImageDataUri.includes('image/png') ? 'png' : 'jpeg'
     const sigImageId = workbook.addImage({ base64, extension: ext as 'png' | 'jpeg' })
-    sheet.addImage(sigImageId, { tl: { col: 1.3, row: sigTop - 1 + 0.4 }, ext: { width: 140, height: 50 } })
+    sheet.addImage(sigImageId, { tl: { col: 0.2, row: sigTop - 1 + 0.3 }, ext: { width: 180, height: 70 } })
   } else {
+    const sigLogoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
+    sheet.addImage(sigLogoImageId, { tl: { col: 0.2, row: sigTop - 1 + 0.3 }, ext: { width: 55, height: 45 } })
+
     const nameCell = sheet.getCell(`B${sigTop}`)
     nameCell.value = data.signature.name
     nameCell.font = { bold: true, size: 11, color: { argb: INK } }

@@ -1,24 +1,52 @@
+import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from '../assets/logo.svg'
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
+
+function loadCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 const navItems = [
   { to: '/', label: 'Início', end: true },
   { to: '/precos', label: 'Tabela de Preços' },
   { to: '/produtos', label: 'Produtos' },
   { to: '/orcamentos', label: 'Orçamentos' },
+  { to: '/pedidos', label: 'Pedidos' },
   { to: '/minha-conta', label: 'Minha Conta' },
 ]
 
-const adminNavItems = [{ to: '/admin/contas', label: 'Contas' }]
+const adminNavItems = [
+  { to: '/admin/contas', label: 'Contas' },
+  { to: '/admin/setores', label: 'Setores' },
+]
 
 export function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(loadCollapsed)
 
   async function handleLogout() {
     await logout()
     navigate('/login')
+  }
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        // storage indisponível — a preferência só vale para esta sessão
+      }
+      return next
+    })
   }
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -32,7 +60,13 @@ export function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50">
-      <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-neutral-200 bg-white px-4 py-6">
+      <aside
+        className={`flex shrink-0 flex-col bg-white transition-all duration-200 ${
+          collapsed
+            ? 'w-0 overflow-hidden border-r-0 px-0 py-6'
+            : 'w-64 overflow-y-auto border-r border-neutral-200 px-4 py-6'
+        }`}
+      >
         <div className="mb-8 px-2">
           <img src={logo} alt="Pro Delphus" className="h-20 w-auto" />
         </div>
@@ -74,9 +108,21 @@ export function Layout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-8">
-        <Outlet />
-      </main>
+      <div className="relative flex-1 overflow-y-auto">
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Mostrar menu' : 'Ocultar menu'}
+          className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 shadow-sm hover:bg-neutral-100 hover:text-ink-900"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 3v18" />
+          </svg>
+        </button>
+        <main className="p-8 pt-16">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

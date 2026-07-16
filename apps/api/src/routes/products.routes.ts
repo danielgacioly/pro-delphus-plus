@@ -1,6 +1,5 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { PREDEFINED_SECTORS } from '@prodelphusplus/shared'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
@@ -26,6 +25,7 @@ productsRouter.get(
                 { sku: { contains: search, mode: 'insensitive' as const } },
                 { name: { contains: search, mode: 'insensitive' as const } },
                 { sector: { contains: search, mode: 'insensitive' as const } },
+                { description: { contains: search, mode: 'insensitive' as const } },
               ],
             }
           : {}),
@@ -40,12 +40,8 @@ productsRouter.get(
 productsRouter.get(
   '/sectors',
   asyncHandler(async (_req, res) => {
-    const rows = await prisma.product.findMany({ distinct: ['sector'], select: { sector: true } })
-    const dbSectors = rows.map((r) => r.sector)
-    const merged = Array.from(new Set([...PREDEFINED_SECTORS, ...dbSectors])).sort((a, b) =>
-      a.localeCompare(b),
-    )
-    res.json({ sectors: merged })
+    const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } })
+    res.json({ sectors: sectors.map((s) => s.name) })
   }),
 )
 
@@ -80,9 +76,6 @@ productsRouter.post(
   asyncHandler(async (req, res) => {
     const data = createProductSchema.parse(req.body)
 
-    const existing = await prisma.product.findUnique({ where: { sku: data.sku } })
-    if (existing) throw new HttpError(409, 'Já existe um produto com este SKU')
-
     const product = await prisma.product.create({
       data: { ...data, updatedById: req.user!.id },
       include,
@@ -109,13 +102,6 @@ productsRouter.patch(
   requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const data = updateProductSchema.parse(req.body)
-
-    if (data.sku) {
-      const existing = await prisma.product.findUnique({ where: { sku: data.sku } })
-      if (existing && existing.id !== req.params.id) {
-        throw new HttpError(409, 'Já existe um produto com este SKU')
-      }
-    }
 
     const product = await prisma.product.update({
       where: { id: req.params.id },

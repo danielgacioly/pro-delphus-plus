@@ -1,0 +1,148 @@
+total products: 501
+
+sectors (complete/components):
+  'LAPAROSCOPY': 1/16
+  'LAPAROSCOPY WITH INSUFFLATION': 1/6
+  'LAPAROSCOPY AND ROBOTICS': 1/19
+  'HYSTEROSCOPY': 2/11
+  'PREPARTUM': 21/0
+  'POSTPARTUM': 1/5
+  'EGG COLLECTION AND EMBRYO TRANSFER': 1/3
+  'PELVIC FLOOR DYSTOPIA': 1/2
+  'PELVIC BIDIGITAL TOUCH EXAMINATION': 1/3
+  'UTERUS - for use with scissors and grasper / diagnosys only': 34/0
+  'UTERUS - for resection': 10/0
+  'PROCTOLOGY': 2/14
+  'ENDOUROLOGY - Multifunctional Simulator': 2/11
+  'ENDOUROLOGY - Prostate Touch': 1/3
+  'ENDOUROLOGY - Penile procedures': 1/15
+  'SIMONT - Otorhino Neuro Trainer (ENT and Skull Base module)': 2/7
+  'SIMONT - Otorhino Neuro Trainer (Neuroendoscopy module)': 1/4
+  'SIMONT - Otorhino Neuro Trainer (Otorhino demo model)': 1/1
+  'SUTURE MODELS': 31/0
+  'SUTURE DISC': 4/0
+  'NEO-KNOT': 1/5
+  'SUTURE MODELS W/ VELCRO FOR NEO KNOT': 24/0
+  'WOUND TRAINERS': 12/2
+  'BUCO-MAXILLO-FACIAL': 1/13
+  'KNEE': 2/8
+  'SPINE': 1/3
+  'SHOULDER': 1/5
+  'PEDIATRIC TRAUMATOLOGY AND ORTHOPEDICS - LEG': 1/3
+  'THORACIC TRAUMA': 1/4
+  'PECTUS EXCAVATUM': 1/6
+  'THOR A2 2ND GENERATION': 1/4
+  'HIP SURGERIES': 1/2
+  'BREAST SURGERY': 1/10
+  'RHINOPLASTY': 1/2
+  'VLV NINFOTRAINER': 2/11
+  'GLUTES (Intramuscular Injection Training)': 1/2
+  'HYPOSPADIA': 1/2
+  'MIGRAINE INJECTION': 1/3
+  'FACIAL LANDMARKS FOR BOTOX APPLICATION': 1/5
+  'FACIAL HARMONIZATION': 1/2
+  'VENOUS PUNCTURE': 1/3
+  'PEDIATRIC INTRAOSSEOUS PUNCTURE': 1/2
+  'VASCULAR INJECTION': 1/2
+  'HERNIORRAPHY': 1/0
+  'BIRTH (not available for exportation)': 1/11
+  'LAB - HEART': 1/4
+  'LAB - KIDNEY': 1/5
+  'LAB - STOMACH/ESOPHAGUS': 1/5
+  'LAB - LIVER': 1/5
+  'LAB - VISCERA AND INTESTINES': 1/0
+  'LAB - LUNG': 6/0
+  'LAB - OBSTRUCTED BLOOD VESSELS': 1/0
+  'LAB - MAX TRAUMA': 1/0
+  'LAB - HALF UTERUS': 1/35
+  'LAB - MALE GENITALS': 2/13
+  'LAB - BREASTS': 1/0
+  'LAB HEMORRHOIDS': 7/0
+
+derived SKUs (44):
+  line 57: BASE <- 'BASE NOVA (LIDI DISSE QUE AINDA ESTÁ EM DESENVOLVIMENTO)'
+  line 89: ETXY/Hystero <- 'ETXY/Hystero EVE Multifunctional Simulator for Hysteroscopy'
+  line 93: ETXY/Hystero-P <- 'ETXY/Hystero-P Portable ETXY Simulator for Hysteroscopy'
+  line 208: ETP-LOU <- 'ETP-LOU Pelvic Training Station - Egg Collection and Embryo Transfer U'
+  line 223: ETP-APD <- 'ETP-APD Pelvic Training Station - Pelvic floor dystopia'
+  line 236: ETP-APD-2 <- 'ETP-APD Pelvic Training Station - Bimanual Examination'
+  line 242: SET-OF-6 <- 'Set of 6 artificial uterus for bimanual examination'
+  line 347: ETXY/Procto <- 'ETXY/Procto Mutifunctional EVE Simulator for Proctology'
+  line 350: ETXY/Procto-P <- 'ETXY/Procto-P Portable ETXY Simulator for Proctology'
+  line 384: ETXY/URO-P <- 'ETXY/URO-P Portable ADAM Multifunctional Simulator for Endourology'
+  line 436: ETXY/URO-GNM <- 'ETXY/URO-GNM Portable ADAM Multifunctional Simulator for phimosis and '
+  line 462: SOT <- 'SOT SIMONT Otorhino and Skull Base Surgery module'
+  line 465: SOT-P <- 'SOT-P SIMONT Otorhino and Skull Base Surgery module - portable'
+  line 486: SNT <- 'SNT SIMONT Neuroendoscopy Surgery module'
+  line 502: SOD <- 'SOD SIMONT Otorhino DEMO Endotrainer'
+  line 508: SOD-1 <- 'SOD-1 SIMONT Otorhino DEMO Endotrainer half-head surgical model - made'
+  line 530: SM <- 'SM Suture Models - Complete Set Bundle (24 DIFFERENT MODELS - "ONE OF '
+  line 579: SMT <- 'SMT Neo-Knot - portable simulator for laparotomy and laparoscopy and s'
+  line 637: SM-0S <- 'SM-0S Support made of EVA and velcro to be used with the fixer (SM-5)'
+  line 647: WNT-0 <- 'WNT-0'
+  line 667: MAX <- 'MAX Buco Maxillo Facial Simulator for traumatology'
+  line 694: MAX-SIALO <- 'MAX-SIALO MAX for Sialendoscopy'
+  line 702: KNT <- 'KNT Knee Trainer Simulator'
+  line 722: SPT <- 'SPT Spine Trainer'
+  line 733: SHT <- 'SHT Shoulder Trainer Complete Simulator'
+  line 748: SGV <- 'SGV Pediatric traumatology trainer - Newborn with Genu Valgum legs'
+  line 788: THOR <- 'THOR A2 2ND GENERATION'
+  line 800: HIP <- 'HIP HIP Trainer Surgical Simulator (Standard model)'
+  line 811: MMT <- 'MMT Mastotrainer Simulator for Breast Surgical Procedures'
+  line 845: RMT <- 'RMT Rhinoplasty Model Trainer'
+  line 854: SUPPORT-FOR-NINFOTRAINER <- 'Support for Ninfotrainer office (includes 01 vulva - model of choice)'
+  line 857: NINFOTRAINER-OFFICE-SET <- 'Ninfotrainer office set (includes 4 vulvas to choose from)'
+  line 883: HPT <- 'HPT Hypospadia simulator'
+  line 888: HPT-1 <- 'HPT-1 Hypospadia - surgical unit, with 6 different pathologies to choo'
+  line 910: JLE <- 'JLE Simulator of facial landmarks demonstration for Botox application'
+  line 925: BIA <- 'BIA Beauty Injection Assistant'
+  line 935: HOP <- 'HOP Hand simulator with forearm for venous puncture training'
+  line 946: CLP <- 'CLP Simulator for infant intraosseous puncture'
+  line 957: VIP <- 'VIP Simulator for Ultrasound-guided vascular interventions'
+  line 975: SIMPEC <- 'SIMPEC STANDARD ALICE Simulator for obstetric maneuvers'
+  line 994: PUMP <- 'PUMP'
+  line 999: MECANIC <- 'MECANIC ELETRONIC MOTOR AND ELETRONIC SYSTEM'
+  line 1092: LAB-UTL <- 'LAB-UTL Uterus Lab set with five units, includes acrylic box (LAB-0C -'
+  line 1169: LAB-HEMR <- 'LAB- HEMR Complete Model Components LAB-HEMR0; Choose 04 Surgical unit'
+
+duplicate SKUs skipped-on-seed (31):
+  line 45: 417 'ETR-1V Multiple suturing set, basic level (with velcro) - made of Neod'
+  line 105: 376 'ETXY-3 Return electrode - made of stainless steel'
+  line 227: 3043 'ETP-0 Pelvic Training Station multifunctional base - made of fiberglas'
+  line 240: 3043 'ETP-0 Pelvic Training Station multifunctional base - made of fiberglas'
+  line 355: 373 'ETXY-0 Multifunctional base for ETXY simulators - made of fiberglass'
+  line 357: 528 'ETXY-0P Multifunctional base for portable ETXY simulators - made of ac'
+  line 388: 373 'ETXY-0 Multifunctional base of the ETXY simulators - made of fiberglas'
+  line 390: 528 'ETXY-0P Multifunctional base for portable ETXY simulators. Made of acr'
+  line 424: 528 'ETXY-0P Multifunctional base for portable ETXY simulators. Made of acr'
+  line 517: 417 'ETR-1 Multiple Suturing Set for Basic Suturing - made of Neoderma® - P'
+  line 562: 368 "ETX-11 Cul de Sac Coverage (for Romeo's Multiple Suturing Model ETR1) "
+  line 608: 2548 'ETR-5V Suture Models - Complete Set Bundle with velcro'
+  line 728: 527 'BP-2 Spine Trainer spare pump'
+  line 767: 527 'BP-2 Peristaltic pump with blood support'
+  line 783: 527 'BP-2 Peristaltic pump with blood support'
+  line 795: 3338 'THOR-2PP internal surgical unit with spine and thoracic organs, with p'
+  line 1113: 2705 'ETH7L-MT1T2/2G Artificial uterus with myomsa type "1" and "2" (half)'
+  line 1130: 2722 'ETH7L-RP Artificial uterus with placental residues (half)'
+  line 1146: 2887 'LAB-GNM-0 Individual support made of acrilyc'
+  line 1147: 2886 'LAB-GNM1 Normal genital tract'
+  line 1148: 2915 'LAB-GNM2 Dissected genital apparatus'
+  line 1149: 2916 "LAB-GNM3 Peyronie's Syndrome Model"
+  line 1150: 2917 'LAB-GNM4 Model with Phimosis'
+  line 1151: 2918 'LAB-GNM5 Model with Parfimose'
+  line 1152: 2919 'LAB-GNM6 Balanopostite Model'
+  line 1153: 2920 'LAB-GNM7 Chancroid Model'
+  line 1154: 2921 'LAB-GNM8 Syphilis Chancre Sore'
+  line 1155: 2922 'LAB-GNM9 Model with HPV'
+  line 1156: 2923 'LAB-GNM10 Model with Testicle Cancer'
+  line 1157: 2924 "LAB-GNM11 Model with Glande's Neoplasia"
+  line 1158: 2925 'LAB-GNM12 Model with Hydrocele'
+
+missing final price: 1
+missing distributor price: 1
+
+warnings (4):
+  line 337: no amounts: 'Monopolar or bipolar, mymectomy and polypectomy - made of Ne'
+  line 826: no amounts: 'MODELS WITH PATHOLOGY (up to 2 pathologies per model: benign'
+  line 337: dropped note line: 'Monopolar or bipolar, mymectomy and polypectomy - made of Ne'
+  line 826: dropped note line: 'MODELS WITH PATHOLOGY (up to 2 pathologies per model: benign'

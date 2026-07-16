@@ -1,9 +1,16 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import type { ProductDTO, ProductKind } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
+import {
+  ProductFieldSet,
+  emptyProductForm,
+  productFormToPayload,
+  type ProductFormState,
+} from '../components/ProductFieldSet'
 
 async function fetchProducts(search: string) {
   const { data } = await api.get<{ products: ProductDTO[] }>('/products', {
@@ -22,108 +29,6 @@ const kindLabel: Record<ProductKind, string> = {
   COMPONENT: 'Componente / peça',
 }
 
-const emptyForm = {
-  sku: '',
-  name: '',
-  sector: '',
-  kind: 'COMPLETE_MODEL' as ProductKind,
-  description: '',
-  weightKg: '',
-  priceBRL: '',
-  priceUSD: '',
-  priceUSDDistributor: '',
-}
-
-type FormState = typeof emptyForm
-
-function FieldSet({
-  value,
-  onChange,
-  sectors,
-}: {
-  value: FormState
-  onChange: (patch: Partial<FormState>) => void
-  sectors: string[]
-}) {
-  return (
-    <>
-      <input
-        placeholder="SKU"
-        required
-        value={value.sku}
-        onChange={(e) => onChange({ sku: e.target.value })}
-        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <input
-        placeholder="Nome"
-        required
-        value={value.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-        className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <select
-        value={value.kind}
-        onChange={(e) => onChange({ kind: e.target.value as ProductKind })}
-        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      >
-        <option value="COMPLETE_MODEL">Modelo completo</option>
-        <option value="COMPONENT">Componente / peça</option>
-      </select>
-      <input
-        placeholder="Setor (ex: Spine)"
-        required
-        list="sectors-datalist"
-        value={value.sector}
-        onChange={(e) => onChange({ sector: e.target.value })}
-        className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <datalist id="sectors-datalist">
-        {sectors.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-      <input
-        placeholder="Peso em kg (opcional)"
-        type="number"
-        step="0.001"
-        value={value.weightKg}
-        onChange={(e) => onChange({ weightKg: e.target.value })}
-        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <input
-        placeholder="Descrição (opcional)"
-        value={value.description}
-        onChange={(e) => onChange({ description: e.target.value })}
-        className="col-span-4 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <input
-        placeholder="Preço final BRL"
-        type="number"
-        step="0.01"
-        value={value.priceBRL}
-        onChange={(e) => onChange({ priceBRL: e.target.value })}
-        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <input
-        placeholder="Preço final USD"
-        type="number"
-        step="0.01"
-        value={value.priceUSD}
-        onChange={(e) => onChange({ priceUSD: e.target.value })}
-        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-      <input
-        placeholder="Preço distribuidor USD"
-        type="number"
-        step="0.01"
-        value={value.priceUSDDistributor}
-        onChange={(e) => onChange({ priceUSDDistributor: e.target.value })}
-        className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
-    </>
-  )
-}
-
 export function Products() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
@@ -135,12 +40,13 @@ export function Products() {
   const [deletingProduct, setDeletingProduct] = useState<ProductDTO | null>(null)
   const [customizationDraft, setCustomizationDraft] = useState({ name: '', options: '' })
 
-  const [newProduct, setNewProduct] = useState<FormState>(emptyForm)
-  const [newFiles, setNewFiles] = useState<File[]>([])
-  const [editForm, setEditForm] = useState<FormState>(emptyForm)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [editForm, setEditForm] = useState<ProductFormState>(emptyProductForm)
 
-  const { data: products, isLoading } = useQuery({
+  const {
+    data: products,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['products', search],
     queryFn: () => fetchProducts(search),
   })
@@ -149,43 +55,9 @@ export function Products() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] })
 
-  function toPayload(form: FormState) {
-    return {
-      sku: form.sku,
-      name: form.name,
-      sector: form.sector,
-      kind: form.kind,
-      description: form.description || undefined,
-      weightKg: form.weightKg ? Number(form.weightKg) : undefined,
-      priceBRL: form.priceBRL ? Number(form.priceBRL) : undefined,
-      priceUSD: form.priceUSD ? Number(form.priceUSD) : undefined,
-      priceUSDDistributor: form.priceUSDDistributor ? Number(form.priceUSDDistributor) : undefined,
-    }
-  }
-
-  const createProduct = useMutation({
-    mutationFn: async () => {
-      const { data } = await api.post<{ product: ProductDTO }>('/products', toPayload(newProduct))
-      for (const file of newFiles) {
-        const formData = new FormData()
-        formData.append('file', file)
-        await api.post(`/products/${data.product.id}/media`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-      }
-    },
-    onSuccess: () => {
-      invalidate()
-      queryClient.invalidateQueries({ queryKey: ['product-sectors'] })
-      setNewProduct(emptyForm)
-      setNewFiles([])
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    },
-  })
-
   const updateProduct = useMutation({
     mutationFn: async (id: string) => {
-      const payload = toPayload(editForm)
+      const payload = productFormToPayload(editForm)
       await api.patch(`/products/${id}`, {
         ...payload,
         weightKg: payload.weightKg ?? null,
@@ -269,56 +141,40 @@ export function Products() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-ink-900">Produtos</h1>
-      <p className="mt-1 text-neutral-500">
-        Catálogo de produtos Pro Delphus — cadastrar aqui já adiciona à tabela de preços.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-900">Produtos</h1>
+          <p className="mt-1 text-neutral-500">
+            Catálogo de produtos Pro Delphus — cadastrar aqui já adiciona à tabela de preços.
+          </p>
+        </div>
+        {isAdmin && (
+          <Link
+            to="/produtos/novo"
+            className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            + Criar novo produto
+          </Link>
+        )}
+      </div>
 
       <input
-        placeholder="Buscar por SKU, nome ou setor"
+        placeholder="Buscar por SKU, nome, setor ou descrição"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="mt-4 w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
       />
 
-      {isAdmin && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            createProduct.mutate()
-          }}
-          className="mt-4 grid max-w-3xl grid-cols-4 gap-3 rounded-xl border border-neutral-200 bg-white p-4"
-        >
-          <h2 className="col-span-4 text-sm font-semibold text-neutral-700">Novo produto</h2>
-          <FieldSet value={newProduct} onChange={(patch) => setNewProduct((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
-
-          <div className="col-span-4">
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Mídias (opcional)</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) => setNewFiles(Array.from(e.target.files ?? []))}
-              className="text-xs"
-            />
-            {newFiles.length > 0 && (
-              <p className="mt-1 text-xs text-neutral-500">{newFiles.length} arquivo(s) selecionado(s)</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={createProduct.isPending}
-            className="col-span-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-          >
-            {createProduct.isPending ? 'Salvando…' : 'Adicionar produto'}
-          </button>
-        </form>
-      )}
-
       <div className="mt-6 space-y-3">
         {isLoading && <p className="text-neutral-400">Carregando…</p>}
+        {isError && (
+          <p className="text-brand-600">
+            Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.
+          </p>
+        )}
+        {!isLoading && !isError && products?.length === 0 && (
+          <p className="text-neutral-400">Nenhum item encontrado.</p>
+        )}
         {products?.map((product) => {
           const primaryMedia = product.media.find((m) => m.isPrimary)
           const isEditing = editingId === product.id
@@ -378,7 +234,7 @@ export function Products() {
                   }}
                   className="mt-4 grid grid-cols-4 gap-3 border-t border-neutral-100 pt-4"
                 >
-                  <FieldSet value={editForm} onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
+                  <ProductFieldSet value={editForm} onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
                   <button
                     type="submit"
                     disabled={updateProduct.isPending}
@@ -390,7 +246,12 @@ export function Products() {
               )}
 
               {expandedId === product.id && (
-                <div className="mt-4 grid grid-cols-2 gap-6 border-t border-neutral-100 pt-4">
+                <div className="mt-4 space-y-4 border-t border-neutral-100 pt-4">
+                  <div>
+                    <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Descrição</h3>
+                    <p className="text-sm text-neutral-600">{product.description ?? 'Sem descrição cadastrada.'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
                   <div>
                     <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Mídia</h3>
                     <div className="flex flex-wrap gap-2">
@@ -498,6 +359,7 @@ export function Products() {
                         </button>
                       </form>
                     )}
+                  </div>
                   </div>
                 </div>
               )}

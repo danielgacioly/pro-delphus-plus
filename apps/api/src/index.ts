@@ -7,6 +7,8 @@ import { authRouter } from './routes/auth.routes.js'
 import { usersRouter } from './routes/users.routes.js'
 import { productsRouter } from './routes/products.routes.js'
 import { quotesRouter } from './routes/quotes.routes.js'
+import { sectorsRouter } from './routes/sectors.routes.js'
+import { ordersRouter } from './routes/orders.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
@@ -21,6 +23,8 @@ app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/quotes', quotesRouter)
+app.use('/api/sectors', sectorsRouter)
+app.use('/api/orders', ordersRouter)
 
 app.use(errorHandler)
 

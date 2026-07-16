@@ -5,10 +5,12 @@ const shortcuts = [
   { to: '/orcamentos', title: 'Novo orçamento', description: 'Gere um orçamento em PDF a partir do SKU do produto.' },
   { to: '/precos', title: 'Tabela de preços', description: 'Consulte preços em reais e em dólar por setor.' },
   { to: '/produtos', title: 'Produtos', description: 'Veja o catálogo, mídia e customizações disponíveis.' },
+  { to: '/pedidos', title: 'Pedidos', description: 'Invoice, Packing List e documentos de exportação.' },
 ]
 
 const adminShortcuts = [
   { to: '/admin/contas', title: 'Contas', description: 'Aprove cadastros e gerencie o acesso dos usuários.' },
+  { to: '/admin/setores', title: 'Setores', description: 'Crie, renomeie e exclua os setores do catálogo.' },
 ]
 
 function greeting() {

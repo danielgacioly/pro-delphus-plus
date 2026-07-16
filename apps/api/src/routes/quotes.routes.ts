@@ -15,7 +15,10 @@ export const quotesRouter = Router()
 
 quotesRouter.use(requireAuth)
 
-const include = { items: { include: { product: true } } } as const
+const include = {
+  items: { include: { product: true } },
+  createdBy: { select: { id: true, name: true } },
+} as const
 
 const MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
@@ -40,10 +43,9 @@ async function photoToDataUri(url: string | undefined): Promise<string | null> {
 
 quotesRouter.get(
   '/',
-  asyncHandler(async (req, res) => {
-    const isAdmin = req.user!.role === 'ADMIN'
+  asyncHandler(async (_req, res) => {
+    // Quotes are visible to every authenticated user, not just their creator or admins.
     const quotes = await prisma.quote.findMany({
-      where: isAdmin ? {} : { createdById: req.user!.id },
       include,
       orderBy: { createdAt: 'desc' },
     })
@@ -56,22 +58,20 @@ quotesRouter.get(
   asyncHandler(async (req, res) => {
     const quote = await prisma.quote.findUnique({ where: { id: req.params.id }, include })
     if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
-    if (quote.createdById !== req.user!.id && req.user!.role !== 'ADMIN') {
-      throw new HttpError(403, 'Acesso não autorizado')
-    }
     res.json({ quote: toQuoteDTO(quote) })
   }),
 )
 
 const createQuoteSchema = z.object({
   language: z.enum(['PT', 'EN', 'ES']).default('PT'),
+  priceTier: z.enum(['FINAL', 'DISTRIBUTOR']).default('FINAL'),
   clientPrefix: z.enum(['NONE', 'MR', 'MS']).default('NONE'),
   clientName: z.string().min(1),
   notes: z.string().optional(),
   items: z
     .array(
       z.object({
-        sku: z.string().min(1),
+        productId: z.string().min(1),
         quantity: z.coerce.number().int().positive(),
         description: z.string().optional(),
       }),
@@ -86,40 +86,52 @@ quotesRouter.post(
   asyncHandler(async (req, res) => {
     const data = createQuoteSchema.parse(req.body)
     const currency = data.language === 'PT' ? 'BRL' : 'USD'
+    // Distributor pricing only exists in USD, so PT quotes always use the final BRL price
+    const priceTier = data.language === 'PT' ? 'FINAL' : data.priceTier
 
-    const skus = data.items.map((i) => i.sku)
+    const priceOf = (product: { priceBRL: unknown; priceUSD: unknown; priceUSDDistributor: unknown }) => {
+      if (currency === 'BRL') return product.priceBRL
+      return priceTier === 'DISTRIBUTOR' ? product.priceUSDDistributor : product.priceUSD
+    }
+    const tierLabel = priceTier === 'DISTRIBUTOR' ? `${currency} (distribuidor)` : currency
+
+    const productIds = data.items.map((i) => i.productId)
     const [products, requester] = await Promise.all([
-      prisma.product.findMany({ where: { sku: { in: skus }, active: true }, include: { media: true } }),
+      prisma.product.findMany({ where: { id: { in: productIds }, active: true }, include: { media: true } }),
       prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } }),
     ])
 
-    const productBySku = new Map(products.map((p) => [p.sku, p]))
+    const productById = new Map(products.map((p) => [p.id, p]))
 
-    const missing = skus.filter((sku) => {
-      const product = productBySku.get(sku)
-      const priceValue = currency === 'BRL' ? product?.priceBRL : product?.priceUSD
-      return !priceValue
+    const missing = data.items.filter((item) => {
+      const product = productById.get(item.productId)
+      return !product || !priceOf(product)
     })
     if (missing.length > 0) {
+      const labels = missing.map((item) => productById.get(item.productId)?.sku || item.productId)
       throw new HttpError(
         400,
-        `SKU(s) sem preço em ${currency} ou produto cadastrado: ${missing.join(', ')}`,
+        `Item(ns) sem preço em ${tierLabel} ou produto cadastrado: ${labels.join(', ')}`,
       )
     }
 
     const lineItems = await Promise.all(
       data.items.map(async (item) => {
-        const product = productBySku.get(item.sku)!
-        const unitPrice = Number(currency === 'BRL' ? product.priceBRL : product.priceUSD)
+        const product = productById.get(item.productId)!
+        const unitPrice = Number(priceOf(product))
         const lineTotal = unitPrice * item.quantity
-        const description = item.description || product.description || product.name
+        // Title (product name/code) is rendered in bold; the descriptive text follows it.
+        // A per-item override replaces the descriptive text only, never the title.
+        const title = product.name
+        const description = item.description || product.description || ''
         const primaryImage =
           product.media.find((m) => m.type === 'IMAGE' && m.isPrimary) ??
           product.media.filter((m) => m.type === 'IMAGE').sort((a, b) => a.order - b.order)[0]
         const photoDataUri = await photoToDataUri(primaryImage?.url)
         return {
-          sku: item.sku,
+          sku: product.sku,
           productId: product.id,
+          title,
           quantity: item.quantity,
           unitPrice,
           lineTotal,
@@ -155,6 +167,7 @@ quotesRouter.post(
         clientName: data.clientName,
         notes,
         items: lineItems.map((i) => ({
+          title: i.title,
           description: i.description,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
@@ -174,7 +187,12 @@ quotesRouter.post(
         clientPrefix: data.clientPrefix,
         clientName: data.clientName,
         notes,
-        items: lineItems.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
+        items: lineItems.map((i) => ({
+          title: i.title,
+          description: i.description,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+        })),
         freight: data.freight ?? null,
         discount: data.discount,
         subtotal,
@@ -197,6 +215,7 @@ quotesRouter.post(
       data: {
         quoteNumber,
         language: data.language,
+        priceTier,
         clientPrefix: data.clientPrefix,
         clientName: data.clientName,
         notes,
