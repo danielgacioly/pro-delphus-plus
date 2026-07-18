@@ -331,7 +331,7 @@ export function OrderDetail() {
             <>
               <h2 className="text-sm font-semibold text-neutral-700">Dados do pedido</h2>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Purchase Order" value={order.purchaseOrder ?? String(order.orderNumber)} />
+                <Field label="Purchase Order" value={order.purchaseOrder ?? order.quoteNumber} />
                 <Field label="Ordered By" value={order.orderedByEmail} />
                 <Field label="Data de expedição" value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null} />
                 <Field label="Data do invoice" value={new Date(order.invoiceDate).toLocaleDateString('pt-BR')} />

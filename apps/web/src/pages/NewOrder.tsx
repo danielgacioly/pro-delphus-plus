@@ -22,7 +22,6 @@ const emptyForm = {
   billToText: '',
   shipToText: '',
   shipToNote: '',
-  numberOfPackages: '',
   netWeightKg: '',
   grossWeightKg: '',
   awbNumber: '',
@@ -34,10 +33,20 @@ const emptyForm = {
   exchangeRate: '',
 }
 
+interface BoxLine {
+  id: string
+  label: string
+  quantity: number
+  box: number
+}
+
 export function NewOrder() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [form, setForm] = useState(emptyForm)
+  const [itemWeights, setItemWeights] = useState<string[]>([])
+  const [packageCount, setPackageCount] = useState('1')
+  const [boxLines, setBoxLines] = useState<BoxLine[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
@@ -57,8 +66,65 @@ export function NewOrder() {
     setForm((s) => ({ ...s, ...patch }))
   }
 
+  function selectQuote(quoteId: string) {
+    const quote = quotes?.find((q) => q.id === quoteId)
+    update({ quoteId })
+    setItemWeights(quote ? quote.items.map(() => '') : [])
+    setPackageCount('1')
+    // One line per quote item, all in box 1 by default — an item can never
+    // silently end up in two boxes; splitting is an explicit user action.
+    setBoxLines(
+      quote ? quote.items.map((item, i) => ({ id: `item-${i}`, label: item.productName, quantity: item.quantity, box: 1 })) : [],
+    )
+  }
+
+  function updateItemWeight(index: number, value: string) {
+    setItemWeights((prev) => prev.map((w, i) => (i === index ? value : w)))
+  }
+
+  function updatePackageCount(value: string) {
+    setPackageCount(value)
+    const count = Math.max(1, Number(value) || 1)
+    setBoxLines((prev) => prev.map((l) => (l.box > count ? { ...l, box: count } : l)))
+  }
+
+  function updateBoxLine(id: string, patch: Partial<BoxLine>) {
+    setBoxLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
+  }
+
+  function splitBoxLine(id: string) {
+    setBoxLines((prev) => {
+      const index = prev.findIndex((l) => l.id === id)
+      if (index === -1) return prev
+      const line = prev[index]
+      const half = Math.max(1, Math.floor(line.quantity / 2))
+      const rest = Math.max(1, line.quantity - half)
+      const newLine: BoxLine = { id: `${id}-split-${Date.now()}`, label: line.label, quantity: half, box: line.box }
+      const next = [...prev]
+      next[index] = { ...line, quantity: rest }
+      next.splice(index + 1, 0, newLine)
+      return next
+    })
+  }
+
+  function addCustomBoxLine() {
+    setBoxLines((prev) => [...prev, { id: `custom-${Date.now()}`, label: '', quantity: 1, box: 1 }])
+  }
+
+  function removeBoxLine(id: string) {
+    setBoxLines((prev) => prev.filter((l) => l.id !== id))
+  }
+
   const createOrder = useMutation({
     mutationFn: async () => {
+      const count = Math.max(1, Number(packageCount) || 1)
+      const boxAssignments = boxLines.length
+        ? Array.from({ length: count }, (_, boxIndex) =>
+            boxLines
+              .filter((l) => l.box === boxIndex + 1 && l.label.trim() && l.quantity > 0)
+              .map((l) => ({ label: l.label.trim(), quantity: l.quantity })),
+          )
+        : undefined
       const payload: CreateOrderInput = {
         quoteId: form.quoteId,
         purchaseOrder: form.purchaseOrder || undefined,
@@ -67,7 +133,6 @@ export function NewOrder() {
         billToText: form.billToText,
         shipToText: form.shipToText,
         shipToNote: form.shipToNote || undefined,
-        numberOfPackages: form.numberOfPackages || undefined,
         netWeightKg: form.netWeightKg ? Number(form.netWeightKg) : undefined,
         grossWeightKg: form.grossWeightKg ? Number(form.grossWeightKg) : undefined,
         awbNumber: form.awbNumber || undefined,
@@ -77,6 +142,11 @@ export function NewOrder() {
         nfNumber: form.nfNumber || undefined,
         nfDate: form.nfDate || undefined,
         exchangeRate: form.exchangeRate ? Number(form.exchangeRate) : undefined,
+        itemWeightsKg: itemWeights.some((w) => w)
+          ? itemWeights.map((w) => (w ? Number(w) : null))
+          : undefined,
+        packageCount: count,
+        boxAssignments,
       }
       const { data } = await api.post<{ order: OrderDTO }>('/orders', payload)
       return data.order
@@ -121,7 +191,7 @@ export function NewOrder() {
           <select
             required
             value={form.quoteId}
-            onChange={(e) => update({ quoteId: e.target.value })}
+            onChange={(e) => selectQuote(e.target.value)}
             className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
           >
             <option value="">Selecione um orçamento…</option>
@@ -136,14 +206,13 @@ export function NewOrder() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">
-              Purchase Order (opcional — se vazio, usa o número do orçamento)
-            </label>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Purchase Order (opcional)</label>
             <input
               value={form.purchaseOrder}
               onChange={(e) => update({ purchaseOrder: e.target.value })}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
             />
+            <p className="mt-1 text-[11px] text-neutral-400">Se vazio, usa o número do orçamento.</p>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">E-mail do comprador (Ordered By)</label>
@@ -203,16 +272,7 @@ export function NewOrder() {
           />
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Nº de pacotes</label>
-            <input
-              placeholder="ex: 01 Carton"
-              value={form.numberOfPackages}
-              onChange={(e) => update({ numberOfPackages: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            />
-          </div>
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Peso líquido (kg)</label>
             <input
@@ -243,6 +303,129 @@ export function NewOrder() {
             />
           </div>
         </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-neutral-600">Número de caixas</label>
+          <input
+            type="number"
+            min={1}
+            value={packageCount}
+            onChange={(e) => updatePackageCount(e.target.value)}
+            className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+          />
+          <p className="mt-1 text-[11px] text-neutral-400">
+            Preenche "Number of Packages" no invoice/packing list automaticamente (ex: 02 Cartons) e gera uma página
+            do Packing List Box por caixa.
+          </p>
+        </div>
+
+        {selectedQuote && selectedQuote.items.length > 0 && (
+          <div className="rounded-lg border border-neutral-200 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-xs font-medium text-neutral-600">
+                Itens por caixa (Packing List Box)
+              </label>
+              <button
+                type="button"
+                onClick={addCustomBoxLine}
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
+                + item customizado
+              </button>
+            </div>
+            <p className="mb-2 text-[11px] text-neutral-400">
+              Cada item vai para uma única caixa. Se um modelo completo precisar ser dividido em componentes entre
+              caixas, use "dividir" para desmembrar a linha em partes que podem ser renomeadas e realocadas
+              livremente.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Item</th>
+                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Qtd.</th>
+                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Caixa</th>
+                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {boxLines.map((line) => (
+                    <tr key={line.id}>
+                      <td className="px-2 py-1">
+                        <input
+                          value={line.label}
+                          placeholder="Nome do item ou componente"
+                          onChange={(e) => updateBoxLine(line.id, { label: e.target.value })}
+                          className="w-56 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                        />
+                      </td>
+                      <td className="px-2 py-1">
+                        <input
+                          type="number"
+                          min={1}
+                          value={line.quantity}
+                          onChange={(e) => updateBoxLine(line.id, { quantity: Number(e.target.value) || 1 })}
+                          className="w-16 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                        />
+                      </td>
+                      <td className="px-2 py-1">
+                        <select
+                          value={line.box}
+                          onChange={(e) => updateBoxLine(line.id, { box: Number(e.target.value) })}
+                          className="rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                        >
+                          {Array.from({ length: Math.max(1, Number(packageCount) || 1) }, (_, i) => i + 1).map((b) => (
+                            <option key={b} value={b}>
+                              Caixa {b}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => splitBoxLine(line.id)}
+                          className="mr-2 text-brand-600 hover:underline"
+                        >
+                          dividir
+                        </button>
+                        <button type="button" onClick={() => removeBoxLine(line.id)} className="text-neutral-400 hover:underline">
+                          remover
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {selectedQuote && selectedQuote.items.length > 0 && (
+          <div className="rounded-lg border border-neutral-200 p-3">
+            <label className="mb-2 block text-xs font-medium text-neutral-600">
+              Peso por item (kg) — usado no Documento de Exportação
+            </label>
+            <div className="space-y-2">
+              {selectedQuote.items.map((item, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <span className="flex-1 text-xs text-neutral-600">
+                    {item.productName}
+                    {item.description && <span className="text-neutral-400"> — {item.description}</span>}
+                  </span>
+                  <input
+                    type="number"
+                    step="0.001"
+                    placeholder="kg/un."
+                    value={itemWeights[index] ?? ''}
+                    onChange={(e) => updateItemWeight(index, e.target.value)}
+                    className="w-28 rounded-lg border border-neutral-300 px-2 py-1 text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-xs font-medium text-neutral-600">AWB #</label>

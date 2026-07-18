@@ -39,6 +39,7 @@ export interface OrderDocData {
   items: OrderDocItem[]
   currency: string
   freight: number | null
+  discount: number | null
   paypalFee: number | null
   total: number
   billToText: string
@@ -58,10 +59,16 @@ export interface PackingListBoxItem {
   quantity: number
 }
 
+export interface PackingListBoxPage {
+  boxNumber: number
+  totalBoxes: number
+  items: PackingListBoxItem[]
+}
+
 export interface PackingListBoxData {
   orderNumber: number
   shipToText: string
-  items: PackingListBoxItem[]
+  pages: PackingListBoxPage[]
 }
 
 function escapeHtml(value: string) {
@@ -110,53 +117,58 @@ function renderItemDescription(item: OrderDocItem) {
 const RED = '#ef1818'
 const INK = '#1a1a1a'
 const MUTED = '#6a6a6a'
-const BORDER = '#e2e0d8'
-const PANEL_BG = '#f7f6f2'
+const BORDER = '#c7c4ba'
+const PANEL_BG = '#dedad0'
 
 const SHARED_STYLE = `
   * { box-sizing: border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: ${INK}; margin: 0; padding: 40px 44px; font-size: 11.5px; line-height: 1.45; }
-  header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
-  .company { display: flex; align-items: center; gap: 14px; }
-  .company .logo img { width: 64px; height: auto; display: block; }
-  .company-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
-  .company-meta { font-size: 9px; color: ${MUTED}; line-height: 1.5; }
-  .doc-meta { border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; min-width: 220px; }
-  .doc-meta .row { padding: 7px 12px; border-top: 1px solid ${BORDER}; text-align: right; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: ${INK}; margin: 0; padding: 22px 40px; font-size: 10.5px; line-height: 1.3; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .company { display: flex; align-items: center; gap: 12px; }
+  .company .logo img { width: 52px; height: auto; display: block; }
+  .company-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .company-meta { font-size: 8.5px; color: ${MUTED}; line-height: 1.35; }
+  .doc-meta { border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; min-width: 210px; }
+  .doc-meta .row { padding: 5px 12px; border-top: 1px solid ${BORDER}; text-align: right; }
   .doc-meta .row:first-child { border-top: none; }
-  .doc-meta .row-label { font-size: 8px; font-weight: 700; letter-spacing: 0.4px; color: ${MUTED}; text-transform: uppercase; display: block; margin-bottom: 1px; }
-  .doc-meta .row-value { font-size: 11px; font-weight: 600; }
-  .title-row { display: flex; align-items: baseline; gap: 16px; margin: 4px 0 20px; }
-  .doc-title { font-size: 30px; font-weight: 800; letter-spacing: 0.5px; border-bottom: 3px solid ${RED}; padding-bottom: 4px; }
-  .doc-number { border: 1.5px solid ${INK}; border-radius: 6px; padding: 5px 16px; font-size: 17px; font-weight: 800; }
-  table.items { width: 100%; border-collapse: collapse; border: 1px solid ${BORDER}; border-radius: 8px 8px 0 0; overflow: hidden; }
-  table.items thead th { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; padding: 9px 12px; text-align: left; }
+  .doc-meta .row-label { font-size: 7.5px; font-weight: 700; letter-spacing: 0.4px; color: ${MUTED}; text-transform: uppercase; display: block; margin-bottom: 1px; }
+  .doc-meta .row-value { font-size: 10.5px; font-weight: 600; }
+  .title-row { display: flex; align-items: baseline; gap: 14px; margin: 0 0 8px; }
+  .doc-title { font-size: 22px; font-weight: 800; letter-spacing: 0.5px; border-bottom: 3px solid ${RED}; padding-bottom: 2px; }
+  .doc-number { border: 1.5px solid ${INK}; border-radius: 6px; padding: 3px 14px; font-size: 14px; font-weight: 800; }
+  table.items { width: 100%; border-collapse: collapse; border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+  table.items thead th { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; padding: 5px 12px; text-align: left; }
   table.items thead .desc-head { background: ${RED}; color: #ffffff; }
-  table.items thead .num-head { background: #f1efe9; color: ${INK}; text-align: center; }
-  table.items td { border-top: 1px solid ${BORDER}; padding: 10px 12px; vertical-align: top; font-size: 10.5px; }
+  table.items thead .num-head { background: ${PANEL_BG}; color: ${INK}; text-align: center; }
+  table.items td { border-top: 1px solid ${BORDER}; padding: 6px 12px; vertical-align: top; font-size: 10px; }
   table.items td.num { text-align: center; white-space: nowrap; vertical-align: middle; font-variant-numeric: tabular-nums; }
-  .item-desc { color: #444; font-size: 9.5px; font-style: italic; display: block; margin-top: 2px; }
-  .total-bar { display: flex; justify-content: flex-end; align-items: center; gap: 14px; border: 1px solid ${BORDER}; border-top: none; border-radius: 0 0 8px 8px; padding: 10px 14px; margin-bottom: 22px; }
-  .total-bar .label { font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
-  .total-bar .value { font-size: 15px; font-weight: 800; color: ${RED}; }
-  .info-grid { display: flex; gap: 14px; margin-bottom: 16px; align-items: stretch; }
+  .item-desc { color: #444; font-size: 9px; font-style: italic; display: block; margin-top: 1px; }
+  .extra-row td { color: ${MUTED}; }
+  .extra-row.discount-row td { color: ${RED}; font-weight: 700; }
+  .total-bar { display: flex; justify-content: flex-end; align-items: center; gap: 14px; border: 1px solid ${BORDER}; border-radius: 8px; padding: 8px 14px; margin: -6px 0 14px; background: ${PANEL_BG}; }
+  .total-bar .label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
+  .total-bar .value { font-size: 14px; font-weight: 800; color: ${RED}; }
+  .info-grid { display: flex; gap: 12px; margin-bottom: 10px; align-items: stretch; }
   .info-col { flex: 1; border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; }
-  .info-col h3 { margin: 0; font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px; text-align: left; background: ${PANEL_BG}; padding: 7px 12px; border-bottom: 1px solid ${BORDER}; }
-  .info-col .body { padding: 10px 12px; font-size: 10px; line-height: 1.6; }
-  .info-side { width: 190px; border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
-  .info-side .cell { padding: 7px 12px; border-top: 1px solid ${BORDER}; font-size: 9.5px; }
+  .info-col h3 { margin: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.4px; text-align: left; background: ${PANEL_BG}; padding: 5px 12px; border-bottom: 1px solid ${BORDER}; }
+  .info-col .body { padding: 7px 12px; font-size: 9.5px; line-height: 1.4; }
+  .info-side { width: 180px; border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+  .info-side .cell { padding: 4px 12px; border-top: 1px solid ${BORDER}; font-size: 9px; }
   .info-side .cell:first-child { border-top: none; }
-  .info-side .cell b { display: block; font-size: 8px; font-weight: 700; letter-spacing: 0.3px; color: ${MUTED}; text-transform: uppercase; margin-bottom: 1px; }
-  .section { border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
-  .section-title { background: ${PANEL_BG}; font-weight: 700; font-size: 10px; letter-spacing: 0.4px; padding: 7px 12px; border-bottom: 1px solid ${BORDER}; }
+  .info-side .cell b { display: block; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; color: ${MUTED}; text-transform: uppercase; margin-bottom: 0; }
+  .section { border: 1px solid ${BORDER}; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+  .section-title { background: ${PANEL_BG}; font-weight: 700; font-size: 9.5px; letter-spacing: 0.4px; padding: 5px 12px; border-bottom: 1px solid ${BORDER}; }
   .payment-grid { display: flex; border-bottom: 1px solid ${BORDER}; }
   .payment-grid:last-child { border-bottom: none; }
-  .payment-grid .cell { flex: 1; padding: 7px 12px; font-size: 9.5px; border-right: 1px solid ${BORDER}; }
+  .payment-grid .cell { flex: 1; padding: 5px 12px; font-size: 9px; border-right: 1px solid ${BORDER}; }
   .payment-grid .cell:last-child { border-right: none; }
-  .payment-grid .cell b { display: block; font-size: 8px; font-weight: 700; letter-spacing: 0.3px; color: ${MUTED}; text-transform: uppercase; margin-bottom: 1px; }
-  .additional { padding: 10px 14px; font-size: 9px; text-align: center; line-height: 1.7; color: #444; }
-  .additional .date-line { text-align: left; font-weight: 700; color: ${INK}; margin-bottom: 6px; font-size: 9.5px; }
-  footer { margin-top: 8px; text-align: center; font-size: 8.5px; color: ${MUTED}; }
+  .payment-grid .cell b { display: block; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; color: ${MUTED}; text-transform: uppercase; margin-bottom: 0; }
+  .additional-grid { display: flex; border-bottom: 1px solid ${BORDER}; }
+  .additional-grid .cell { flex: 1; padding: 5px 12px; font-size: 9px; border-right: 1px solid ${BORDER}; }
+  .additional-grid .cell:last-child { border-right: none; }
+  .additional-grid .cell b { display: block; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; color: ${MUTED}; text-transform: uppercase; margin-bottom: 0; }
+  .additional { padding: 8px 14px; font-size: 8.5px; text-align: center; line-height: 1.5; color: #444; }
+  footer { margin-top: 5px; text-align: center; font-size: 8px; color: ${MUTED}; }
 `
 
 function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-list') {
@@ -169,17 +181,22 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
         <tr>
           <td>${renderItemDescription(item)}</td>
           <td class="num">${item.quantity}</td>
-          ${isInvoice ? `<td class="num">${fmtPlain(item.unitPrice)}</td>` : '<td class="num"></td>'}
-          ${isInvoice ? `<td class="num">${fmtPlain(item.lineTotal)}</td>` : '<td class="num"></td>'}
+          ${isInvoice ? `<td class="num">${fmtPlain(item.unitPrice)}</td><td class="num">${fmtPlain(item.lineTotal)}</td>` : ''}
         </tr>`,
     )
     .join('')
 
+  const extraRowCols = 3
   const extraRows = isInvoice
     ? [
-        data.freight !== null ? `<tr><td></td><td class="num"></td><td class="num">Shipping</td><td class="num">${fmtPlain(data.freight)}</td></tr>` : '',
+        data.freight !== null
+          ? `<tr class="extra-row"><td colspan="${extraRowCols}">Shipping</td><td class="num">${fmtPlain(data.freight)}</td></tr>`
+          : '',
         data.paypalFee !== null
-          ? `<tr><td></td><td class="num"></td><td class="num">PayPal</td><td class="num">${fmtPlain(data.paypalFee)}</td></tr>`
+          ? `<tr class="extra-row"><td colspan="${extraRowCols}">PayPal fee</td><td class="num">${fmtPlain(data.paypalFee)}</td></tr>`
+          : '',
+        data.discount !== null && data.discount > 0
+          ? `<tr class="extra-row discount-row"><td colspan="${extraRowCols}">Discount</td><td class="num">-${fmtPlain(data.discount)}</td></tr>`
           : '',
       ].join('')
     : ''
@@ -219,8 +236,7 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
       <tr>
         <th class="desc-head">ITEM DESCRIPTION</th>
         <th class="num-head">QTY.</th>
-        <th class="num-head">PRICE</th>
-        <th class="num-head">TOTAL PRICE</th>
+        ${isInvoice ? '<th class="num-head">PRICE</th><th class="num-head">TOTAL PRICE</th>' : ''}
       </tr>
     </thead>
     <tbody>
@@ -228,10 +244,14 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
       ${extraRows}
     </tbody>
   </table>
-  <div class="total-bar">
+  ${
+    isInvoice
+      ? `<div class="total-bar">
     <span class="label">TOTAL</span>
-    <span class="value">${isInvoice ? fmtWithCurrency(data.total, data.currency) : '—'}</span>
-  </div>
+    <span class="value">${fmtWithCurrency(data.total, data.currency)}</span>
+  </div>`
+      : ''
+  }
 
   <div class="info-grid">
     <div class="info-col">
@@ -275,11 +295,12 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
 
   <div class="section">
     <div class="section-title">ADDITIONAL INFORMATION</div>
+    <div class="additional-grid">
+      <div class="cell"><b>Date</b>${data.nfDate ? escapeHtml(fmtDateShort(data.nfDate)) : '—'}</div>
+      <div class="cell"><b>Sales Receipt Number</b>${escapeHtml(data.nfNumber ?? '—')}</div>
+      <div class="cell"><b>NCM/HS</b>${NCM_HS_CODE}</div>
+    </div>
     <div class="additional">
-      <div class="date-line">DATE: ${data.nfDate ? escapeHtml(fmtDateShort(data.nfDate)) : '—'}
-        &nbsp;&nbsp;·&nbsp;&nbsp;CONCERNING SALES RECEIPT NUMBER ${escapeHtml(data.nfNumber ?? '—')}
-        &nbsp;&nbsp;&nbsp;&nbsp;NCM/HS ${NCM_HS_CODE}
-      </div>
       Made of Fiberglass and Thermos-retractile Rubber • All products are manufactured in Brazil<br />
       MATERIAL FOR EDUCATIONAL PURPOSES ONLY<br /><br />
       All products are manufactured by the sender: Pro Delphus Simuladores Cirúrgicos.<br />
@@ -295,29 +316,12 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
 </html>`
 }
 
-function renderPackingListBoxHtml(data: PackingListBoxData) {
-  const itemLines = data.items
+function renderPackingListBoxPage(data: PackingListBoxData, page: PackingListBoxPage, isLast: boolean) {
+  const itemLines = page.items
     .map((item) => `<div class="pl-item">${String(item.quantity).padStart(2, '0')} pc | ${escapeHtml(item.title)}</div>`)
     .join('')
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; margin: 0; padding: 48px; font-size: 13px; }
-  .warning-box { border: 3px solid #1a1a1a; padding: 18px; text-align: center; font-size: 20px; font-weight: 800; line-height: 1.4; margin-bottom: 28px; }
-  .block { margin-bottom: 22px; }
-  .block h3 { font-size: 12px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px; border-bottom: 2px solid #1a1a1a; padding-bottom: 3px; }
-  .block p { margin: 0; line-height: 1.6; font-size: 12.5px; white-space: pre-line; }
-  .pl-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
-  .pl-item { font-size: 12.5px; padding: 2px 0; }
-  .disclaimer { margin-top: 28px; text-align: center; font-size: 10.5px; line-height: 1.8; color: #ef1818; font-weight: 600; }
-  .disclaimer .tags { margin-top: 8px; font-weight: 800; letter-spacing: 0.5px; }
-</style>
-</head>
-<body>
+  return `<div class="box-page"${isLast ? '' : ' style="page-break-after: always;"'}>
   <div class="warning-box">DO NOT ACCEPT DELIVERY IF THE BOX<br />IS OPENED OR DAMAGED</div>
 
   <div class="block">
@@ -334,8 +338,11 @@ Phone: +55 (81) 3432.7702</p>
   </div>
 
   <div class="block">
-    <div class="pl-title">Packing List (${data.orderNumber})</div>
-    ${itemLines}
+    <div class="pl-title">
+      Packing List (${data.orderNumber})
+      ${page.totalBoxes > 1 ? `<span class="box-label">Box ${page.boxNumber} of ${page.totalBoxes}</span>` : ''}
+    </div>
+    ${itemLines || '<div class="pl-item pl-empty">— no items assigned to this box —</div>'}
   </div>
 
   <div class="disclaimer">
@@ -344,6 +351,34 @@ Phone: +55 (81) 3432.7702</p>
     MATERIAL FOR EDUCATIONAL PURPOSES (MEDICAL SIMULATION)
     <div class="tags">NON HAZARDOUS MATERIAL &nbsp;·&nbsp; NON PERISHABLE ITEM &nbsp;·&nbsp; NON-ORGANIC &nbsp;·&nbsp; NON-RADIOACTIVE</div>
   </div>
+</div>`
+}
+
+function renderPackingListBoxHtml(data: PackingListBoxData) {
+  const pages = data.pages.map((page, index) => renderPackingListBoxPage(data, page, index === data.pages.length - 1)).join('\n')
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; margin: 0; font-size: 13px; }
+  .box-page { padding: 48px; }
+  .warning-box { border: 3px solid #1a1a1a; padding: 18px; text-align: center; font-size: 20px; font-weight: 800; line-height: 1.4; margin-bottom: 28px; }
+  .block { margin-bottom: 22px; }
+  .block h3 { font-size: 12px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px; border-bottom: 2px solid #1a1a1a; padding-bottom: 3px; }
+  .block p { margin: 0; line-height: 1.6; font-size: 12.5px; white-space: pre-line; }
+  .pl-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  .box-label { font-size: 11px; font-weight: 700; color: #ef1818; border: 1.5px solid #ef1818; border-radius: 5px; padding: 2px 8px; }
+  .pl-item { font-size: 12.5px; padding: 2px 0; }
+  .pl-empty { color: #888; font-style: italic; }
+  .disclaimer { margin-top: 28px; text-align: center; font-size: 10.5px; line-height: 1.8; color: #ef1818; font-weight: 600; }
+  .disclaimer .tags { margin-top: 8px; font-weight: 800; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+${pages}
 </body>
 </html>`
 }

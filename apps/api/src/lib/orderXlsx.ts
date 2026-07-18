@@ -13,6 +13,8 @@ export interface ExportDocData {
   currency: string
   items: ExportDocItem[]
   freight: number | null
+  grossWeightKg: number | null
+  packageCount: number
 }
 
 const RED = 'FFEF1818'
@@ -44,15 +46,15 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   sheet.columns = [
     { width: 3 },
     { width: 7 },
-    { width: 30 },
-    { width: 11 },
+    { width: 42 },
     { width: 12 },
     { width: 13 },
-    { width: 11 },
-    { width: 11 },
-    { width: 11 },
     { width: 14 },
-    { width: 13 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 15 },
+    { width: 14 },
   ]
 
   sheet.mergeCells('B1:E1')
@@ -60,15 +62,18 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   titleCell.value = `Documento de Exportação — Pedido ${data.orderNumber}`
   titleCell.font = { bold: true, size: 14, color: { argb: INK } }
 
+  // Label gets its own merged range (B:C) so its text never overflows into —
+  // and gets visually clipped by — the rate cell's fill right next to it.
+  sheet.mergeCells('B3:C3')
   sheet.getCell('B3').value = 'Câmbio USD/BRL'
   sheet.getCell('B3').font = { bold: true, size: 10, color: { argb: INK } }
-  sheet.mergeCells('C3:D3')
-  const rateCell = sheet.getCell('C3')
+  const rateCell = sheet.getCell('D3')
   rateCell.value = data.exchangeRate
   rateCell.numFmt = '0.0000'
   rateCell.font = { bold: true, size: 12, color: { argb: INK } }
   rateCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }
   rateCell.border = thinBorder
+  sheet.mergeCells('E3:G3')
   sheet.getCell('E3').value = '(editável — câmbio do dia)'
   sheet.getCell('E3').font = { italic: true, size: 9, color: { argb: MUTED } }
 
@@ -111,8 +116,14 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
     const row = sheet.getRow(rowIndex)
     row.getCell(2).value = item.quantity
     row.getCell(3).value = item.code
+    row.getCell(3).alignment = { wrapText: true, vertical: 'top' }
+    // Column C is 42 chars wide — estimate wrapped line count so long product
+    // names get a tall enough row instead of being visually clipped.
+    const charsPerLine = 40
+    const lineCount = Math.max(1, Math.ceil(item.code.length / charsPerLine))
+    row.height = Math.max(18, lineCount * 14)
     row.getCell(4).value = item.unitPriceUsd
-    row.getCell(5).value = { formula: `D${rowIndex}*$C$3` }
+    row.getCell(5).value = { formula: `D${rowIndex}*$D$3` }
     row.getCell(6).value = { formula: `E${rowIndex}*B${rowIndex}` }
     // Weight per unit isn't always known from the catalog — leave it blank and
     // highlighted for manual entry, but the dependent formulas are always wired
@@ -128,6 +139,7 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
     row.eachCell((cell, colNumber) => {
       if (colNumber < 2) return
       cell.border = thinBorder
+      if (colNumber !== 3) cell.alignment = { vertical: 'middle' }
     })
     if (item.weightKgUnit === null) {
       row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: EDITABLE_FILL } }
@@ -158,6 +170,25 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   })
   totalsRow.getCell(2).numFmt = '0'
   totalsRow.getCell(11).font = { bold: true, color: { argb: RED } }
+
+  // Weight summary lines live in column G — the same "KG Unit." column the
+  // per-item weights are entered in — stacked right under the totals row.
+  const totalsRowIndex = lastItemRow + 1
+
+  // Net weight: a live formula reading the same SUBTOTAL already computed
+  // for the totals row's "KG x Qtd" column, so it stays in sync if a
+  // yellow-highlighted weight cell gets filled in later.
+  const netWeightCell = sheet.getRow(totalsRowIndex + 1).getCell(7)
+  netWeightCell.value = { formula: `"Peso Líquido: "&TEXT(H${totalsRowIndex},"0.000")` }
+  netWeightCell.font = { bold: true, size: 9, color: { argb: INK } }
+
+  if (data.grossWeightKg !== null) {
+    const boxLabel = String(data.packageCount).padStart(2, '0')
+    const weightLabel = data.grossWeightKg.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
+    const grossWeightCell = sheet.getRow(totalsRowIndex + 2).getCell(7)
+    grossWeightCell.value = `Peso Bruto: ${boxLabel} cx | ${weightLabel}`
+    grossWeightCell.font = { bold: true, size: 9, color: { argb: INK } }
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)

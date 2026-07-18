@@ -74,6 +74,7 @@ const createQuoteSchema = z.object({
         productId: z.string().min(1),
         quantity: z.coerce.number().int().positive(),
         description: z.string().optional(),
+        unitPrice: z.coerce.number().positive().optional(),
       }),
     )
     .min(1),
@@ -105,7 +106,9 @@ quotesRouter.post(
 
     const missing = data.items.filter((item) => {
       const product = productById.get(item.productId)
-      return !product || !priceOf(product)
+      // A manually entered price covers items with no catalog price for
+      // this tier — same escape hatch the description override already has.
+      return !product || (!priceOf(product) && item.unitPrice === undefined)
     })
     if (missing.length > 0) {
       const labels = missing.map((item) => productById.get(item.productId)?.sku || item.productId)
@@ -118,7 +121,9 @@ quotesRouter.post(
     const lineItems = await Promise.all(
       data.items.map(async (item) => {
         const product = productById.get(item.productId)!
-        const unitPrice = Number(priceOf(product))
+        // A manually entered price overrides the catalog price — same
+        // pattern as the description override just below.
+        const unitPrice = item.unitPrice ?? Number(priceOf(product))
         const lineTotal = unitPrice * item.quantity
         // Title (product name/code) is rendered in bold; the descriptive text follows it.
         // A per-item override replaces the descriptive text only, never the title.
@@ -192,6 +197,7 @@ quotesRouter.post(
           description: i.description,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
+          photoDataUri: i.photoDataUri,
         })),
         freight: data.freight ?? null,
         discount: data.discount,

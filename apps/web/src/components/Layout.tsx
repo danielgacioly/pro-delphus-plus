@@ -19,12 +19,12 @@ const navItems = [
   { to: '/produtos', label: 'Produtos' },
   { to: '/orcamentos', label: 'Orçamentos' },
   { to: '/pedidos', label: 'Pedidos' },
-  { to: '/minha-conta', label: 'Minha Conta' },
 ]
 
 const adminNavItems = [
   { to: '/admin/contas', label: 'Contas' },
   { to: '/admin/setores', label: 'Setores' },
+  { to: '/admin/metricas', label: 'Métricas' },
 ]
 
 export function Layout() {
@@ -90,7 +90,7 @@ export function Layout() {
           )}
         </nav>
         <div className="flex items-center gap-3 border-t border-neutral-200 pt-4">
-          <Link to="/minha-conta" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 hover:bg-neutral-100">
+          <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 hover:bg-neutral-100">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
               {initial}
             </div>

@@ -7,6 +7,7 @@ import type {
   QuoteItem,
   User,
 } from '../../generated/prisma/client.js'
+import type { BoxAssignments } from '@prodelphusplus/shared'
 
 export function toUserDTO(user: User) {
   return {
@@ -110,6 +111,10 @@ export function toOrderDTO(
     nfDocumentUrl: order.nfDocumentUrl,
     awbDocumentUrl: order.awbDocumentUrl,
     exchangeRate: order.exchangeRate?.toString() ?? null,
+    itemWeightsKg: (order.itemWeightsKg as (number | null)[] | null) ?? null,
+    packageCount: order.packageCount,
+    boxAssignments: (order.boxAssignments as BoxAssignments | null) ?? null,
+    status: order.status,
     invoicePdfUrl: order.invoicePdfUrl,
     packingListPdfUrl: order.packingListPdfUrl,
     packingListBoxPdfUrl: order.packingListBoxPdfUrl,

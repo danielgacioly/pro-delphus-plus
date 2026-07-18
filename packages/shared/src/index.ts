@@ -66,6 +66,8 @@ export interface QuoteItemInput {
   productId: string
   quantity: number
   description?: string
+  /** Manual price override — falls back to the catalog price for the quote's tier/currency when omitted. */
+  unitPrice?: number
 }
 
 export interface QuoteDTO {
@@ -95,6 +97,19 @@ export interface QuoteDTO {
 }
 
 export type PrepaymentMethod = 'PAYPAL' | 'WIRE_TRANSFER'
+export type OrderStatus = 'PENDING' | 'COMPLETED'
+
+/**
+ * One line inside one box/carton — just a label and a quantity, freely
+ * editable. Decoupled from quote-item identity so a complete model's sale
+ * can be re-described as its individual physical components when a shipment
+ * needs to split those components across boxes.
+ */
+export interface BoxAssignmentEntry {
+  label: string
+  quantity: number
+}
+export type BoxAssignments = BoxAssignmentEntry[][]
 
 export interface CreateOrderInput {
   quoteId: string
@@ -105,7 +120,6 @@ export interface CreateOrderInput {
   billToText: string
   shipToText: string
   shipToNote?: string
-  numberOfPackages?: string
   netWeightKg?: number
   grossWeightKg?: number
   awbNumber?: string
@@ -115,6 +129,11 @@ export interface CreateOrderInput {
   nfNumber?: string
   nfDate?: string
   exchangeRate?: number
+  /** Per-item weight in kg, aligned by index with the source quote's items — feeds the export document. */
+  itemWeightsKg?: (number | null)[]
+  /** Number of physical boxes/cartons — drives how many pages the Packing List Box gets. */
+  packageCount?: number
+  boxAssignments?: BoxAssignments
 }
 
 export interface OrderDTO {
@@ -141,6 +160,10 @@ export interface OrderDTO {
   nfDocumentUrl: string | null
   awbDocumentUrl: string | null
   exchangeRate: string | null
+  itemWeightsKg: (number | null)[] | null
+  packageCount: number
+  boxAssignments: BoxAssignments | null
+  status: OrderStatus
   invoicePdfUrl: string | null
   packingListPdfUrl: string | null
   packingListBoxPdfUrl: string | null

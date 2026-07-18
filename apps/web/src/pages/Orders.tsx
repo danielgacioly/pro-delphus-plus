@@ -1,13 +1,44 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import type { OrderDTO } from '@prodelphusplus/shared'
+import type { OrderDTO, OrderStatus } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
 async function fetchOrders() {
   const { data } = await api.get<{ orders: OrderDTO[] }>('/orders')
   return data.orders
+}
+
+function StatusToggle({ order }: { order: OrderDTO }) {
+  const queryClient = useQueryClient()
+  const toggleStatus = useMutation({
+    mutationFn: async (status: OrderStatus) => {
+      const { data } = await api.patch<{ order: OrderDTO }>(`/orders/${order.id}/status`, { status })
+      return data.order
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<OrderDTO[]>(['orders'], (prev) =>
+        prev?.map((o) => (o.id === updated.id ? updated : o)),
+      )
+    },
+  })
+
+  const completed = order.status === 'COMPLETED'
+
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-neutral-600">
+      <input
+        type="checkbox"
+        checked={completed}
+        disabled={toggleStatus.isPending}
+        onChange={(e) => toggleStatus.mutate(e.target.checked ? 'COMPLETED' : 'PENDING')}
+      />
+      <span className={completed ? 'font-medium text-green-700' : 'font-medium text-amber-700'}>
+        {completed ? 'Concluído' : 'Pendente'}
+      </span>
+    </label>
+  )
 }
 
 const monthLabels = [
@@ -54,12 +85,12 @@ export function Orders() {
         <div>
           <h1 className="text-2xl font-bold text-ink-900">Pedidos</h1>
           <p className="mt-1 text-neutral-500">
-            Invoice, Packing List, Packing List Box e Documento de Exportação a partir de um orçamento.
+            Gere Invoice, Packing List, Packing List Box e Documento de Exportação a partir de algumas informações.
           </p>
         </div>
         <Link
           to="/pedidos/novo"
-          className="shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >
           + Novo pedido
         </Link>
@@ -106,26 +137,27 @@ export function Orders() {
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Data</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Criado por</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Total</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {isLoading && (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={7} className="px-4 py-4 text-center text-neutral-400">
                   Carregando…
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-center text-brand-600">
+                <td colSpan={7} className="px-4 py-4 text-center text-brand-600">
                   Não foi possível carregar os pedidos.
                 </td>
               </tr>
             )}
             {!isLoading && !isError && filteredOrders.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={7} className="px-4 py-4 text-center text-neutral-400">
                   Nenhum pedido encontrado para o filtro selecionado.
                 </td>
               </tr>
@@ -142,6 +174,9 @@ export function Orders() {
                 <td className="px-4 py-2 text-neutral-500">{new Date(o.createdAt).toLocaleDateString('pt-BR')}</td>
                 <td className="px-4 py-2 text-neutral-500">{o.createdBy.name}</td>
                 <td className="px-4 py-2 text-ink-900">{Number(o.quote.total).toFixed(2)}</td>
+                <td className="px-4 py-2">
+                  <StatusToggle order={o} />
+                </td>
               </tr>
             ))}
           </tbody>

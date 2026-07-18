@@ -6,11 +6,12 @@ import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toOrderDTO } from '../lib/dto.js'
-import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf } from '../lib/orderPdf.js'
+import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf, type PackingListBoxPage } from '../lib/orderPdf.js'
 import { generateExportDocXlsx } from '../lib/orderXlsx.js'
 import { fetchUsdBrlRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
 import { env } from '../lib/env.js'
+import type { BoxAssignments } from '@prodelphusplus/shared'
 
 export const ordersRouter = Router()
 
@@ -59,7 +60,6 @@ const orderFieldsSchema = z.object({
   billToText: z.string().min(1),
   shipToText: z.string().min(1),
   shipToNote: z.string().optional(),
-  numberOfPackages: z.string().optional(),
   netWeightKg: z.coerce.number().positive().optional(),
   grossWeightKg: z.coerce.number().positive().optional(),
   awbNumber: z.string().optional(),
@@ -69,7 +69,40 @@ const orderFieldsSchema = z.object({
   nfNumber: z.string().optional(),
   nfDate: z.coerce.date().optional(),
   exchangeRate: z.coerce.number().positive().optional(),
+  itemWeightsKg: z.array(z.coerce.number().positive().nullable()).optional(),
+  packageCount: z.coerce.number().int().positive().default(1),
+  boxAssignments: z
+    .array(z.array(z.object({ label: z.string().min(1), quantity: z.number().int().positive() })))
+    .optional(),
 })
+
+// "01 Carton" / "02 Cartons" — the Invoice/Packing List "Number of Packages"
+// field is always derived from packageCount rather than free-typed, so it
+// can never drift out of sync with how many Packing List Box pages exist.
+function formatPackageCountLabel(count: number) {
+  return `${String(count).padStart(2, '0')} ${count === 1 ? 'Carton' : 'Cartons'}`
+}
+
+function buildBoxPages(
+  packageCount: number,
+  boxAssignments: BoxAssignments | null,
+  docItems: { title: string; quantity: number }[],
+): PackingListBoxPage[] {
+  if (!boxAssignments || boxAssignments.length === 0) {
+    // No explicit box assignment — everything ships in box 1; any additional
+    // declared boxes are left empty rather than guessing a split.
+    return Array.from({ length: packageCount }, (_, i) => ({
+      boxNumber: i + 1,
+      totalBoxes: packageCount,
+      items: i === 0 ? docItems.map((it) => ({ title: it.title, quantity: it.quantity })) : [],
+    }))
+  }
+  return Array.from({ length: packageCount }, (_, i) => ({
+    boxNumber: i + 1,
+    totalBoxes: packageCount,
+    items: (boxAssignments[i] ?? []).map((entry) => ({ title: entry.label, quantity: entry.quantity })),
+  }))
+}
 
 async function buildAndWriteDocuments(
   order: {
@@ -79,7 +112,6 @@ async function buildAndWriteDocuments(
     invoiceDate: Date
     billToText: string
     shipToText: string
-    numberOfPackages: string | null
     netWeightKg: number | null
     grossWeightKg: number | null
     awbNumber: string | null
@@ -89,6 +121,9 @@ async function buildAndWriteDocuments(
     nfNumber: string | null
     nfDate: Date | null
     exchangeRate: number
+    itemWeightsKg: (number | null)[] | null
+    packageCount: number
+    boxAssignments: BoxAssignments | null
   },
   quote: {
     quoteNumber: string
@@ -125,11 +160,12 @@ async function buildAndWriteDocuments(
     items: docItems,
     currency,
     freight,
+    discount: discount > 0 ? discount : null,
     paypalFee: order.prepaymentBy === 'PAYPAL' ? order.paypalFee : null,
     total,
     billToText: order.billToText,
     shipToText: order.shipToText,
-    numberOfPackages: order.numberOfPackages,
+    numberOfPackages: formatPackageCountLabel(order.packageCount),
     netWeightKg: order.netWeightKg !== null ? String(order.netWeightKg) : null,
     grossWeightKg: order.grossWeightKg !== null ? String(order.grossWeightKg) : null,
     awbNumber: order.awbNumber,
@@ -142,7 +178,7 @@ async function buildAndWriteDocuments(
   const boxData = {
     orderNumber: order.orderNumber,
     shipToText: order.shipToText,
-    items: docItems.map((i) => ({ title: i.title, quantity: i.quantity })),
+    pages: buildBoxPages(order.packageCount, order.boxAssignments, docItems),
   }
 
   const exportData = {
@@ -150,12 +186,25 @@ async function buildAndWriteDocuments(
     exchangeRate: order.exchangeRate,
     currency,
     freight,
-    items: quote.items.map((item) => ({
-      code: item.product.name,
-      quantity: item.quantity,
-      unitPriceUsd: Number(item.unitPrice),
-      weightKgUnit: item.product.weightKg !== null ? Number(item.product.weightKg) : null,
-    })),
+    grossWeightKg: order.grossWeightKg,
+    packageCount: order.packageCount,
+    items: quote.items.map((item, index) => {
+      // A manually entered per-order weight (from the order form) takes
+      // priority over the product's catalog weight, which is often blank.
+      const manualWeight = order.itemWeightsKg?.[index]
+      const weightKgUnit =
+        manualWeight !== undefined && manualWeight !== null
+          ? manualWeight
+          : item.product.weightKg !== null
+            ? Number(item.product.weightKg)
+            : null
+      return {
+        code: item.product.name,
+        quantity: item.quantity,
+        unitPriceUsd: Number(item.unitPrice),
+        weightKgUnit,
+      }
+    }),
   }
 
   const [invoiceBuffer, packingListBuffer, packingListBoxBuffer, exportDocBuffer] = await Promise.all([
@@ -207,7 +256,6 @@ ordersRouter.post(
       invoiceDate: new Date(),
       billToText: data.billToText,
       shipToText: data.shipToText,
-      numberOfPackages: data.numberOfPackages ?? null,
       netWeightKg: data.netWeightKg ?? null,
       grossWeightKg: data.grossWeightKg ?? null,
       awbNumber: data.awbNumber ?? null,
@@ -217,6 +265,9 @@ ordersRouter.post(
       nfNumber: data.nfNumber ?? null,
       nfDate: data.nfDate ?? null,
       exchangeRate,
+      itemWeightsKg: data.itemWeightsKg ?? null,
+      packageCount: data.packageCount,
+      boxAssignments: data.boxAssignments ?? null,
     }
 
     const docUrls = await buildAndWriteDocuments(orderForDocs, quote)
@@ -231,11 +282,14 @@ ordersRouter.post(
         billToText: data.billToText,
         shipToText: data.shipToText,
         shipToNote: data.shipToNote ?? null,
-        numberOfPackages: data.numberOfPackages ?? null,
+        numberOfPackages: formatPackageCountLabel(data.packageCount),
         netWeightKg: data.netWeightKg ?? null,
         grossWeightKg: data.grossWeightKg ?? null,
         awbNumber: data.awbNumber ?? null,
         incoterms: data.incoterms ?? null,
+        itemWeightsKg: data.itemWeightsKg,
+        packageCount: data.packageCount,
+        boxAssignments: data.boxAssignments ?? undefined,
         prepaymentBy: data.prepaymentBy,
         paypalFee: data.paypalFee ?? null,
         nfNumber: data.nfNumber ?? null,
@@ -266,7 +320,6 @@ ordersRouter.patch(
       invoiceDate: existing.invoiceDate,
       billToText: data.billToText ?? existing.billToText,
       shipToText: data.shipToText ?? existing.shipToText,
-      numberOfPackages: data.numberOfPackages !== undefined ? data.numberOfPackages || null : existing.numberOfPackages,
       netWeightKg: data.netWeightKg !== undefined ? data.netWeightKg : existing.netWeightKg !== null ? Number(existing.netWeightKg) : null,
       grossWeightKg:
         data.grossWeightKg !== undefined ? data.grossWeightKg : existing.grossWeightKg !== null ? Number(existing.grossWeightKg) : null,
@@ -277,6 +330,9 @@ ordersRouter.patch(
       nfNumber: data.nfNumber !== undefined ? data.nfNumber || null : existing.nfNumber,
       nfDate: data.nfDate !== undefined ? data.nfDate ?? null : existing.nfDate,
       exchangeRate: data.exchangeRate ?? (existing.exchangeRate !== null ? Number(existing.exchangeRate) : 1),
+      itemWeightsKg: data.itemWeightsKg ?? ((existing.itemWeightsKg as (number | null)[] | null) ?? null),
+      packageCount: data.packageCount ?? existing.packageCount,
+      boxAssignments: data.boxAssignments ?? ((existing.boxAssignments as BoxAssignments | null) ?? null),
     }
 
     const docUrls = await buildAndWriteDocuments(merged, existing.quote)
@@ -289,8 +345,11 @@ ordersRouter.patch(
         shipDate: data.shipDate !== undefined ? data.shipDate ?? null : existing.shipDate,
         billToText: merged.billToText,
         shipToText: merged.shipToText,
+        itemWeightsKg: merged.itemWeightsKg ?? undefined,
+        packageCount: merged.packageCount,
+        boxAssignments: merged.boxAssignments ?? undefined,
         shipToNote: data.shipToNote !== undefined ? data.shipToNote || null : existing.shipToNote,
-        numberOfPackages: merged.numberOfPackages,
+        numberOfPackages: formatPackageCountLabel(merged.packageCount),
         netWeightKg: merged.netWeightKg,
         grossWeightKg: merged.grossWeightKg,
         awbNumber: merged.awbNumber,
@@ -305,6 +364,22 @@ ordersRouter.patch(
       include,
     })
 
+    res.json({ order: toOrderDTO(order) })
+  }),
+)
+
+const statusSchema = z.object({ status: z.enum(['PENDING', 'COMPLETED']) })
+
+// Lightweight status toggle — unlike PATCH /:id, this never regenerates the
+// PDF/xlsx documents (there's nothing document-relevant about status).
+ordersRouter.patch(
+  '/:id/status',
+  asyncHandler(async (req, res) => {
+    const { status } = statusSchema.parse(req.body)
+    const existing = await prisma.order.findUnique({ where: { id: req.params.id } })
+    if (!existing) throw new HttpError(404, 'Pedido não encontrado')
+
+    const order = await prisma.order.update({ where: { id: existing.id }, data: { status }, include })
     res.json({ order: toOrderDTO(order) })
   }),
 )
