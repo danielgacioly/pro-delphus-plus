@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import type { OrderDTO, OrderStatus } from '@prodelphusplus/shared'
+import { formatAmount, type OrderDTO, type OrderStatus } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -173,7 +173,7 @@ export function Orders() {
                 <td className="px-4 py-2 text-neutral-500">{o.quoteNumber}</td>
                 <td className="px-4 py-2 text-neutral-500">{new Date(o.createdAt).toLocaleDateString('pt-BR')}</td>
                 <td className="px-4 py-2 text-neutral-500">{o.createdBy.name}</td>
-                <td className="px-4 py-2 text-ink-900">{Number(o.quote.total).toFixed(2)}</td>
+                <td className="px-4 py-2 text-ink-900">{formatAmount(o.quote.total)}</td>
                 <td className="px-4 py-2">
                   <StatusToggle order={o} />
                 </td>

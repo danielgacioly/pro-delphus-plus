@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
-import type { ClientPrefix, PriceTier, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
+import type { ClientPrefix, Currency, PriceTier, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 
 interface DraftItem {
@@ -30,6 +30,7 @@ export function NewQuote() {
   const queryClient = useQueryClient()
 
   const [language, setLanguage] = useState<QuoteLanguage>('EN')
+  const [currency, setCurrency] = useState<Currency>('USD')
   const [priceTier, setPriceTier] = useState<PriceTier>('FINAL')
   const [clientPrefix, setClientPrefix] = useState<ClientPrefix>('NONE')
   const [clientName, setClientName] = useState('')
@@ -51,7 +52,8 @@ export function NewQuote() {
     mutationFn: async () => {
       const { data } = await api.post<{ quote: QuoteDTO }>('/quotes', {
         language,
-        priceTier: language === 'PT' ? 'FINAL' : priceTier,
+        currency,
+        priceTier: currency === 'USD' ? priceTier : 'FINAL',
         clientPrefix,
         clientName,
         notes: notes || undefined,
@@ -121,11 +123,20 @@ export function NewQuote() {
               <option value="EN">English</option>
               <option value="ES">Español</option>
             </select>
-            <p className="mt-1 text-[11px] text-neutral-400">
-              Moeda: {language === 'PT' ? 'BRL' : 'USD'}
-            </p>
           </div>
-          {language !== 'PT' && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Moeda</label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            >
+              <option value="BRL">Real (BRL)</option>
+              <option value="USD">Dólar (USD)</option>
+              <option value="EUR">Euro (EUR)</option>
+            </select>
+          </div>
+          {currency === 'USD' && (
             <div>
               <label className="mb-1 block text-xs font-medium text-neutral-600">Preço</label>
               <select

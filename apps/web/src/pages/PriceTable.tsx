@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import type { ProductDTO, ProductKind } from '@prodelphusplus/shared'
+import { formatAmount, type ProductDTO, type ProductKind } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 
 async function fetchProducts(search: string) {
@@ -11,7 +11,7 @@ async function fetchProducts(search: string) {
 }
 
 function formatPrice(value: string | null, currency: string) {
-  return value === null ? '—' : `${currency} ${Number(value).toFixed(2)}`
+  return value === null ? '—' : `${currency} ${formatAmount(value)}`
 }
 
 const kindLabel: Record<ProductKind, string> = {
@@ -23,6 +23,7 @@ interface PriceColumns {
   description: boolean
   brl: boolean
   usd: boolean
+  eur: boolean
   usdDistributor: boolean
 }
 
@@ -32,6 +33,7 @@ const defaultColumns: PriceColumns = {
   description: true,
   brl: true,
   usd: true,
+  eur: true,
   usdDistributor: false,
 }
 
@@ -48,6 +50,7 @@ function loadStoredColumns(): PriceColumns {
 export function PriceTable() {
   const [search, setSearch] = useState('')
   const [columns, setColumns] = useState<PriceColumns>(loadStoredColumns)
+  const [exporting, setExporting] = useState(false)
 
   const {
     data: products,
@@ -80,7 +83,33 @@ export function PriceTable() {
     })
   }
 
-  const columnCount = 2 + Number(columns.brl) + Number(columns.usd) + Number(columns.usdDistributor)
+  const columnCount =
+    2 + Number(columns.brl) + Number(columns.usd) + Number(columns.eur) + Number(columns.usdDistributor)
+
+  async function exportPdf() {
+    setExporting(true)
+    try {
+      const { data } = await api.get('/products/price-list-pdf', {
+        params: {
+          search: search || undefined,
+          description: columns.description ? '1' : '0',
+          brl: columns.brl ? '1' : '0',
+          usd: columns.usd ? '1' : '0',
+          eur: columns.eur ? '1' : '0',
+          usdDistributor: columns.usdDistributor ? '1' : '0',
+        },
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'tabela-de-precos.pdf'
+      link.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div>
@@ -111,10 +140,22 @@ export function PriceTable() {
             Final USD
           </label>
           <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={columns.eur} onChange={() => toggleColumn('eur')} />
+            Final EUR
+          </label>
+          <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={columns.usdDistributor} onChange={() => toggleColumn('usdDistributor')} />
             Distribuidor USD
           </label>
         </div>
+        <button
+          type="button"
+          onClick={exportPdf}
+          disabled={exporting}
+          className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+        >
+          {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
+        </button>
       </div>
 
       {isLoading && <p className="mt-6 text-neutral-400">Carregando…</p>}
@@ -148,6 +189,7 @@ export function PriceTable() {
                         )}
                         {columns.brl && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final BRL</th>}
                         {columns.usd && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final USD</th>}
+                        {columns.eur && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final EUR</th>}
                         {columns.usdDistributor && (
                           <th className="px-4 py-2 text-left font-medium text-neutral-500">Distribuidor USD</th>
                         )}
@@ -168,6 +210,9 @@ export function PriceTable() {
                           )}
                           {columns.usd && (
                             <td className="px-4 py-2 text-ink-900">{formatPrice(product.priceUSD, 'USD')}</td>
+                          )}
+                          {columns.eur && (
+                            <td className="px-4 py-2 text-ink-900">{formatPrice(product.priceEUR, 'EUR')}</td>
                           )}
                           {columns.usdDistributor && (
                             <td className="px-4 py-2 text-ink-900">

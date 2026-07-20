@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import type { ClientPrefix, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
+import { formatAmount, type ClientPrefix, type QuoteDTO, type QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -113,6 +113,7 @@ export function Quotes() {
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Número</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Cliente</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Idioma</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Moeda</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Data</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Criado por</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Itens</th>
@@ -123,14 +124,14 @@ export function Quotes() {
           <tbody className="divide-y divide-neutral-100">
             {isLoading && (
               <tr>
-                <td colSpan={8} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={9} className="px-4 py-4 text-center text-neutral-400">
                   Carregando…
                 </td>
               </tr>
             )}
             {!isLoading && filteredQuotes.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={9} className="px-4 py-4 text-center text-neutral-400">
                   Nenhum orçamento encontrado para o filtro selecionado.
                 </td>
               </tr>
@@ -142,8 +143,9 @@ export function Quotes() {
                   {q.clientPrefix !== 'NONE' && `${prefixLabelsByLanguage[q.language][q.clientPrefix]} `}
                   {q.clientName}
                 </td>
+                <td className="px-4 py-2 text-neutral-500">{languageLabel[q.language]}</td>
                 <td className="px-4 py-2 text-neutral-500">
-                  {languageLabel[q.language]}
+                  {q.currency}
                   {q.priceTier === 'DISTRIBUTOR' && (
                     <span className="ml-1.5 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
                       Distribuidor
@@ -153,7 +155,7 @@ export function Quotes() {
                 <td className="px-4 py-2 text-neutral-500">{new Date(q.createdAt).toLocaleDateString('pt-BR')}</td>
                 <td className="px-4 py-2 text-neutral-500">{q.createdBy.name}</td>
                 <td className="px-4 py-2 text-neutral-600">{q.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}</td>
-                <td className="px-4 py-2 text-ink-900">{Number(q.total).toFixed(2)}</td>
+                <td className="px-4 py-2 text-ink-900">{formatAmount(q.total)}</td>
                 <td className="px-4 py-2 text-right space-x-2">
                   {q.pdfUrl && (
                     <a

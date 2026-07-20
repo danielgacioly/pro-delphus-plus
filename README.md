@@ -46,7 +46,7 @@ Abra `apps/api/.env` e, se quiser, ajuste os segredos de JWT e a senha do admin 
 npm run db:up
 ```
 
-Isso inicia um container Postgres em `localhost:5432` com os dados definidos no `docker-compose.yml` (usuário `prodelphus`, banco `prodelphusplus`). Os dados ficam persistidos em um volume Docker entre reinícios.
+Isso inicia um container Postgres em `localhost:5433` (porta 5433 no host para não colidir com um Postgres já instalado na máquina) com os dados definidos no `docker-compose.yml` (usuário `prodelphus`, banco `prodelphusplus`). Os dados ficam persistidos em um volume Docker entre reinícios.
 
 Para derrubar o banco depois:
 

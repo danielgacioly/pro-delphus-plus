@@ -37,6 +37,11 @@ interface ProductStat {
   revenueBRL: number
 }
 
+interface SectorStat {
+  sector: string
+  salesCount: number
+}
+
 interface StatsResponse {
   totalOrders: number
   totalByCurrency: { USD: number; BRL: number }
@@ -44,6 +49,7 @@ interface StatsResponse {
   byMonth: MonthStat[]
   byYear: YearStat[]
   topProducts: ProductStat[]
+  sectorsSold: SectorStat[]
 }
 
 async function fetchStats() {
@@ -87,6 +93,11 @@ export function Stats() {
   const productChartData = data.topProducts.map((p) => ({
     label: p.productName.length > 28 ? `${p.productName.slice(0, 28)}…` : p.productName,
     Quantidade: p.quantity,
+  }))
+
+  const sectorChartData = data.sectorsSold.map((s) => ({
+    label: s.sector,
+    Vendas: s.salesCount,
   }))
 
   return (
@@ -173,6 +184,29 @@ export function Stats() {
                 <YAxis dataKey="label" type="category" fontSize={10} width={160} />
                 <Tooltip />
                 <Bar dataKey="Quantidade" fill="#ef1818" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+          <h2 className="mb-3 text-sm font-semibold text-ink-900">Áreas vendidas (nº de vendas por setor)</h2>
+          <p className="mb-3 text-xs text-neutral-400">
+            Conta pedidos que tiveram pelo menos um item do setor — não a quantidade de produtos. Um pedido com
+            itens de Breast e Thoracic conta uma vez para cada setor.
+          </p>
+          {sectorChartData.length === 0 ? (
+            <p className="text-sm text-neutral-400">Sem dados suficientes ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(200, sectorChartData.length * 32)}>
+              <BarChart data={sectorChartData} layout="vertical" margin={{ left: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis type="number" fontSize={11} allowDecimals={false} />
+                <YAxis dataKey="label" type="category" fontSize={10} width={160} />
+                <Tooltip />
+                <Bar dataKey="Vendas" fill="#1a1a1a" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

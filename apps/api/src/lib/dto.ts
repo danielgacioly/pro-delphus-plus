@@ -38,6 +38,7 @@ export function toProductDTO(
     priceBRL: product.priceBRL?.toString() ?? null,
     priceUSD: product.priceUSD?.toString() ?? null,
     priceUSDDistributor: product.priceUSDDistributor?.toString() ?? null,
+    priceEUR: product.priceEUR?.toString() ?? null,
     active: product.active,
     updatedAt: product.updatedAt.toISOString(),
     media: product.media
@@ -58,6 +59,7 @@ export function toQuoteDTO(
     id: quote.id,
     quoteNumber: quote.quoteNumber,
     language: quote.language,
+    currency: quote.currency,
     priceTier: quote.priceTier,
     clientPrefix: quote.clientPrefix,
     clientName: quote.clientName,

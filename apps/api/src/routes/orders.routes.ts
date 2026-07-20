@@ -127,13 +127,13 @@ async function buildAndWriteDocuments(
   },
   quote: {
     quoteNumber: string
-    language: string
+    currency: string
     freight: unknown
     discount: unknown
     items: { quantity: number; unitPrice: unknown; lineTotal: unknown; description: string; product: { name: string; weightKg: unknown } }[]
   },
 ) {
-  const currency = quote.language === 'PT' ? 'BRL' : 'USD'
+  const currency = quote.currency
   const freight = quote.freight !== null ? Number(quote.freight) : null
   const discount = Number(quote.discount)
 

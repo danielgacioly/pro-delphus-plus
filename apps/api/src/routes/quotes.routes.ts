@@ -64,6 +64,9 @@ quotesRouter.get(
 
 const createQuoteSchema = z.object({
   language: z.enum(['PT', 'EN', 'ES']).default('PT'),
+  // Optional for backward compatibility — older clients that don't send it
+  // fall back to the historical language-implies-currency behavior.
+  currency: z.enum(['BRL', 'USD', 'EUR']).optional(),
   priceTier: z.enum(['FINAL', 'DISTRIBUTOR']).default('FINAL'),
   clientPrefix: z.enum(['NONE', 'MR', 'MS']).default('NONE'),
   clientName: z.string().min(1),
@@ -86,12 +89,13 @@ quotesRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const data = createQuoteSchema.parse(req.body)
-    const currency = data.language === 'PT' ? 'BRL' : 'USD'
-    // Distributor pricing only exists in USD, so PT quotes always use the final BRL price
-    const priceTier = data.language === 'PT' ? 'FINAL' : data.priceTier
+    const currency = data.currency ?? (data.language === 'PT' ? 'BRL' : 'USD')
+    // Distributor pricing only exists in USD, so BRL/EUR quotes always use the final price
+    const priceTier = currency === 'USD' ? data.priceTier : 'FINAL'
 
-    const priceOf = (product: { priceBRL: unknown; priceUSD: unknown; priceUSDDistributor: unknown }) => {
+    const priceOf = (product: { priceBRL: unknown; priceUSD: unknown; priceUSDDistributor: unknown; priceEUR: unknown }) => {
       if (currency === 'BRL') return product.priceBRL
+      if (currency === 'EUR') return product.priceEUR
       return priceTier === 'DISTRIBUTOR' ? product.priceUSDDistributor : product.priceUSD
     }
     const tierLabel = priceTier === 'DISTRIBUTOR' ? `${currency} (distribuidor)` : currency
@@ -221,6 +225,7 @@ quotesRouter.post(
       data: {
         quoteNumber,
         language: data.language,
+        currency,
         priceTier,
         clientPrefix: data.clientPrefix,
         clientName: data.clientName,

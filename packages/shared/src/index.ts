@@ -8,6 +8,8 @@ export type QuoteLanguage = 'PT' | 'EN' | 'ES'
 
 export type PriceTier = 'FINAL' | 'DISTRIBUTOR'
 
+export type Currency = 'BRL' | 'USD' | 'EUR'
+
 export type MediaType = 'IMAGE' | 'DOCUMENT'
 
 export type ProductKind = 'COMPLETE_MODEL' | 'COMPONENT'
@@ -50,6 +52,7 @@ export interface ProductDTO {
   priceBRL: string | null
   priceUSD: string | null
   priceUSDDistributor: string | null
+  priceEUR: string | null
   active: boolean
   updatedAt: string
   media: ProductMediaDTO[]
@@ -74,6 +77,7 @@ export interface QuoteDTO {
   id: string
   quoteNumber: string
   language: QuoteLanguage
+  currency: Currency
   priceTier: PriceTier
   clientPrefix: ClientPrefix
   clientName: string
@@ -171,6 +175,11 @@ export interface OrderDTO {
   createdAt: string
   createdBy: { id: string; name: string }
   quote: QuoteDTO
+}
+
+/** Formats a plain number/decimal-string with thousands separators, e.g. 40902.77 -> "40,902.77". */
+export function formatAmount(value: number | string): string {
+  return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value))
 }
 
 export * from './sectors.js'

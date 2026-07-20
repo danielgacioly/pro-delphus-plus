@@ -24,6 +24,10 @@ statsRouter.get(
     const byMonthMap = new Map<string, { year: number; month: number; count: number; totalUSD: number; totalBRL: number }>()
     const byYearMap = new Map<number, { year: number; count: number; totalUSD: number; totalBRL: number }>()
     const productMap = new Map<string, { productName: string; quantity: number; revenueUSD: number; revenueBRL: number }>()
+    // Counts orders that touched each sector — not units sold. A single
+    // order with 100 units of one product still counts once for its
+    // sector; an order spanning Breast + Thoracic counts once for each.
+    const sectorMap = new Map<string, number>()
 
     for (const order of orders) {
       const currency: 'USD' | 'BRL' = order.quote.language === 'PT' ? 'BRL' : 'USD'
@@ -57,6 +61,11 @@ statsRouter.get(
         productEntry[currency === 'USD' ? 'revenueUSD' : 'revenueBRL'] += Number(item.lineTotal)
         productMap.set(item.product.name, productEntry)
       }
+
+      const sectorsInOrder = new Set(order.quote.items.map((item) => item.product.sector))
+      for (const sector of sectorsInOrder) {
+        sectorMap.set(sector, (sectorMap.get(sector) ?? 0) + 1)
+      }
     }
 
     const byMonth = Array.from(byMonthMap.values()).sort((a, b) => a.year - b.year || a.month - b.month)
@@ -64,6 +73,9 @@ statsRouter.get(
     const topProducts = Array.from(productMap.values())
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 10)
+    const sectorsSold = Array.from(sectorMap.entries())
+      .map(([sector, salesCount]) => ({ sector, salesCount }))
+      .sort((a, b) => b.salesCount - a.salesCount)
 
     res.json({
       totalOrders: orders.length,
@@ -72,6 +84,7 @@ statsRouter.get(
       byMonth,
       byYear,
       topProducts,
+      sectorsSold,
     })
   }),
 )

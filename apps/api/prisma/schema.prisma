@@ -48,6 +48,12 @@ enum PriceTier {
   DISTRIBUTOR
 }
 
+enum Currency {
+  BRL
+  USD
+  EUR
+}
+
 enum PrepaymentMethod {
   PAYPAL
   WIRE_TRANSFER
@@ -98,6 +104,7 @@ model Product {
   priceBRL            Decimal?    @db.Decimal(12, 2)
   priceUSD            Decimal?    @db.Decimal(12, 2)
   priceUSDDistributor Decimal?    @db.Decimal(12, 2)
+  priceEUR            Decimal?    @db.Decimal(12, 2)
   active              Boolean     @default(true)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -140,6 +147,7 @@ model Quote {
   id           String        @id @default(uuid())
   quoteNumber  String        @unique
   language     QuoteLanguage @default(PT)
+  currency     Currency      @default(USD)
   priceTier    PriceTier     @default(FINAL)
   clientPrefix ClientPrefix  @default(NONE)
   clientName   String

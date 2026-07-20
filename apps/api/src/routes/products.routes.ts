@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toProductDTO } from '../lib/dto.js'
 import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
+import { generatePriceListPdf } from '../lib/priceListPdf.js'
 
 export const productsRouter = Router()
 
@@ -45,6 +46,67 @@ productsRouter.get(
   }),
 )
 
+const priceListPdfQuerySchema = z.object({
+  search: z.string().optional(),
+  description: z.enum(['0', '1']).optional(),
+  brl: z.enum(['0', '1']).optional(),
+  usd: z.enum(['0', '1']).optional(),
+  eur: z.enum(['0', '1']).optional(),
+  usdDistributor: z.enum(['0', '1']).optional(),
+})
+
+productsRouter.get(
+  '/price-list-pdf',
+  asyncHandler(async (req, res) => {
+    const query = priceListPdfQuerySchema.parse(req.query)
+    const search = query.search?.trim() || undefined
+
+    const products = await prisma.product.findMany({
+      where: {
+        active: true,
+        ...(search
+          ? {
+              OR: [
+                { sku: { contains: search, mode: 'insensitive' as const } },
+                { name: { contains: search, mode: 'insensitive' as const } },
+                { sector: { contains: search, mode: 'insensitive' as const } },
+                { description: { contains: search, mode: 'insensitive' as const } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ sector: 'asc' }, { kind: 'asc' }, { name: 'asc' }],
+    })
+
+    const pdf = await generatePriceListPdf({
+      products: products.map((p) => ({
+        sku: p.sku,
+        name: p.name,
+        description: p.description,
+        sector: p.sector,
+        kind: p.kind,
+        priceBRL: p.priceBRL?.toString() ?? null,
+        priceUSD: p.priceUSD?.toString() ?? null,
+        priceEUR: p.priceEUR?.toString() ?? null,
+        priceUSDDistributor: p.priceUSDDistributor?.toString() ?? null,
+      })),
+      columns: {
+        description: query.description !== '0',
+        brl: query.brl !== '0',
+        usd: query.usd !== '0',
+        eur: query.eur !== '0',
+        usdDistributor: query.usdDistributor === '1',
+      },
+      search: search ?? null,
+      generatedAt: new Date(),
+    })
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'attachment; filename="tabela-de-precos.pdf"')
+    res.send(pdf)
+  }),
+)
+
 productsRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -65,6 +127,7 @@ const createProductSchema = z
     priceBRL: z.coerce.number().positive().optional(),
     priceUSD: z.coerce.number().positive().optional(),
     priceUSDDistributor: z.coerce.number().positive().optional(),
+    priceEUR: z.coerce.number().positive().optional(),
   })
   .refine((data) => data.priceBRL !== undefined || data.priceUSD !== undefined, {
     message: 'Informe ao menos um preço final (BRL ou USD)',
@@ -94,6 +157,7 @@ const updateProductSchema = z.object({
   priceBRL: z.coerce.number().positive().optional().nullable(),
   priceUSD: z.coerce.number().positive().optional().nullable(),
   priceUSDDistributor: z.coerce.number().positive().optional().nullable(),
+  priceEUR: z.coerce.number().positive().optional().nullable(),
   active: z.boolean().optional(),
 })
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
-import type { CreateOrderInput, OrderDTO, PrepaymentMethod, QuoteDTO } from '@prodelphusplus/shared'
+import { formatAmount, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 
 async function fetchQuotes() {
@@ -60,7 +60,7 @@ export function NewOrder() {
   }, [liveRate])
 
   const selectedQuote = quotes?.find((q) => q.id === form.quoteId)
-  const currency = selectedQuote ? (selectedQuote.language === 'PT' ? 'BRL' : 'USD') : null
+  const currency = selectedQuote?.currency ?? null
 
   function update(patch: Partial<typeof form>) {
     setForm((s) => ({ ...s, ...patch }))
@@ -197,7 +197,7 @@ export function NewOrder() {
             <option value="">Selecione um orçamento…</option>
             {quotes?.map((q) => (
               <option key={q.id} value={q.id}>
-                {q.quoteNumber} — {q.clientName} — {q.language === 'PT' ? 'BRL' : 'USD'} {Number(q.total).toFixed(2)}
+                {q.quoteNumber} — {q.clientName} — {q.currency} {formatAmount(q.total)}
               </option>
             ))}
           </select>

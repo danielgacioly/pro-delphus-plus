@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import type { OrderDTO, PrepaymentMethod } from '@prodelphusplus/shared'
+import { formatAmount, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 
 async function fetchOrder(id: string) {
@@ -108,7 +108,7 @@ export function OrderDetail() {
   if (isLoading) return <p className="text-neutral-400">Carregando…</p>
   if (isError || !order) return <p className="text-brand-600">Não foi possível carregar este pedido.</p>
 
-  const currency = order.quote.language === 'PT' ? 'BRL' : 'USD'
+  const currency = order.quote.currency
 
   return (
     <div>
@@ -342,12 +342,16 @@ export function OrderDetail() {
                 <Field label="AWB #" value={order.awbNumber} />
                 <Field
                   label="Prepayment"
-                  value={order.prepaymentBy === 'PAYPAL' ? `PayPal (taxa ${currency} ${order.paypalFee ?? '0.00'})` : 'Wire Transfer'}
+                  value={
+                    order.prepaymentBy === 'PAYPAL'
+                      ? `PayPal (taxa ${currency} ${formatAmount(order.paypalFee ?? 0)})`
+                      : 'Wire Transfer'
+                  }
                 />
                 <Field label="Número da NF" value={order.nfNumber} />
                 <Field label="Data de emissão da NF" value={order.nfDate ? new Date(order.nfDate).toLocaleDateString('pt-BR') : null} />
                 <Field label="Câmbio USD/BRL" value={order.exchangeRate} />
-                <Field label="Total do orçamento" value={`${currency} ${Number(order.quote.total).toFixed(2)}`} />
+                <Field label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
               </div>
               <div className="border-t border-neutral-100 pt-4">
                 <Field label="Bill To" value={order.billToText} />
@@ -385,10 +389,10 @@ export function OrderDetail() {
                 </td>
                 <td className="px-3 py-1.5 text-neutral-600">{item.quantity}</td>
                 <td className="px-3 py-1.5 text-neutral-600">
-                  {currency} {Number(item.unitPrice).toFixed(2)}
+                  {currency} {formatAmount(item.unitPrice)}
                 </td>
                 <td className="px-3 py-1.5 text-ink-900">
-                  {currency} {Number(item.lineTotal).toFixed(2)}
+                  {currency} {formatAmount(item.lineTotal)}
                 </td>
               </tr>
             ))}
