@@ -92,7 +92,7 @@ function renderHtml(data: PriceListPdfData) {
                   <tr>
                     <th>SKU</th>
                     <th>Nome</th>
-                    ${data.columns.description ? '<th>Descrição</th>' : ''}
+                    ${data.columns.description ? `<th>${kind === 'COMPLETE_MODEL' ? 'Componentes' : 'Descrição'}</th>` : ''}
                     ${data.columns.brl ? '<th class="num">Final BRL</th>' : ''}
                     ${data.columns.usd ? '<th class="num">Final USD</th>' : ''}
                     ${data.columns.eur ? '<th class="num">Final EUR</th>' : ''}

@@ -185,7 +185,9 @@ export function PriceTable() {
                         <th className="px-4 py-2 text-left font-medium text-neutral-500">SKU</th>
                         <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome</th>
                         {columns.description && (
-                          <th className="px-4 py-2 text-left font-medium text-neutral-500">Descrição</th>
+                          <th className="px-4 py-2 text-left font-medium text-neutral-500">
+                            {kind === 'COMPLETE_MODEL' ? 'Componentes' : 'Descrição'}
+                          </th>
                         )}
                         {columns.brl && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final BRL</th>}
                         {columns.usd && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final USD</th>}
