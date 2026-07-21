@@ -21,6 +21,7 @@ const kindLabel: Record<ProductKind, string> = {
 
 interface PriceColumns {
   description: boolean
+  components: boolean
   brl: boolean
   usd: boolean
   eur: boolean
@@ -31,6 +32,7 @@ const COLUMNS_STORAGE_KEY = 'price-table-columns'
 
 const defaultColumns: PriceColumns = {
   description: true,
+  components: true,
   brl: true,
   usd: true,
   eur: true,
@@ -62,11 +64,14 @@ export function PriceTable() {
   })
 
   const grouped = useMemo(() => {
+    // A product with more than one sector shows up once per sector it belongs to.
     const bySector = new Map<string, { COMPLETE_MODEL: ProductDTO[]; COMPONENT: ProductDTO[] }>()
     for (const product of products ?? []) {
-      const group = bySector.get(product.sector) ?? { COMPLETE_MODEL: [], COMPONENT: [] }
-      group[product.kind].push(product)
-      bySector.set(product.sector, group)
+      for (const sector of product.sectors) {
+        const group = bySector.get(sector) ?? { COMPLETE_MODEL: [], COMPONENT: [] }
+        group[product.kind].push(product)
+        bySector.set(sector, group)
+      }
     }
     return Array.from(bySector.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [products])
@@ -93,6 +98,7 @@ export function PriceTable() {
         params: {
           search: search || undefined,
           description: columns.description ? '1' : '0',
+          components: columns.components ? '1' : '0',
           brl: columns.brl ? '1' : '0',
           usd: columns.usd ? '1' : '0',
           eur: columns.eur ? '1' : '0',
@@ -130,6 +136,10 @@ export function PriceTable() {
           <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={columns.description} onChange={() => toggleColumn('description')} />
             Descrição
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={columns.components} onChange={() => toggleColumn('components')} />
+            Componentes
           </label>
           <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={columns.brl} onChange={() => toggleColumn('brl')} />
@@ -185,9 +195,10 @@ export function PriceTable() {
                         <th className="px-4 py-2 text-left font-medium text-neutral-500">SKU</th>
                         <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome</th>
                         {columns.description && (
-                          <th className="px-4 py-2 text-left font-medium text-neutral-500">
-                            {kind === 'COMPLETE_MODEL' ? 'Componentes' : 'Descrição'}
-                          </th>
+                          <th className="px-4 py-2 text-left font-medium text-neutral-500">Descrição</th>
+                        )}
+                        {columns.components && kind === 'COMPLETE_MODEL' && (
+                          <th className="px-4 py-2 text-left font-medium text-neutral-500">Componentes</th>
                         )}
                         {columns.brl && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final BRL</th>}
                         {columns.usd && <th className="px-4 py-2 text-left font-medium text-neutral-500">Final USD</th>}
@@ -205,6 +216,11 @@ export function PriceTable() {
                           {columns.description && (
                             <td className="max-w-md px-4 py-2 text-xs text-neutral-500">
                               {product.description ?? '—'}
+                            </td>
+                          )}
+                          {columns.components && kind === 'COMPLETE_MODEL' && (
+                            <td className="max-w-md px-4 py-2 text-xs text-neutral-500">
+                              {product.components ?? '—'}
                             </td>
                           )}
                           {columns.brl && (

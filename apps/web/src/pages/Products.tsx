@@ -129,9 +129,10 @@ export function Products() {
     setEditForm({
       sku: product.sku,
       name: product.name,
-      sector: product.sector,
+      sectors: product.sectors,
       kind: product.kind,
       description: product.description ?? '',
+      components: product.components ?? '',
       weightKg: product.weightKg ?? '',
       priceBRL: product.priceBRL ?? '',
       priceUSD: product.priceUSD ?? '',
@@ -192,7 +193,7 @@ export function Products() {
                       {product.name} <span className="text-neutral-400">— {product.sku}</span>
                     </p>
                     <p className="text-sm text-neutral-500">
-                      {product.sector} · {kindLabel[product.kind]}
+                      {product.sectors.join(', ')} · {kindLabel[product.kind]}
                       {product.weightKg && ` · ${product.weightKg} kg`}
                     </p>
                   </div>
@@ -251,6 +252,12 @@ export function Products() {
                     <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Descrição</h3>
                     <p className="text-sm text-neutral-600">{product.description ?? 'Sem descrição cadastrada.'}</p>
                   </div>
+                  {product.kind === 'COMPLETE_MODEL' && (
+                    <div>
+                      <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Componentes</h3>
+                      <p className="text-sm text-neutral-600">{product.components ?? 'Sem componentes cadastrados.'}</p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-6">
                   <div>
                     <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Mídia</h3>

@@ -6,7 +6,8 @@ export interface PriceListPdfProduct {
   sku: string
   name: string
   description: string | null
-  sector: string
+  components: string | null
+  sectors: string[]
   kind: 'COMPLETE_MODEL' | 'COMPONENT'
   priceBRL: string | null
   priceUSD: string | null
@@ -16,6 +17,7 @@ export interface PriceListPdfProduct {
 
 export interface PriceListPdfColumns {
   description: boolean
+  components: boolean
   brl: boolean
   usd: boolean
   eur: boolean
@@ -46,12 +48,15 @@ function formatPrice(value: string | null, currency: string) {
   return value === null ? '—' : `${currency} ${formatAmount(value)}`
 }
 
+// A product listed in more than one sector shows up once per sector it belongs to.
 function groupBySector(products: PriceListPdfProduct[]) {
   const bySector = new Map<string, { COMPLETE_MODEL: PriceListPdfProduct[]; COMPONENT: PriceListPdfProduct[] }>()
   for (const product of products) {
-    const group = bySector.get(product.sector) ?? { COMPLETE_MODEL: [], COMPONENT: [] }
-    group[product.kind].push(product)
-    bySector.set(product.sector, group)
+    for (const sector of product.sectors) {
+      const group = bySector.get(sector) ?? { COMPLETE_MODEL: [], COMPONENT: [] }
+      group[product.kind].push(product)
+      bySector.set(sector, group)
+    }
   }
   return Array.from(bySector.entries()).sort((a, b) => a[0].localeCompare(b[0]))
 }
@@ -72,6 +77,11 @@ function renderHtml(data: PriceListPdfData) {
                   <td class="sku">${escapeHtml(product.sku)}</td>
                   <td>${escapeHtml(product.name)}</td>
                   ${data.columns.description ? `<td class="desc">${escapeHtml(product.description ?? '—')}</td>` : ''}
+                  ${
+                    data.columns.components && kind === 'COMPLETE_MODEL'
+                      ? `<td class="desc">${escapeHtml(product.components ?? '—')}</td>`
+                      : ''
+                  }
                   ${data.columns.brl ? `<td class="num">${formatPrice(product.priceBRL, 'BRL')}</td>` : ''}
                   ${data.columns.usd ? `<td class="num">${formatPrice(product.priceUSD, 'USD')}</td>` : ''}
                   ${data.columns.eur ? `<td class="num">${formatPrice(product.priceEUR, 'EUR')}</td>` : ''}
@@ -92,7 +102,8 @@ function renderHtml(data: PriceListPdfData) {
                   <tr>
                     <th>SKU</th>
                     <th>Nome</th>
-                    ${data.columns.description ? `<th>${kind === 'COMPLETE_MODEL' ? 'Componentes' : 'Descrição'}</th>` : ''}
+                    ${data.columns.description ? '<th>Descrição</th>' : ''}
+                    ${data.columns.components && kind === 'COMPLETE_MODEL' ? '<th>Componentes</th>' : ''}
                     ${data.columns.brl ? '<th class="num">Final BRL</th>' : ''}
                     ${data.columns.usd ? '<th class="num">Final USD</th>' : ''}
                     ${data.columns.eur ? '<th class="num">Final EUR</th>' : ''}

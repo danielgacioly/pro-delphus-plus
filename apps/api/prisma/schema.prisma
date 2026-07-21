@@ -98,7 +98,8 @@ model Product {
   sku                 String
   name                String
   description         String?
-  sector              String
+  components          String?
+  sectors             String[]
   kind                ProductKind @default(COMPLETE_MODEL)
   weightKg            Decimal?    @db.Decimal(10, 3)
   priceBRL            Decimal?    @db.Decimal(12, 2)

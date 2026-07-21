@@ -62,7 +62,7 @@ statsRouter.get(
         productMap.set(item.product.name, productEntry)
       }
 
-      const sectorsInOrder = new Set(order.quote.items.map((item) => item.product.sector))
+      const sectorsInOrder = new Set(order.quote.items.flatMap((item) => item.product.sectors))
       for (const sector of sectorsInOrder) {
         sectorMap.set(sector, (sectorMap.get(sector) ?? 0) + 1)
       }

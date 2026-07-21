@@ -13,28 +13,33 @@ productsRouter.use(requireAuth)
 
 const include = { media: true, customizations: true } as const
 
+// Sectors live in a scalar array on Product, which Prisma can only filter by
+// exact membership (`has`) — not substring. The catalog is small (~500 rows),
+// so free-text search across sku/name/sectors/description is done in JS instead.
+function matchesSearch(
+  product: { sku: string; name: string; sectors: string[]; description: string | null },
+  needle: string,
+) {
+  const q = needle.toLowerCase()
+  return (
+    product.sku.toLowerCase().includes(q) ||
+    product.name.toLowerCase().includes(q) ||
+    product.sectors.some((s) => s.toLowerCase().includes(q)) ||
+    (product.description ?? '').toLowerCase().includes(q)
+  )
+}
+
 productsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const search = z.string().optional().parse(req.query.search)
     const products = await prisma.product.findMany({
-      where: {
-        active: true,
-        ...(search
-          ? {
-              OR: [
-                { sku: { contains: search, mode: 'insensitive' as const } },
-                { name: { contains: search, mode: 'insensitive' as const } },
-                { sector: { contains: search, mode: 'insensitive' as const } },
-                { description: { contains: search, mode: 'insensitive' as const } },
-              ],
-            }
-          : {}),
-      },
+      where: { active: true },
       include,
-      orderBy: [{ sector: 'asc' }, { kind: 'asc' }, { name: 'asc' }],
+      orderBy: [{ kind: 'asc' }, { name: 'asc' }],
     })
-    res.json({ products: products.map(toProductDTO) })
+    const filtered = search ? products.filter((p) => matchesSearch(p, search)) : products
+    res.json({ products: filtered.map(toProductDTO) })
   }),
 )
 
@@ -49,6 +54,7 @@ productsRouter.get(
 const priceListPdfQuerySchema = z.object({
   search: z.string().optional(),
   description: z.enum(['0', '1']).optional(),
+  components: z.enum(['0', '1']).optional(),
   brl: z.enum(['0', '1']).optional(),
   usd: z.enum(['0', '1']).optional(),
   eur: z.enum(['0', '1']).optional(),
@@ -61,29 +67,19 @@ productsRouter.get(
     const query = priceListPdfQuerySchema.parse(req.query)
     const search = query.search?.trim() || undefined
 
-    const products = await prisma.product.findMany({
-      where: {
-        active: true,
-        ...(search
-          ? {
-              OR: [
-                { sku: { contains: search, mode: 'insensitive' as const } },
-                { name: { contains: search, mode: 'insensitive' as const } },
-                { sector: { contains: search, mode: 'insensitive' as const } },
-                { description: { contains: search, mode: 'insensitive' as const } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: [{ sector: 'asc' }, { kind: 'asc' }, { name: 'asc' }],
+    const allProducts = await prisma.product.findMany({
+      where: { active: true },
+      orderBy: [{ kind: 'asc' }, { name: 'asc' }],
     })
+    const products = search ? allProducts.filter((p) => matchesSearch(p, search)) : allProducts
 
     const pdf = await generatePriceListPdf({
       products: products.map((p) => ({
         sku: p.sku,
         name: p.name,
         description: p.description,
-        sector: p.sector,
+        components: p.components,
+        sectors: p.sectors,
         kind: p.kind,
         priceBRL: p.priceBRL?.toString() ?? null,
         priceUSD: p.priceUSD?.toString() ?? null,
@@ -92,6 +88,7 @@ productsRouter.get(
       })),
       columns: {
         description: query.description !== '0',
+        components: query.components !== '0',
         brl: query.brl !== '0',
         usd: query.usd !== '0',
         eur: query.eur !== '0',
@@ -118,10 +115,11 @@ productsRouter.get(
 
 const createProductSchema = z
   .object({
-    sku: z.string().min(1),
+    sku: z.string().optional(),
     name: z.string().min(1),
     description: z.string().optional(),
-    sector: z.string().min(1),
+    components: z.string().optional(),
+    sectors: z.array(z.string().min(1)).min(1),
     kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).default('COMPLETE_MODEL'),
     weightKg: z.coerce.number().positive().optional(),
     priceBRL: z.coerce.number().positive().optional(),
@@ -140,7 +138,7 @@ productsRouter.post(
     const data = createProductSchema.parse(req.body)
 
     const product = await prisma.product.create({
-      data: { ...data, updatedById: req.user!.id },
+      data: { ...data, sku: data.sku ?? '', updatedById: req.user!.id },
       include,
     })
     res.status(201).json({ product: toProductDTO(product) })
@@ -148,10 +146,11 @@ productsRouter.post(
 )
 
 const updateProductSchema = z.object({
-  sku: z.string().min(1).optional(),
+  sku: z.string().optional(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
-  sector: z.string().min(1).optional(),
+  components: z.string().optional(),
+  sectors: z.array(z.string().min(1)).min(1).optional(),
   kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).optional(),
   weightKg: z.coerce.number().positive().optional().nullable(),
   priceBRL: z.coerce.number().positive().optional().nullable(),

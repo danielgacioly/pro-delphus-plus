@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import type { ProductKind } from '@prodelphusplus/shared'
 
 export const emptyProductForm = {
   sku: '',
   name: '',
-  sector: '',
+  sectors: [] as string[],
   kind: 'COMPLETE_MODEL' as ProductKind,
   description: '',
+  components: '',
   weightKg: '',
   priceBRL: '',
   priceUSD: '',
@@ -18,9 +20,10 @@ export function productFormToPayload(form: ProductFormState) {
   return {
     sku: form.sku,
     name: form.name,
-    sector: form.sector,
+    sectors: form.sectors,
     kind: form.kind,
     description: form.description || undefined,
+    components: form.components || undefined,
     weightKg: form.weightKg ? Number(form.weightKg) : undefined,
     priceBRL: form.priceBRL ? Number(form.priceBRL) : undefined,
     priceUSD: form.priceUSD ? Number(form.priceUSD) : undefined,
@@ -37,11 +40,23 @@ export function ProductFieldSet({
   onChange: (patch: Partial<ProductFormState>) => void
   sectors: string[]
 }) {
+  const [sectorDraft, setSectorDraft] = useState('')
+
+  function addSector(raw: string) {
+    const s = raw.trim()
+    if (!s || value.sectors.includes(s)) return
+    onChange({ sectors: [...value.sectors, s] })
+    setSectorDraft('')
+  }
+
+  function removeSector(s: string) {
+    onChange({ sectors: value.sectors.filter((x) => x !== s) })
+  }
+
   return (
     <>
       <input
-        placeholder="SKU"
-        required
+        placeholder="SKU (opcional)"
         value={value.sku}
         onChange={(e) => onChange({ sku: e.target.value })}
         className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
@@ -61,14 +76,50 @@ export function ProductFieldSet({
         <option value="COMPLETE_MODEL">Modelo completo</option>
         <option value="COMPONENT">Componente / peça</option>
       </select>
-      <input
-        placeholder="Setor (ex: Spine)"
-        required
-        list="sectors-datalist"
-        value={value.sector}
-        onChange={(e) => onChange({ sector: e.target.value })}
-        className="col-span-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
+      <div className="col-span-2">
+        {value.sectors.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap gap-1.5">
+            {value.sectors.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700"
+              >
+                {s}
+                <button
+                  type="button"
+                  onClick={() => removeSector(s)}
+                  className="text-neutral-400 hover:text-brand-600"
+                  aria-label={`Remover setor ${s}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-1.5">
+          <input
+            placeholder="Setor (ex: Spine) — Enter para adicionar"
+            list="sectors-datalist"
+            value={sectorDraft}
+            onChange={(e) => setSectorDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addSector(sectorDraft)
+              }
+            }}
+            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => addSector(sectorDraft)}
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+          >
+            Adicionar
+          </button>
+        </div>
+      </div>
       <datalist id="sectors-datalist">
         {sectors.map((s) => (
           <option key={s} value={s} />
@@ -88,6 +139,14 @@ export function ProductFieldSet({
         onChange={(e) => onChange({ description: e.target.value })}
         className="col-span-4 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
       />
+      {value.kind === 'COMPLETE_MODEL' && (
+        <input
+          placeholder="Componentes do kit (opcional, ex: Components: 1 MMT-0, 1 MMT-1)"
+          value={value.components}
+          onChange={(e) => onChange({ components: e.target.value })}
+          className="col-span-4 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+      )}
       <input
         placeholder="Preço final BRL"
         type="number"

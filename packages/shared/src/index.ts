@@ -46,7 +46,8 @@ export interface ProductDTO {
   sku: string
   name: string
   description: string | null
-  sector: string
+  components: string | null
+  sectors: string[]
   kind: ProductKind
   weightKg: string | null
   priceBRL: string | null

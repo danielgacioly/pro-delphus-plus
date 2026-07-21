@@ -12,8 +12,14 @@ sectorsRouter.get(
   '/',
   asyncHandler(async (_req, res) => {
     const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } })
-    const counts = await prisma.product.groupBy({ by: ['sector'], _count: { sector: true } })
-    const countBySector = new Map(counts.map((c) => [c.sector, c._count.sector]))
+    // Product.sectors is a scalar array, so counting per sector name happens in JS.
+    const products = await prisma.product.findMany({ where: { active: true }, select: { sectors: true } })
+    const countBySector = new Map<string, number>()
+    for (const product of products) {
+      for (const name of product.sectors) {
+        countBySector.set(name, (countBySector.get(name) ?? 0) + 1)
+      }
+    }
     res.json({
       sectors: sectors.map((s) => ({
         id: s.id,
@@ -55,13 +61,14 @@ sectorsRouter.patch(
     }
 
     // Sector.name isn't a foreign key on Product (kept as free text), so a
-    // rename has to be propagated to every product carrying the old name.
+    // rename has to be propagated to every product carrying the old name —
+    // replacing just that one entry in each product's sectors array.
     await prisma.$transaction([
-      prisma.product.updateMany({ where: { sector: sector.name }, data: { sector: data.name } }),
+      prisma.$executeRaw`UPDATE products SET sectors = array_replace(sectors, ${sector.name}, ${data.name}) WHERE ${sector.name} = ANY(sectors)`,
       prisma.sector.update({ where: { id: sector.id }, data: { name: data.name } }),
     ])
 
-    const productCount = await prisma.product.count({ where: { sector: data.name } })
+    const productCount = await prisma.product.count({ where: { sectors: { has: data.name } } })
     res.json({ sector: { id: sector.id, name: data.name, productCount } })
   }),
 )
@@ -73,7 +80,7 @@ sectorsRouter.delete(
     const sector = await prisma.sector.findUnique({ where: { id: req.params.id } })
     if (!sector) throw new HttpError(404, 'Setor não encontrado')
 
-    const productCount = await prisma.product.count({ where: { sector: sector.name } })
+    const productCount = await prisma.product.count({ where: { sectors: { has: sector.name } } })
     if (productCount > 0) {
       throw new HttpError(
         409,
