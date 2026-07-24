@@ -51,7 +51,12 @@ export function Login() {
           className="mb-4 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         />
 
-        <label className="mb-1 block text-sm font-medium text-neutral-700">Senha</label>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="block text-sm font-medium text-neutral-700">Senha</label>
+          <Link to="/esqueci-senha" className="text-xs font-medium text-brand-600 hover:underline">
+            Esqueci minha senha
+          </Link>
+        </div>
         <input
           type="password"
           required

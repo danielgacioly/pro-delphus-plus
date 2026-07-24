@@ -63,6 +63,7 @@ export function Products() {
         weightKg: payload.weightKg ?? null,
         priceBRL: payload.priceBRL ?? null,
         priceUSD: payload.priceUSD ?? null,
+        priceEUR: payload.priceEUR ?? null,
         priceUSDDistributor: payload.priceUSDDistributor ?? null,
       })
     },
@@ -136,6 +137,7 @@ export function Products() {
       weightKg: product.weightKg ?? '',
       priceBRL: product.priceBRL ?? '',
       priceUSD: product.priceUSD ?? '',
+      priceEUR: product.priceEUR ?? '',
       priceUSDDistributor: product.priceUSDDistributor ?? '',
     })
   }

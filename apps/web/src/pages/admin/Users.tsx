@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Role, UserDTO } from '@prodelphusplus/shared'
 import { api } from '../../lib/api'
+import { ResetPasswordModal } from '../../components/ResetPasswordModal'
 
 async function fetchUsers() {
   const { data } = await api.get<{ users: UserDTO[] }>('/users')
@@ -25,6 +26,11 @@ export function AdminUsers() {
   const [phone, setPhone] = useState('')
   const [jobTitle, setJobTitle] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [resetPasswordMessage, setResetPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null,
+  )
+  const [resettingUser, setResettingUser] = useState<UserDTO | null>(null)
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] })
 
@@ -70,10 +76,19 @@ export function AdminUsers() {
   })
 
   const resetPassword = useMutation({
-    mutationFn: async (id: string) => {
-      const newPassword = window.prompt('Nova senha temporária (mínimo 6 caracteres):')
-      if (!newPassword) throw new Error('cancelled')
+    mutationFn: async ({ id, newPassword }: { id: string; newPassword: string }) => {
       await api.post(`/users/${id}/reset-password`, { password: newPassword })
+    },
+    onSuccess: () => {
+      setResettingUser(null)
+      setResetPasswordError(null)
+      setResetPasswordMessage({ type: 'success', text: 'Senha redefinida com sucesso.' })
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        'Não foi possível redefinir a senha. Tente novamente.'
+      setResetPasswordError(message)
     },
   })
 
@@ -184,6 +199,16 @@ export function AdminUsers() {
         </button>
       </form>
 
+      {resetPasswordMessage && (
+        <div
+          className={`mt-6 rounded-lg px-3 py-2 text-sm ${
+            resetPasswordMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-brand-50 text-brand-700'
+          }`}
+        >
+          {resetPasswordMessage.text}
+        </div>
+      )}
+
       <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
         <table className="min-w-full divide-y divide-neutral-200 text-sm">
           <thead className="bg-neutral-50">
@@ -249,7 +274,11 @@ export function AdminUsers() {
                     </button>
                   )}
                   <button
-                    onClick={() => resetPassword.mutate(u.id)}
+                    onClick={() => {
+                      setResetPasswordMessage(null)
+                      setResetPasswordError(null)
+                      setResettingUser(u)
+                    }}
                     className="text-xs font-medium text-brand-600 hover:underline"
                   >
                     Redefinir senha
@@ -260,6 +289,16 @@ export function AdminUsers() {
           </tbody>
         </table>
       </div>
+
+      {resettingUser && (
+        <ResetPasswordModal
+          userName={resettingUser.name}
+          isPending={resetPassword.isPending}
+          error={resetPasswordError}
+          onCancel={() => setResettingUser(null)}
+          onConfirm={(newPassword) => resetPassword.mutate({ id: resettingUser.id, newPassword })}
+        />
+      )}
     </div>
   )
 }

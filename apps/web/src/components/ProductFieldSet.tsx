@@ -11,6 +11,7 @@ export const emptyProductForm = {
   weightKg: '',
   priceBRL: '',
   priceUSD: '',
+  priceEUR: '',
   priceUSDDistributor: '',
 }
 
@@ -27,6 +28,7 @@ export function productFormToPayload(form: ProductFormState) {
     weightKg: form.weightKg ? Number(form.weightKg) : undefined,
     priceBRL: form.priceBRL ? Number(form.priceBRL) : undefined,
     priceUSD: form.priceUSD ? Number(form.priceUSD) : undefined,
+    priceEUR: form.priceEUR ? Number(form.priceEUR) : undefined,
     priceUSDDistributor: form.priceUSDDistributor ? Number(form.priceUSDDistributor) : undefined,
   }
 }
@@ -56,7 +58,7 @@ export function ProductFieldSet({
   return (
     <>
       <input
-        placeholder="SKU (opcional)"
+        placeholder="SKU"
         value={value.sku}
         onChange={(e) => onChange({ sku: e.target.value })}
         className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
@@ -99,7 +101,7 @@ export function ProductFieldSet({
         )}
         <div className="flex gap-1.5">
           <input
-            placeholder="Setor (ex: Spine) — Enter para adicionar"
+            placeholder="Setor (ex: Spine)"
             list="sectors-datalist"
             value={sectorDraft}
             onChange={(e) => setSectorDraft(e.target.value)}
@@ -161,6 +163,14 @@ export function ProductFieldSet({
         step="0.01"
         value={value.priceUSD}
         onChange={(e) => onChange({ priceUSD: e.target.value })}
+        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+      />
+      <input
+        placeholder="Preço final EUR"
+        type="number"
+        step="0.01"
+        value={value.priceEUR}
+        onChange={(e) => onChange({ priceEUR: e.target.value })}
         className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
       />
       <input
