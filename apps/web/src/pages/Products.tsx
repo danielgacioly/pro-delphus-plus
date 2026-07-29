@@ -5,6 +5,7 @@ import type { ProductDTO, ProductKind } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
+import { DropZone } from '../components/DropZone'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -35,6 +36,8 @@ export function Products() {
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState('')
+  const [kindFilter, setKindFilter] = useState<ProductKind | 'ALL'>('ALL')
+  const [sectorFilter, setSectorFilter] = useState('ALL')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingProduct, setDeletingProduct] = useState<ProductDTO | null>(null)
@@ -52,6 +55,11 @@ export function Products() {
   })
 
   const { data: sectors } = useQuery({ queryKey: ['product-sectors'], queryFn: fetchSectors })
+
+  const filteredProducts = products?.filter(
+    (p) =>
+      (kindFilter === 'ALL' || p.kind === kindFilter) && (sectorFilter === 'ALL' || p.sectors.includes(sectorFilter)),
+  )
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] })
 
@@ -161,12 +169,35 @@ export function Products() {
         )}
       </div>
 
-      <input
-        placeholder="Buscar por SKU, nome, setor ou descrição"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mt-4 w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <input
+          placeholder="Buscar por SKU, nome, setor ou descrição"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+        <select
+          value={kindFilter}
+          onChange={(e) => setKindFilter(e.target.value as ProductKind | 'ALL')}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        >
+          <option value="ALL">Todos os tipos</option>
+          <option value="COMPLETE_MODEL">{kindLabel.COMPLETE_MODEL}</option>
+          <option value="COMPONENT">{kindLabel.COMPONENT}</option>
+        </select>
+        <select
+          value={sectorFilter}
+          onChange={(e) => setSectorFilter(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        >
+          <option value="ALL">Todos os setores</option>
+          {sectors?.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="mt-6 space-y-3">
         {isLoading && <p className="text-neutral-400">Carregando…</p>}
@@ -175,10 +206,10 @@ export function Products() {
             Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.
           </p>
         )}
-        {!isLoading && !isError && products?.length === 0 && (
+        {!isLoading && !isError && filteredProducts?.length === 0 && (
           <p className="text-neutral-400">Nenhum item encontrado.</p>
         )}
-        {products?.map((product) => {
+        {filteredProducts?.map((product) => {
           const primaryMedia = product.media.find((m) => m.isPrimary)
           const isEditing = editingId === product.id
           return (
@@ -305,15 +336,16 @@ export function Products() {
                       ))}
                     </div>
                     {isAdmin && (
-                      <input
-                        type="file"
-                        className="mt-3 text-xs"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) uploadMedia.mutate({ id: product.id, file })
-                          e.target.value = ''
-                        }}
-                      />
+                      <DropZone
+                        accept="image/*"
+                        multiple
+                        className="mt-3 py-3"
+                        onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
+                      >
+                        <p className="text-xs text-neutral-500">
+                          Arraste imagens aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
+                        </p>
+                      </DropZone>
                     )}
                   </div>
 

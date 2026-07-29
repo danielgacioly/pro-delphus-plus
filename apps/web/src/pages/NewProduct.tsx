@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { DropZone } from '../components/DropZone'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -22,7 +23,6 @@ export function NewProduct() {
   const [form, setForm] = useState<ProductFormState>(emptyProductForm)
   const [files, setFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: sectors } = useQuery({ queryKey: ['product-sectors'], queryFn: fetchSectors })
 
@@ -75,15 +75,19 @@ export function NewProduct() {
 
         <div className="col-span-4">
           <label className="mb-1 block text-xs font-medium text-neutral-600">Mídias (opcional)</label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-            className="text-xs"
-          />
-          {files.length > 0 && <p className="mt-1 text-xs text-neutral-500">{files.length} arquivo(s) selecionado(s)</p>}
+          <DropZone accept="image/*" multiple onFiles={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}>
+            <p className="text-xs text-neutral-500">
+              Arraste imagens aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
+            </p>
+          </DropZone>
+          {files.length > 0 && (
+            <p className="mt-1 text-xs text-neutral-500">
+              {files.length} arquivo(s) selecionado(s) —{' '}
+              <button type="button" onClick={() => setFiles([])} className="text-brand-600 hover:underline">
+                limpar
+              </button>
+            </p>
+          )}
         </div>
 
         <button

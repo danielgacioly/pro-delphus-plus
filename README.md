@@ -148,4 +148,6 @@ npm run dev:api    # em um terminal
 npm run dev:web    # em outro, se o frontend também tiver caído
 ```
 
+> **Por que isso acontece com frequência em desenvolvimento local**: `npm run dev:api`/`dev:web` rodam em processos comuns de terminal, sem nenhum supervisor que os reinicie sozinho se caírem (por fechar o terminal, o computador dormir, falta de memória, etc.). Isso é esperado em ambiente de desenvolvimento e não indica um bug no código — não precisa investigar cada vez, só suba de novo. Em produção isso não acontece, porque lá o processo roda sob um supervisor (ex: `pm2`, systemd, ou o próprio orquestrador da hospedagem escolhida) que reinicia automaticamente se cair.
+
 Confirme também que o Postgres continua de pé (`docker compose ps` deve mostrar o container `prodelphusplus-postgres` como `Up`/`healthy`) — se ele caiu junto, suba com `npm run db:up` antes de reiniciar a API.

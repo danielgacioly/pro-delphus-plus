@@ -64,13 +64,13 @@ const orderFieldsSchema = z.object({
   grossWeightKg: z.coerce.number().positive().optional(),
   awbNumber: z.string().optional(),
   incoterms: z.string().optional(),
-  prepaymentBy: z.enum(['PAYPAL', 'WIRE_TRANSFER']).default('WIRE_TRANSFER'),
+  prepaymentBy: z.enum(['PAYPAL', 'WIRE_TRANSFER']).optional(),
   paypalFee: z.coerce.number().min(0).optional(),
   nfNumber: z.string().optional(),
   nfDate: z.coerce.date().optional(),
   exchangeRate: z.coerce.number().positive().optional(),
   itemWeightsKg: z.array(z.coerce.number().positive().nullable()).optional(),
-  packageCount: z.coerce.number().int().positive().default(1),
+  packageCount: z.coerce.number().int().positive().optional(),
   boxAssignments: z
     .array(z.array(z.object({ label: z.string().min(1), quantity: z.number().int().positive() })))
     .optional(),
@@ -186,6 +186,8 @@ async function buildAndWriteDocuments(
     exchangeRate: order.exchangeRate,
     currency,
     freight,
+    paypalFee: order.prepaymentBy === 'PAYPAL' ? order.paypalFee : null,
+    discount: discount > 0 ? discount : null,
     grossWeightKg: order.grossWeightKg,
     packageCount: order.packageCount,
     items: quote.items.map((item, index) => {
@@ -248,6 +250,8 @@ ordersRouter.post(
 
     const orderNumber = await nextOrderNumber()
     const exchangeRate = data.exchangeRate ?? (await fetchUsdBrlRate().catch(() => 1))
+    const packageCount = data.packageCount ?? 1
+    const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
 
     const orderForDocs = {
       orderNumber,
@@ -260,13 +264,13 @@ ordersRouter.post(
       grossWeightKg: data.grossWeightKg ?? null,
       awbNumber: data.awbNumber ?? null,
       incoterms: data.incoterms ?? null,
-      prepaymentBy: data.prepaymentBy,
+      prepaymentBy,
       paypalFee: data.paypalFee ?? null,
       nfNumber: data.nfNumber ?? null,
       nfDate: data.nfDate ?? null,
       exchangeRate,
       itemWeightsKg: data.itemWeightsKg ?? null,
-      packageCount: data.packageCount,
+      packageCount,
       boxAssignments: data.boxAssignments ?? null,
     }
 
@@ -282,15 +286,15 @@ ordersRouter.post(
         billToText: data.billToText,
         shipToText: data.shipToText,
         shipToNote: data.shipToNote ?? null,
-        numberOfPackages: formatPackageCountLabel(data.packageCount),
+        numberOfPackages: formatPackageCountLabel(packageCount),
         netWeightKg: data.netWeightKg ?? null,
         grossWeightKg: data.grossWeightKg ?? null,
         awbNumber: data.awbNumber ?? null,
         incoterms: data.incoterms ?? null,
         itemWeightsKg: data.itemWeightsKg,
-        packageCount: data.packageCount,
+        packageCount,
         boxAssignments: data.boxAssignments ?? undefined,
-        prepaymentBy: data.prepaymentBy,
+        prepaymentBy,
         paypalFee: data.paypalFee ?? null,
         nfNumber: data.nfNumber ?? null,
         nfDate: data.nfDate ?? null,

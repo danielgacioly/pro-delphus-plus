@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { formatAmount, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 
@@ -12,6 +12,11 @@ async function fetchQuotes() {
 async function fetchExchangeRate() {
   const { data } = await api.get<{ rate: number }>('/orders/exchange-rate')
   return data.rate
+}
+
+async function fetchOrder(id: string) {
+  const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
+  return data.order
 }
 
 const emptyForm = {
@@ -43,14 +48,22 @@ interface BoxLine {
 export function NewOrder() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const duplicateFrom = searchParams.get('duplicateFrom')
   const [form, setForm] = useState(emptyForm)
   const [itemWeights, setItemWeights] = useState<string[]>([])
   const [packageCount, setPackageCount] = useState('1')
   const [boxLines, setBoxLines] = useState<BoxLine[]>([])
   const [error, setError] = useState<string | null>(null)
+  const prefilled = useRef(false)
 
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
   const { data: liveRate } = useQuery({ queryKey: ['exchange-rate'], queryFn: fetchExchangeRate })
+  const { data: sourceOrder } = useQuery({
+    queryKey: ['orders', duplicateFrom],
+    queryFn: () => fetchOrder(duplicateFrom as string),
+    enabled: !!duplicateFrom,
+  })
 
   useEffect(() => {
     if (liveRate && !form.exchangeRate) {
@@ -58,6 +71,50 @@ export function NewOrder() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveRate])
+
+  // Pre-fill the form from a previous order once both it and the quotes list
+  // have loaded — guarded so it only runs once, and never overwrites fields
+  // that are inherently unique per shipment (PO, ship date, AWB, NF, rate).
+  useEffect(() => {
+    if (!sourceOrder || !quotes || prefilled.current) return
+    prefilled.current = true
+    const quote = quotes.find((q) => q.id === sourceOrder.quoteId)
+    setForm((s) => ({
+      ...s,
+      quoteId: sourceOrder.quoteId,
+      orderedByEmail: sourceOrder.orderedByEmail,
+      billToText: sourceOrder.billToText,
+      shipToText: sourceOrder.shipToText,
+      shipToNote: sourceOrder.shipToNote ?? '',
+      netWeightKg: sourceOrder.netWeightKg ?? '',
+      grossWeightKg: sourceOrder.grossWeightKg ?? '',
+      incoterms: sourceOrder.incoterms ?? '',
+      prepaymentBy: sourceOrder.prepaymentBy,
+      paypalFee: sourceOrder.paypalFee ?? '',
+    }))
+    setPackageCount(String(sourceOrder.packageCount || 1))
+    setItemWeights(
+      sourceOrder.itemWeightsKg && quote
+        ? quote.items.map((_, i) => {
+            const w = sourceOrder.itemWeightsKg?.[i]
+            return w != null ? String(w) : ''
+          })
+        : quote
+          ? quote.items.map(() => '')
+          : [],
+    )
+    if (sourceOrder.boxAssignments && quote) {
+      const lines: BoxLine[] = []
+      sourceOrder.boxAssignments.forEach((box, boxIndex) => {
+        box.forEach((entry, i) => {
+          lines.push({ id: `dup-${boxIndex}-${i}`, label: entry.label, quantity: entry.quantity, box: boxIndex + 1 })
+        })
+      })
+      setBoxLines(lines)
+    } else if (quote) {
+      setBoxLines(quote.items.map((item, i) => ({ id: `item-${i}`, label: item.productName, quantity: item.quantity, box: 1 })))
+    }
+  }, [sourceOrder, quotes])
 
   const selectedQuote = quotes?.find((q) => q.id === form.quoteId)
   const currency = selectedQuote?.currency ?? null
@@ -174,6 +231,14 @@ export function NewOrder() {
         Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de
         Exportação.
       </p>
+
+      {duplicateFrom && (
+        <div className="mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+          {sourceOrder
+            ? `Campos preenchidos a partir do pedido #${sourceOrder.orderNumber}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
+            : 'Carregando dados do pedido a duplicar…'}
+        </div>
+      )}
 
       {error && (
         <div className="mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>

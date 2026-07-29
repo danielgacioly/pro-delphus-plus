@@ -13,6 +13,8 @@ export interface ExportDocData {
   currency: string
   items: ExportDocItem[]
   freight: number | null
+  paypalFee: number | null
+  discount: number | null
   grossWeightKg: number | null
   packageCount: number
 }
@@ -109,6 +111,12 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   const items = [...data.items]
   if (data.freight !== null) {
     items.push({ code: 'Shipping', quantity: 1, unitPriceUsd: data.freight, weightKgUnit: null })
+  }
+  if (data.paypalFee !== null) {
+    items.push({ code: 'PayPal fee', quantity: 1, unitPriceUsd: data.paypalFee, weightKgUnit: null })
+  }
+  if (data.discount !== null && data.discount > 0) {
+    items.push({ code: 'Discount', quantity: 1, unitPriceUsd: -data.discount, weightKgUnit: null })
   }
 
   items.forEach((item, index) => {

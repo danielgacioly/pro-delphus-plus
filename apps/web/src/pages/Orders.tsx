@@ -138,26 +138,27 @@ export function Orders() {
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Criado por</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Total</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Status</th>
+              <th className="px-4 py-2 text-right font-medium text-neutral-500">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-4 py-4 text-center text-neutral-400">
                   Carregando…
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
-                <td colSpan={7} className="px-4 py-4 text-center text-brand-600">
+                <td colSpan={8} className="px-4 py-4 text-center text-brand-600">
                   Não foi possível carregar os pedidos.
                 </td>
               </tr>
             )}
             {!isLoading && !isError && filteredOrders.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-4 py-4 text-center text-neutral-400">
                   Nenhum pedido encontrado para o filtro selecionado.
                 </td>
               </tr>
@@ -176,6 +177,14 @@ export function Orders() {
                 <td className="px-4 py-2 text-ink-900">{formatAmount(o.quote.total)}</td>
                 <td className="px-4 py-2">
                   <StatusToggle order={o} />
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <Link
+                    to={`/pedidos/novo?duplicateFrom=${o.id}`}
+                    className="text-xs font-medium text-brand-600 hover:underline"
+                  >
+                    Duplicar
+                  </Link>
                 </td>
               </tr>
             ))}

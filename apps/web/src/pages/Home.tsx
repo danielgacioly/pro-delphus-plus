@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import type { UserDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { DropZone } from '../components/DropZone'
 
 const shortcuts = [
   { to: '/orcamentos/novo', title: 'Novo orçamento', description: 'Gere um orçamento em PDF a partir do SKU do produto.' },
@@ -202,16 +203,19 @@ function AccountSection() {
           <p className="mb-2 text-xs text-neutral-400">Nenhuma assinatura enviada ainda.</p>
         )}
 
-        <input
-          type="file"
+        <DropZone
           accept="image/*"
-          className="mt-3 text-xs"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
+          disabled={uploadSignature.isPending}
+          className="mt-3"
+          onFiles={(files) => {
+            const file = files[0]
             if (file) uploadSignature.mutate(file)
-            e.target.value = ''
           }}
-        />
+        >
+          <p className="text-xs text-neutral-500">
+            Arraste uma imagem aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
+          </p>
+        </DropZone>
         {uploadSignature.isPending && <p className="mt-1 text-xs text-neutral-400">Enviando…</p>}
       </div>
 
