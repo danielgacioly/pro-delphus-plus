@@ -17,6 +17,7 @@ import { OrderDetail } from './pages/OrderDetail'
 import { Stats } from './pages/Stats'
 import { AdminUsers } from './pages/admin/Users'
 import { AdminSectors } from './pages/admin/Sectors'
+import { NewSector } from './pages/admin/NewSector'
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
             <Route path="/produtos/novo" element={<NewProduct />} />
             <Route path="/admin/contas" element={<AdminUsers />} />
             <Route path="/admin/setores" element={<AdminSectors />} />
+            <Route path="/admin/setores/novo" element={<NewSector />} />
             <Route path="/admin/metricas" element={<Stats />} />
           </Route>
         </Route>

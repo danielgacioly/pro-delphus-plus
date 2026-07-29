@@ -130,3 +130,22 @@ prodelphusplus/
 **Porta 4000 ou 5173 já em uso** — pare o processo que está usando a porta, ou altere `PORT` em `apps/api/.env` (backend) / a porta do Vite em `apps/web/vite.config.ts` (frontend, lembrando de ajustar o proxy também).
 
 **Geração de PDF falhando** — a primeira geração de orçamento pode demorar alguns segundos porque o Puppeteer baixa/inicializa um Chromium headless na primeira execução. Se falhar, rode `npx puppeteer browsers install chrome` dentro de `apps/api`.
+
+**Não consigo logar / o site trava em "Carregando..." / erro de conexão** — antes de desconfiar da senha, confirme se o servidor não caiu. O terminal onde `npm run dev:api` (ou `npm run dev:web`) estava rodando pode ter sido fechado, travado, ou o processo pode ter morrido sozinho. Para verificar:
+
+```bash
+# O processo da API ainda está de pé?
+ps aux | grep "src/index.ts"
+
+# A API está respondendo? (deve retornar algum código HTTP, não erro de conexão)
+curl -i http://localhost:4000/api/auth/me
+```
+
+Se não aparecer nenhum processo, ou o `curl` der erro de conexão (`Failed to connect` / `Connection refused`), o servidor caiu — é só subir de novo:
+
+```bash
+npm run dev:api    # em um terminal
+npm run dev:web    # em outro, se o frontend também tiver caído
+```
+
+Confirme também que o Postgres continua de pé (`docker compose ps` deve mostrar o container `prodelphusplus-postgres` como `Up`/`healthy`) — se ele caiu junto, suba com `npm run db:up` antes de reiniciar a API.

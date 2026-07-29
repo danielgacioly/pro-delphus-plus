@@ -43,12 +43,25 @@ export function ProductFieldSet({
   sectors: string[]
 }) {
   const [sectorDraft, setSectorDraft] = useState('')
+  const [sectorError, setSectorError] = useState('')
 
   function addSector(raw: string) {
-    const s = raw.trim()
-    if (!s || value.sectors.includes(s)) return
-    onChange({ sectors: [...value.sectors, s] })
+    const typed = raw.trim()
+    if (!typed) return
+
+    const match = sectors.find((s) => s.toLowerCase() === typed.toLowerCase())
+    if (!match) {
+      setSectorError('Setor não encontrado. Escolha um setor já existente.')
+      return
+    }
+    if (value.sectors.includes(match)) {
+      setSectorError('')
+      setSectorDraft('')
+      return
+    }
+    onChange({ sectors: [...value.sectors, match] })
     setSectorDraft('')
+    setSectorError('')
   }
 
   function removeSector(s: string) {
@@ -99,28 +112,23 @@ export function ProductFieldSet({
             ))}
           </div>
         )}
-        <div className="flex gap-1.5">
-          <input
-            placeholder="Setor (ex: Spine)"
-            list="sectors-datalist"
-            value={sectorDraft}
-            onChange={(e) => setSectorDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addSector(sectorDraft)
-              }
-            }}
-            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={() => addSector(sectorDraft)}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
-          >
-            Adicionar
-          </button>
-        </div>
+        <input
+          placeholder="Setor — digite e aperte Enter para adicionar"
+          list="sectors-datalist"
+          value={sectorDraft}
+          onChange={(e) => {
+            setSectorDraft(e.target.value)
+            if (sectorError) setSectorError('')
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addSector(sectorDraft)
+            }
+          }}
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+        {sectorError && <p className="mt-1 text-xs text-brand-600">{sectorError}</p>}
       </div>
       <datalist id="sectors-datalist">
         {sectors.map((s) => (

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import type { SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../../lib/api'
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
@@ -13,11 +14,17 @@ export function AdminSectors() {
   const queryClient = useQueryClient()
   const { data: sectors, isLoading, isError } = useQuery({ queryKey: ['sectors'], queryFn: fetchSectors })
 
-  const [newName, setNewName] = useState('')
+  const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [deletingSector, setDeletingSector] = useState<SectorDTO | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const filteredSectors = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return sectors ?? []
+    return (sectors ?? []).filter((s) => s.name.toLowerCase().includes(q))
+  }, [sectors, search])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['sectors'] })
@@ -29,16 +36,6 @@ export function AdminSectors() {
   function extractError(err: unknown, fallback: string) {
     return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
   }
-
-  const createSector = useMutation({
-    mutationFn: async () => api.post('/sectors', { name: newName.trim() }),
-    onSuccess: () => {
-      invalidate()
-      setNewName('')
-      setError(null)
-    },
-    onError: (err: unknown) => setError(extractError(err, 'Não foi possível criar o setor.')),
-  })
 
   const updateSector = useMutation({
     mutationFn: async (id: string) => api.patch(`/sectors/${id}`, { name: editName.trim() }),
@@ -70,35 +67,29 @@ export function AdminSectors() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-ink-900">Setores</h1>
-      <p className="mt-1 text-neutral-500">
-        Gerencie os setores usados no catálogo de produtos e na tabela de preços.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-900">Setores</h1>
+          <p className="mt-1 text-neutral-500">
+            Gerencie os setores usados no catálogo de produtos e na tabela de preços.
+          </p>
+        </div>
+        <Link
+          to="/admin/setores/novo"
+          className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+        >
+          + Novo setor
+        </Link>
+      </div>
 
       {error && <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          createSector.mutate()
-        }}
-        className="mt-4 flex max-w-md gap-2"
-      >
-        <input
-          placeholder="Novo setor"
-          required
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={createSector.isPending}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-        >
-          {createSector.isPending ? 'Salvando…' : 'Adicionar'}
-        </button>
-      </form>
+      <input
+        placeholder="Buscar setor"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mt-4 w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+      />
 
       <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
         <table className="min-w-full divide-y divide-neutral-200 text-sm">
@@ -124,14 +115,14 @@ export function AdminSectors() {
                 </td>
               </tr>
             )}
-            {!isLoading && !isError && sectors?.length === 0 && (
+            {!isLoading && !isError && filteredSectors.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-4 text-center text-neutral-400">
-                  Nenhum setor cadastrado.
+                  {search ? 'Nenhum setor encontrado para essa busca.' : 'Nenhum setor cadastrado.'}
                 </td>
               </tr>
             )}
-            {sectors?.map((sector) => (
+            {filteredSectors.map((sector) => (
               <tr key={sector.id}>
                 <td className="px-4 py-2 text-ink-900">
                   {editingId === sector.id ? (

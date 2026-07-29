@@ -188,7 +188,7 @@ function AccountSection() {
             <img
               src={user.signatureUrl}
               alt="Sua assinatura"
-              className="h-16 max-w-[220px] rounded-lg border border-neutral-200 bg-neutral-50 object-contain p-2"
+              className="h-16 max-w-[13.75px] rounded-lg border border-neutral-200 bg-neutral-50 object-contain p-2"
             />
             <button
               onClick={() => removeSignature.mutate()}
