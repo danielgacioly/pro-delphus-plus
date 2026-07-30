@@ -17,6 +17,7 @@ export function AdminSectors() {
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [editNamePt, setEditNamePt] = useState('')
   const [deletingSector, setDeletingSector] = useState<SectorDTO | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,7 +39,8 @@ export function AdminSectors() {
   }
 
   const updateSector = useMutation({
-    mutationFn: async (id: string) => api.patch(`/sectors/${id}`, { name: editName.trim() }),
+    mutationFn: async (id: string) =>
+      api.patch(`/sectors/${id}`, { name: editName.trim(), namePt: editNamePt.trim() || null }),
     onSuccess: () => {
       invalidate()
       setEditingId(null)
@@ -63,6 +65,7 @@ export function AdminSectors() {
   function startEdit(sector: SectorDTO) {
     setEditingId(sector.id)
     setEditName(sector.name)
+    setEditNamePt(sector.namePt ?? '')
   }
 
   return (
@@ -95,7 +98,8 @@ export function AdminSectors() {
         <table className="min-w-full divide-y divide-neutral-200 text-sm">
           <thead className="bg-neutral-50">
             <tr>
-              <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome (inglês)</th>
+              <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome (português)</th>
               <th className="px-4 py-2 text-left font-medium text-neutral-500">Produtos</th>
               <th className="px-4 py-2 text-right font-medium text-neutral-500">Ações</th>
             </tr>
@@ -103,29 +107,29 @@ export function AdminSectors() {
           <tbody className="divide-y divide-neutral-100">
             {isLoading && (
               <tr>
-                <td colSpan={3} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={4} className="px-4 py-4 text-center text-neutral-400">
                   Carregando…
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
-                <td colSpan={3} className="px-4 py-4 text-center text-brand-600">
+                <td colSpan={4} className="px-4 py-4 text-center text-brand-600">
                   Não foi possível carregar os setores.
                 </td>
               </tr>
             )}
             {!isLoading && !isError && filteredSectors.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-4 text-center text-neutral-400">
+                <td colSpan={4} className="px-4 py-4 text-center text-neutral-400">
                   {search ? 'Nenhum setor encontrado para essa busca.' : 'Nenhum setor cadastrado.'}
                 </td>
               </tr>
             )}
             {filteredSectors.map((sector) => (
               <tr key={sector.id}>
-                <td className="px-4 py-2 text-ink-900">
-                  {editingId === sector.id ? (
+                {editingId === sector.id ? (
+                  <td colSpan={2} className="px-4 py-2 text-ink-900">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault()
@@ -136,8 +140,15 @@ export function AdminSectors() {
                       <input
                         autoFocus
                         required
+                        placeholder="Nome em inglês"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-sm"
+                      />
+                      <input
+                        placeholder="Nome em português (opcional)"
+                        value={editNamePt}
+                        onChange={(e) => setEditNamePt(e.target.value)}
                         className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-sm"
                       />
                       <button
@@ -155,10 +166,13 @@ export function AdminSectors() {
                         Cancelar
                       </button>
                     </form>
-                  ) : (
-                    sector.name
-                  )}
-                </td>
+                  </td>
+                ) : (
+                  <>
+                    <td className="px-4 py-2 text-ink-900">{sector.name}</td>
+                    <td className="px-4 py-2 text-neutral-600">{sector.namePt || '—'}</td>
+                  </>
+                )}
                 <td className="px-4 py-2 text-neutral-600">{sector.productCount}</td>
                 <td className="px-4 py-2 text-right">
                   {editingId !== sector.id && (

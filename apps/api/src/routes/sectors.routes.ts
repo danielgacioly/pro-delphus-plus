@@ -24,13 +24,14 @@ sectorsRouter.get(
       sectors: sectors.map((s) => ({
         id: s.id,
         name: s.name,
+        namePt: s.namePt,
         productCount: countBySector.get(s.name) ?? 0,
       })),
     })
   }),
 )
 
-const createSectorSchema = z.object({ name: z.string().trim().min(1) })
+const createSectorSchema = z.object({ name: z.string().trim().min(1), namePt: z.string().trim().optional() })
 
 sectorsRouter.post(
   '/',
@@ -40,12 +41,12 @@ sectorsRouter.post(
     const existing = await prisma.sector.findUnique({ where: { name: data.name } })
     if (existing) throw new HttpError(409, 'Já existe um setor com este nome')
 
-    const sector = await prisma.sector.create({ data: { name: data.name } })
-    res.status(201).json({ sector: { id: sector.id, name: sector.name, productCount: 0 } })
+    const sector = await prisma.sector.create({ data: { name: data.name, namePt: data.namePt ?? null } })
+    res.status(201).json({ sector: { id: sector.id, name: sector.name, namePt: sector.namePt, productCount: 0 } })
   }),
 )
 
-const updateSectorSchema = z.object({ name: z.string().trim().min(1) })
+const updateSectorSchema = z.object({ name: z.string().trim().min(1), namePt: z.string().trim().optional().nullable() })
 
 sectorsRouter.patch(
   '/:id',
@@ -65,11 +66,11 @@ sectorsRouter.patch(
     // replacing just that one entry in each product's sectors array.
     await prisma.$transaction([
       prisma.$executeRaw`UPDATE products SET sectors = array_replace(sectors, ${sector.name}, ${data.name}) WHERE ${sector.name} = ANY(sectors)`,
-      prisma.sector.update({ where: { id: sector.id }, data: { name: data.name } }),
+      prisma.sector.update({ where: { id: sector.id }, data: { name: data.name, namePt: data.namePt ?? sector.namePt } }),
     ])
 
     const productCount = await prisma.product.count({ where: { sectors: { has: data.name } } })
-    res.json({ sector: { id: sector.id, name: data.name, productCount } })
+    res.json({ sector: { id: sector.id, name: data.name, namePt: data.namePt ?? sector.namePt, productCount } })
   }),
 )
 

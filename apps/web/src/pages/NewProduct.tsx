@@ -22,6 +22,7 @@ export function NewProduct() {
 
   const [form, setForm] = useState<ProductFormState>(emptyProductForm)
   const [files, setFiles] = useState<File[]>([])
+  const [brochureFiles, setBrochureFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const { data: sectors } = useQuery({ queryKey: ['product-sectors'], queryFn: fetchSectors })
@@ -33,6 +34,13 @@ export function NewProduct() {
         const formData = new FormData()
         formData.append('file', file)
         await api.post(`/products/${data.product.id}/media`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      }
+      for (const file of brochureFiles) {
+        const formData = new FormData()
+        formData.append('file', file)
+        await api.post(`/products/${data.product.id}/brochures`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
       }
@@ -69,7 +77,7 @@ export function NewProduct() {
           e.preventDefault()
           createProduct.mutate()
         }}
-        className="mt-4 grid max-w-3xl grid-cols-4 gap-3 rounded-xl border border-neutral-200 bg-white p-4"
+        className="mt-4 grid max-w-3xl grid-cols-4 gap-x-4 gap-y-5 rounded-xl border border-neutral-200 bg-white p-6"
       >
         <ProductFieldSet value={form} onChange={(patch) => setForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
 
@@ -84,6 +92,27 @@ export function NewProduct() {
             <p className="mt-1 text-xs text-neutral-500">
               {files.length} arquivo(s) selecionado(s) —{' '}
               <button type="button" onClick={() => setFiles([])} className="text-brand-600 hover:underline">
+                limpar
+              </button>
+            </p>
+          )}
+        </div>
+
+        <div className="col-span-4">
+          <label className="mb-1 block text-xs font-medium text-neutral-600">Brochuras (opcional)</label>
+          <DropZone
+            accept=".pdf,application/pdf"
+            multiple
+            onFiles={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
+          >
+            <p className="text-xs text-neutral-500">
+              Arraste PDFs aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
+            </p>
+          </DropZone>
+          {brochureFiles.length > 0 && (
+            <p className="mt-1 text-xs text-neutral-500">
+              {brochureFiles.length} arquivo(s) selecionado(s) —{' '}
+              <button type="button" onClick={() => setBrochureFiles([])} className="text-brand-600 hover:underline">
                 limpar
               </button>
             </p>

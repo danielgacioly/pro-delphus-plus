@@ -15,6 +15,7 @@ function loadCollapsed(): boolean {
 
 const navItems = [
   { to: '/', label: 'Início', end: true },
+  { to: '/minha-pro-delphus', label: 'Minha Pro Delphus' },
   { to: '/precos', label: 'Tabela de Preços' },
   { to: '/produtos', label: 'Produtos' },
   { to: '/orcamentos', label: 'Orçamentos' },
@@ -90,7 +91,7 @@ export function Layout() {
           )}
         </nav>
         <div className="flex items-center gap-3 border-t border-neutral-200 pt-4">
-          <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 hover:bg-neutral-100">
+          <Link to="/minha-conta" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 hover:bg-neutral-100">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
               {initial}
             </div>

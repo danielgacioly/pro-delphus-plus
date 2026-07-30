@@ -14,6 +14,8 @@ export type MediaType = 'IMAGE' | 'DOCUMENT'
 
 export type ProductKind = 'COMPLETE_MODEL' | 'COMPONENT'
 
+export type CatalogLanguage = 'EN' | 'PT'
+
 export interface UserDTO {
   id: string
   name: string
@@ -24,6 +26,7 @@ export interface UserDTO {
   phone: string | null
   jobTitle: string | null
   signatureUrl: string | null
+  catalogLanguage: CatalogLanguage
   createdAt: string
 }
 
@@ -41,13 +44,23 @@ export interface ProductCustomizationDTO {
   options: unknown
 }
 
+export interface ProductBrochureDTO {
+  id: string
+  url: string
+  name: string
+  order: number
+}
+
 export interface ProductDTO {
   id: string
   sku: string
   name: string
   description: string | null
+  descriptionPt: string | null
   components: string | null
+  componentsPt: string | null
   sectors: string[]
+  videoLinks: string[]
   kind: ProductKind
   weightKg: string | null
   priceBRL: string | null
@@ -57,12 +70,14 @@ export interface ProductDTO {
   active: boolean
   updatedAt: string
   media: ProductMediaDTO[]
+  brochures: ProductBrochureDTO[]
   customizations: ProductCustomizationDTO[]
 }
 
 export interface SectorDTO {
   id: string
   name: string
+  namePt: string | null
   productCount: number
 }
 
@@ -176,6 +191,40 @@ export interface OrderDTO {
   createdAt: string
   createdBy: { id: string; name: string }
   quote: QuoteDTO
+}
+
+export interface PersonalBoardColumnDTO {
+  id: string
+  name: string
+  position: number
+}
+
+export interface PersonalTaskDTO {
+  id: string
+  title: string
+  notes: string | null
+  clientName: string | null
+  tags: string[]
+  dueDate: string | null
+  columnId: string
+  position: number
+  quoteId: string | null
+  quoteNumber: string | null
+  orderId: string | null
+  orderNumber: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatePersonalTaskInput {
+  title: string
+  notes?: string
+  clientName?: string
+  tags?: string[]
+  dueDate?: string
+  columnId?: string
+  quoteId?: string
+  orderId?: string
 }
 
 /** Formats a plain number/decimal-string with thousands separators, e.g. 40902.77 -> "40,902.77". */

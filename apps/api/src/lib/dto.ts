@@ -1,6 +1,9 @@
 import type {
   Order,
+  PersonalBoardColumn,
+  PersonalTask,
   Product,
+  ProductBrochure,
   ProductCustomization,
   ProductMedia,
   Quote,
@@ -20,20 +23,28 @@ export function toUserDTO(user: User) {
     phone: user.phone,
     jobTitle: user.jobTitle,
     signatureUrl: user.signatureUrl,
+    catalogLanguage: user.catalogLanguage as 'EN' | 'PT',
     createdAt: user.createdAt.toISOString(),
   }
 }
 
 export function toProductDTO(
-  product: Product & { media: ProductMedia[]; customizations: ProductCustomization[] },
+  product: Product & {
+    media: ProductMedia[]
+    brochures: ProductBrochure[]
+    customizations: ProductCustomization[]
+  },
 ) {
   return {
     id: product.id,
     sku: product.sku,
     name: product.name,
     description: product.description,
+    descriptionPt: product.descriptionPt,
     components: product.components,
+    componentsPt: product.componentsPt,
     sectors: product.sectors,
+    videoLinks: product.videoLinks,
     kind: product.kind,
     weightKg: product.weightKg?.toString() ?? null,
     priceBRL: product.priceBRL?.toString() ?? null,
@@ -45,6 +56,9 @@ export function toProductDTO(
     media: product.media
       .sort((a, b) => a.order - b.order)
       .map((m) => ({ id: m.id, url: m.url, type: m.type, order: m.order, isPrimary: m.isPrimary })),
+    brochures: product.brochures
+      .sort((a, b) => a.order - b.order)
+      .map((b) => ({ id: b.id, url: b.url, name: b.name, order: b.order })),
     customizations: product.customizations.map((c) => ({
       id: c.id,
       name: c.name,
@@ -125,5 +139,34 @@ export function toOrderDTO(
     createdAt: order.createdAt.toISOString(),
     createdBy: { id: order.createdBy.id, name: order.createdBy.name },
     quote: toQuoteDTO(order.quote),
+  }
+}
+
+export function toPersonalTaskDTO(
+  task: PersonalTask & { quote?: Pick<Quote, 'quoteNumber'> | null; order?: Pick<Order, 'orderNumber'> | null },
+) {
+  return {
+    id: task.id,
+    title: task.title,
+    notes: task.notes,
+    clientName: task.clientName,
+    tags: task.tags,
+    dueDate: task.dueDate?.toISOString() ?? null,
+    columnId: task.columnId,
+    position: task.position,
+    quoteId: task.quoteId,
+    quoteNumber: task.quote?.quoteNumber ?? null,
+    orderId: task.orderId,
+    orderNumber: task.order?.orderNumber ?? null,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
+  }
+}
+
+export function toPersonalBoardColumnDTO(column: PersonalBoardColumn) {
+  return {
+    id: column.id,
+    name: column.name,
+    position: column.position,
   }
 }

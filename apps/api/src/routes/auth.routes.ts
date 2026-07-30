@@ -144,6 +144,7 @@ const updateMeSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().min(1).optional().nullable(),
   jobTitle: z.string().min(1).optional().nullable(),
+  catalogLanguage: z.enum(['EN', 'PT']).optional(),
 })
 
 authRouter.patch(

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import type { ProductDTO, ProductKind } from '@prodelphusplus/shared'
+import type { ProductDTO, ProductKind, SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { DropZone } from '../components/DropZone'
+import { localize, localizeSector } from '../lib/catalogTranslation'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -22,6 +23,11 @@ async function fetchProducts(search: string) {
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: string[] }>('/products/sectors')
+  return data.sectors
+}
+
+async function fetchSectorList() {
+  const { data } = await api.get<{ sectors: SectorDTO[] }>('/sectors')
   return data.sectors
 }
 
@@ -55,6 +61,8 @@ export function Products() {
   })
 
   const { data: sectors } = useQuery({ queryKey: ['product-sectors'], queryFn: fetchSectors })
+  const { data: sectorList } = useQuery({ queryKey: ['sector-list'], queryFn: fetchSectorList })
+  const lang = user?.catalogLanguage ?? 'EN'
 
   const filteredProducts = products?.filter(
     (p) =>
@@ -113,6 +121,23 @@ export function Products() {
     onSuccess: invalidate,
   })
 
+  const uploadBrochure = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      await api.post(`/products/${id}/brochures`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: invalidate,
+  })
+
+  const removeBrochure = useMutation({
+    mutationFn: async ({ productId, brochureId }: { productId: string; brochureId: string }) =>
+      api.delete(`/products/${productId}/brochures/${brochureId}`),
+    onSuccess: invalidate,
+  })
+
   const addCustomization = useMutation({
     mutationFn: async (productId: string) => {
       await api.post(`/products/${productId}/customizations`, {
@@ -139,9 +164,12 @@ export function Products() {
       sku: product.sku,
       name: product.name,
       sectors: product.sectors,
+      videoLinks: product.videoLinks,
       kind: product.kind,
       description: product.description ?? '',
+      descriptionPt: product.descriptionPt ?? '',
       components: product.components ?? '',
+      componentsPt: product.componentsPt ?? '',
       weightKg: product.weightKg ?? '',
       priceBRL: product.priceBRL ?? '',
       priceUSD: product.priceUSD ?? '',
@@ -193,7 +221,7 @@ export function Products() {
           <option value="ALL">Todos os setores</option>
           {sectors?.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {localizeSector(s, sectorList, lang)}
             </option>
           ))}
         </select>
@@ -226,7 +254,8 @@ export function Products() {
                       {product.name} <span className="text-neutral-400">— {product.sku}</span>
                     </p>
                     <p className="text-sm text-neutral-500">
-                      {product.sectors.join(', ')} · {kindLabel[product.kind]}
+                      {product.sectors.map((s) => localizeSector(s, sectorList, lang)).join(', ')} ·{' '}
+                      {kindLabel[product.kind]}
                       {product.weightKg && ` · ${product.weightKg} kg`}
                     </p>
                   </div>
@@ -266,7 +295,7 @@ export function Products() {
                     e.preventDefault()
                     updateProduct.mutate(product.id)
                   }}
-                  className="mt-4 grid grid-cols-4 gap-3 border-t border-neutral-100 pt-4"
+                  className="mt-4 grid grid-cols-4 gap-x-4 gap-y-5 border-t border-neutral-100 pt-5"
                 >
                   <ProductFieldSet value={editForm} onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
                   <button
@@ -280,127 +309,217 @@ export function Products() {
               )}
 
               {expandedId === product.id && (
-                <div className="mt-4 space-y-4 border-t border-neutral-100 pt-4">
-                  <div>
-                    <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Descrição</h3>
-                    <p className="text-sm text-neutral-600">{product.description ?? 'Sem descrição cadastrada.'}</p>
-                  </div>
-                  {product.kind === 'COMPLETE_MODEL' && (
+                <div className="mt-4 space-y-5 border-t border-neutral-100 pt-5">
+                  <dl className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div>
-                      <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Componentes</h3>
-                      <p className="text-sm text-neutral-600">{product.components ?? 'Sem componentes cadastrados.'}</p>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Descrição</dt>
+                      <dd className="mt-1 text-sm text-neutral-600">
+                        {localize(product.description, product.descriptionPt, lang) ?? 'Sem descrição cadastrada.'}
+                      </dd>
                     </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Mídia</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {product.media.map((m) => (
-                        <div key={m.id} className="relative">
-                          {m.type === 'IMAGE' ? (
-                            <img
-                              src={m.url}
-                              alt=""
-                              className={`h-16 w-16 rounded object-cover ${
-                                m.isPrimary ? 'ring-2 ring-brand-500 ring-offset-1' : ''
-                              }`}
-                            />
-                          ) : (
-                            <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-brand-600 underline">
-                              arquivo
-                            </a>
-                          )}
-                          {isAdmin && m.type === 'IMAGE' && !m.isPrimary && (
-                            <button
-                              onClick={() => setPrimaryMedia.mutate({ productId: product.id, mediaId: m.id })}
-                              title="Tornar principal"
-                              className="absolute bottom-0 left-0 rounded-tr-md bg-ink-900/80 px-1 text-[9px] font-medium text-white"
-                            >
-                              ★
-                            </button>
-                          )}
-                          {m.isPrimary && (
-                            <span className="absolute bottom-0 left-0 rounded-tr-md bg-brand-600 px-1 text-[9px] font-medium text-white">
-                              Principal
-                            </span>
-                          )}
-                          {isAdmin && (
-                            <button
-                              onClick={() => removeMedia.mutate({ productId: product.id, mediaId: m.id })}
-                              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    {isAdmin && (
-                      <DropZone
-                        accept="image/*"
-                        multiple
-                        className="mt-3 py-3"
-                        onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
-                      >
-                        <p className="text-xs text-neutral-500">
-                          Arraste imagens aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
-                        </p>
-                      </DropZone>
+                    {product.kind === 'COMPLETE_MODEL' && (
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Componentes</dt>
+                        <dd className="mt-1 text-sm text-neutral-600">
+                          {localize(product.components, product.componentsPt, lang) ?? 'Sem componentes cadastrados.'}
+                        </dd>
+                      </div>
                     )}
+                    {product.videoLinks.length > 0 && (
+                      <div className="lg:col-span-2">
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+                          Links de vídeo
+                        </dt>
+                        <dd className="mt-1">
+                          <ul className="space-y-0.5">
+                            {product.videoLinks.map((link) => (
+                              <li key={link} className="truncate">
+                                <a
+                                  href={link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-sm text-brand-600 underline"
+                                >
+                                  {link}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="rounded-lg border border-neutral-200 p-3">
+                      <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Mídia</h3>
+                      {product.media.length > 0 && (
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {product.media.map((m) => (
+                            <div key={m.id} className="relative">
+                              {m.type === 'IMAGE' ? (
+                                <img
+                                  src={m.url}
+                                  alt=""
+                                  className={`h-16 w-16 rounded object-cover ${
+                                    m.isPrimary ? 'ring-2 ring-brand-500 ring-offset-1' : ''
+                                  }`}
+                                />
+                              ) : (
+                                <a
+                                  href={m.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs text-brand-600 underline"
+                                >
+                                  arquivo
+                                </a>
+                              )}
+                              {isAdmin && m.type === 'IMAGE' && !m.isPrimary && (
+                                <button
+                                  onClick={() => setPrimaryMedia.mutate({ productId: product.id, mediaId: m.id })}
+                                  title="Tornar principal"
+                                  className="absolute bottom-0 left-0 rounded-tr-md bg-ink-900/80 px-1 text-[9px] font-medium text-white"
+                                >
+                                  ★
+                                </button>
+                              )}
+                              {m.isPrimary && (
+                                <span className="absolute bottom-0 left-0 rounded-tr-md bg-brand-600 px-1 text-[9px] font-medium text-white">
+                                  Principal
+                                </span>
+                              )}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => removeMedia.mutate({ productId: product.id, mediaId: m.id })}
+                                  className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {product.media.length === 0 && !isAdmin && (
+                        <p className="text-sm text-neutral-400">Nenhuma mídia cadastrada.</p>
+                      )}
+                      {isAdmin && (
+                        <DropZone
+                          accept="image/*"
+                          multiple
+                          className="py-2"
+                          onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
+                        >
+                          <p className="text-xs text-neutral-500">
+                            Arraste imagens aqui ou{' '}
+                            <span className="font-medium text-brand-600">clique para selecionar</span>
+                          </p>
+                        </DropZone>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 p-3">
+                      <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Brochuras</h3>
+                      {product.brochures.length > 0 && (
+                        <ul className="mb-3 space-y-1">
+                          {product.brochures.map((b) => (
+                            <li key={b.id} className="flex items-center justify-between gap-2 text-sm">
+                              <a
+                                href={b.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="truncate text-brand-600 underline"
+                              >
+                                {b.name}
+                              </a>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => removeBrochure.mutate({ productId: product.id, brochureId: b.id })}
+                                  className="shrink-0 text-xs text-neutral-400 hover:text-brand-600"
+                                >
+                                  remover
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {product.brochures.length === 0 && !isAdmin && (
+                        <p className="text-sm text-neutral-400">Nenhuma brochura enviada.</p>
+                      )}
+                      {isAdmin && (
+                        <DropZone
+                          accept=".pdf,application/pdf"
+                          multiple
+                          className="py-2"
+                          onFiles={(files) => files.forEach((file) => uploadBrochure.mutate({ id: product.id, file }))}
+                        >
+                          <p className="text-xs text-neutral-500">
+                            Arraste PDFs aqui ou{' '}
+                            <span className="font-medium text-brand-600">clique para selecionar</span>
+                          </p>
+                        </DropZone>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="rounded-lg border border-neutral-200 p-3">
                     <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Customizações</h3>
-                    <ul className="space-y-1">
-                      {product.customizations.map((c) => (
-                        <li key={c.id} className="flex items-center justify-between text-sm">
-                          <span>
-                            <strong>{c.name}:</strong> {Array.isArray(c.options) ? c.options.join(', ') : ''}
-                          </span>
-                          {isAdmin && (
-                            <button
-                              onClick={() =>
-                                removeCustomization.mutate({ productId: product.id, customizationId: c.id })
-                              }
-                              className="text-xs text-brand-600 hover:underline"
-                            >
-                              remover
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                    {product.customizations.length > 0 && (
+                      <ul className="mb-3 space-y-1">
+                        {product.customizations.map((c) => (
+                          <li key={c.id} className="flex items-center justify-between text-sm">
+                            <span>
+                              <strong>{c.name}:</strong> {Array.isArray(c.options) ? c.options.join(', ') : ''}
+                            </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() =>
+                                  removeCustomization.mutate({ productId: product.id, customizationId: c.id })
+                                }
+                                className="text-xs text-brand-600 hover:underline"
+                              >
+                                remover
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {product.customizations.length === 0 && !isAdmin && (
+                      <p className="text-sm text-neutral-400">Nenhuma customização cadastrada.</p>
+                    )}
                     {isAdmin && (
                       <form
                         onSubmit={(e) => {
                           e.preventDefault()
                           addCustomization.mutate(product.id)
                         }}
-                        className="mt-3 flex gap-2"
+                        className="flex flex-wrap items-center gap-2"
                       >
                         <input
                           placeholder="Nome (ex: Cor)"
                           required
                           value={customizationDraft.name}
                           onChange={(e) => setCustomizationDraft((s) => ({ ...s, name: e.target.value }))}
-                          className="w-32 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                          className="w-40 min-w-0 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
                         />
                         <input
                           placeholder="Opções separadas por vírgula"
                           required
                           value={customizationDraft.options}
                           onChange={(e) => setCustomizationDraft((s) => ({ ...s, options: e.target.value }))}
-                          className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                          className="min-w-40 flex-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
                         />
                         <button
                           type="submit"
-                          className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700"
+                          className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                         >
                           Adicionar
                         </button>
                       </form>
                     )}
-                  </div>
                   </div>
                 </div>
               )}

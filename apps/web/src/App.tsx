@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
@@ -6,6 +6,8 @@ import { Register } from './pages/Register'
 import { ForgotPassword } from './pages/ForgotPassword'
 import { ResetPasswordWithToken } from './pages/ResetPasswordWithToken'
 import { Home } from './pages/Home'
+import { Account } from './pages/Account'
+import { MyDesk } from './pages/MyDesk'
 import { PriceTable } from './pages/PriceTable'
 import { Products } from './pages/Products'
 import { NewProduct } from './pages/NewProduct'
@@ -37,7 +39,8 @@ function App() {
           <Route path="/pedidos" element={<Orders />} />
           <Route path="/pedidos/novo" element={<NewOrder />} />
           <Route path="/pedidos/:id" element={<OrderDetail />} />
-          <Route path="/minha-conta" element={<Navigate to="/" replace />} />
+          <Route path="/minha-conta" element={<Account />} />
+          <Route path="/minha-pro-delphus" element={<MyDesk />} />
 
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
             <Route path="/produtos/novo" element={<NewProduct />} />

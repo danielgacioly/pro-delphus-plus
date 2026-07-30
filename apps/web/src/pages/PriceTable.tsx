@@ -1,13 +1,20 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatAmount, type ProductDTO, type ProductKind } from '@prodelphusplus/shared'
+import { formatAmount, type ProductDTO, type ProductKind, type SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
+import { localize, localizeSector } from '../lib/catalogTranslation'
 
 async function fetchProducts(search: string) {
   const { data } = await api.get<{ products: ProductDTO[] }>('/products', {
     params: { search: search || undefined },
   })
   return data.products
+}
+
+async function fetchSectorList() {
+  const { data } = await api.get<{ sectors: SectorDTO[] }>('/sectors')
+  return data.sectors
 }
 
 function formatPrice(value: string | null, currency: string) {
@@ -50,6 +57,8 @@ function loadStoredColumns(): PriceColumns {
 }
 
 export function PriceTable() {
+  const { user } = useAuth()
+  const lang = user?.catalogLanguage ?? 'EN'
   const [search, setSearch] = useState('')
   const [columns, setColumns] = useState<PriceColumns>(loadStoredColumns)
   const [exporting, setExporting] = useState(false)
@@ -62,6 +71,8 @@ export function PriceTable() {
     queryKey: ['products-price-table', search],
     queryFn: () => fetchProducts(search),
   })
+
+  const { data: sectorList } = useQuery({ queryKey: ['sector-list'], queryFn: fetchSectorList })
 
   const grouped = useMemo(() => {
     // A product with more than one sector shows up once per sector it belongs to.
@@ -178,7 +189,9 @@ export function PriceTable() {
       <div className="mt-6 space-y-8">
         {grouped.map(([sector, groups]) => (
           <div key={sector}>
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-900">{sector}</h2>
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-900">
+              {localizeSector(sector, sectorList, lang)}
+            </h2>
             {(['COMPLETE_MODEL', 'COMPONENT'] as ProductKind[]).map((kind) => {
               const items = groups[kind]
               if (items.length === 0) return null
@@ -215,12 +228,12 @@ export function PriceTable() {
                           <td className="px-4 py-2 text-neutral-600">{product.name}</td>
                           {columns.description && (
                             <td className="max-w-md px-4 py-2 text-xs text-neutral-500">
-                              {product.description ?? '—'}
+                              {localize(product.description, product.descriptionPt, lang) ?? '—'}
                             </td>
                           )}
                           {columns.components && kind === 'COMPLETE_MODEL' && (
                             <td className="max-w-md px-4 py-2 text-xs text-neutral-500">
-                              {product.components ?? '—'}
+                              {localize(product.components, product.componentsPt, lang) ?? '—'}
                             </td>
                           )}
                           {columns.brl && (

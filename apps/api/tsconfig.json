@@ -13,5 +13,5 @@
     "resolveJsonModule": true,
     "sourceMap": true
   },
-  "include": ["src", "generated"]
+  "include": ["src", "generated", "prisma.config.ts"]
 }

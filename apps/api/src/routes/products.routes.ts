@@ -11,7 +11,7 @@ export const productsRouter = Router()
 
 productsRouter.use(requireAuth)
 
-const include = { media: true, customizations: true } as const
+const include = { media: true, brochures: true, customizations: true } as const
 
 // Sectors live in a scalar array on Product, which Prisma can only filter by
 // exact membership (`has`) — not substring. The catalog is small (~500 rows),
@@ -118,8 +118,11 @@ const createProductSchema = z
     sku: z.string().optional(),
     name: z.string().min(1),
     description: z.string().optional(),
+    descriptionPt: z.string().optional(),
     components: z.string().optional(),
+    componentsPt: z.string().optional(),
     sectors: z.array(z.string().min(1)).min(1),
+    videoLinks: z.array(z.string().min(1)).optional(),
     kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).default('COMPLETE_MODEL'),
     weightKg: z.coerce.number().positive().optional(),
     priceBRL: z.coerce.number().positive().optional(),
@@ -149,8 +152,11 @@ const updateProductSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  descriptionPt: z.string().optional(),
   components: z.string().optional(),
+  componentsPt: z.string().optional(),
   sectors: z.array(z.string().min(1)).min(1).optional(),
+  videoLinks: z.array(z.string().min(1)).optional(),
   kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).optional(),
   weightKg: z.coerce.number().positive().optional().nullable(),
   priceBRL: z.coerce.number().positive().optional().nullable(),
@@ -249,6 +255,42 @@ productsRouter.delete(
         await prisma.productMedia.update({ where: { id: nextImage.id }, data: { isPrimary: true } })
       }
     }
+
+    res.status(204).send()
+  }),
+)
+
+productsRouter.post(
+  '/:id/brochures',
+  requireRole('ADMIN'),
+  upload.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new HttpError(400, 'Nenhum arquivo enviado')
+
+    const count = await prisma.productBrochure.count({ where: { productId: req.params.id } })
+
+    const brochure = await prisma.productBrochure.create({
+      data: {
+        productId: req.params.id,
+        url: publicUrlFor(req.file.filename),
+        name: req.file.originalname,
+        order: count,
+      },
+    })
+
+    res.status(201).json({ brochure })
+  }),
+)
+
+productsRouter.delete(
+  '/:id/brochures/:brochureId',
+  requireRole('ADMIN'),
+  asyncHandler(async (req, res) => {
+    const brochure = await prisma.productBrochure.findUnique({ where: { id: req.params.brochureId } })
+    if (!brochure) throw new HttpError(404, 'Arquivo não encontrado')
+
+    await prisma.productBrochure.delete({ where: { id: req.params.brochureId } })
+    deleteStoredFile(brochure.url)
 
     res.status(204).send()
   }),

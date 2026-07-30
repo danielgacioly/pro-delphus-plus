@@ -10,6 +10,7 @@ import { quotesRouter } from './routes/quotes.routes.js'
 import { sectorsRouter } from './routes/sectors.routes.js'
 import { ordersRouter } from './routes/orders.routes.js'
 import { statsRouter } from './routes/stats.routes.js'
+import { tasksRouter } from './routes/tasks.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
@@ -27,6 +28,7 @@ app.use('/api/quotes', quotesRouter)
 app.use('/api/sectors', sectorsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/stats', statsRouter)
+app.use('/api/tasks', tasksRouter)
 
 app.use(errorHandler)
 

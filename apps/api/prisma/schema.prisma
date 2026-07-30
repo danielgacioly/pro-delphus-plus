@@ -67,6 +67,7 @@ enum OrderStatus {
 model Sector {
   id        String   @id @default(uuid())
   name      String   @unique
+  namePt    String?
   createdAt DateTime @default(now())
 
   @@map("sectors")
@@ -83,15 +84,18 @@ model User {
   phone        String?
   jobTitle     String?
   signatureUrl String?
+  catalogLanguage String     @default("EN")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   resetPasswordTokenHash String?
   resetPasswordExpiresAt DateTime?
 
-  productUpdates Product[] @relation("ProductUpdatedBy")
-  quotes         Quote[]   @relation("QuoteCreatedBy")
-  orders         Order[]   @relation("OrderCreatedBy")
+  productUpdates       Product[]             @relation("ProductUpdatedBy")
+  quotes               Quote[]               @relation("QuoteCreatedBy")
+  orders               Order[]               @relation("OrderCreatedBy")
+  personalTasks        PersonalTask[]        @relation("PersonalTaskOwner")
+  personalBoardColumns PersonalBoardColumn[] @relation("PersonalBoardColumnOwner")
 
   @@map("users")
 }
@@ -101,8 +105,11 @@ model Product {
   sku                 String
   name                String
   description         String?
+  descriptionPt       String?
   components          String?
+  componentsPt        String?
   sectors             String[]
+  videoLinks          String[]    @default([])
   kind                ProductKind @default(COMPLETE_MODEL)
   weightKg            Decimal?    @db.Decimal(10, 3)
   priceBRL            Decimal?    @db.Decimal(12, 2)
@@ -117,6 +124,7 @@ model Product {
   updatedBy   User?   @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
 
   media           ProductMedia[]
+  brochures       ProductBrochure[]
   customizations  ProductCustomization[]
   quoteItems      QuoteItem[]
 
@@ -134,6 +142,18 @@ model ProductMedia {
   createdAt DateTime  @default(now())
 
   @@map("product_media")
+}
+
+model ProductBrochure {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("product_brochures")
 }
 
 model ProductCustomization {
@@ -167,8 +187,9 @@ model Quote {
   createdById String
   createdBy   User   @relation("QuoteCreatedBy", fields: [createdById], references: [id])
 
-  items  QuoteItem[]
-  orders Order[]
+  items         QuoteItem[]
+  orders        Order[]
+  personalTasks PersonalTask[]
 
   @@map("quotes")
 }
@@ -245,5 +266,42 @@ model Order {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  personalTasks PersonalTask[]
+
   @@map("orders")
+}
+
+model PersonalBoardColumn {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("PersonalBoardColumnOwner", fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tasks PersonalTask[]
+
+  @@map("personal_board_columns")
+}
+
+model PersonalTask {
+  id         String              @id @default(uuid())
+  userId     String
+  user       User                @relation("PersonalTaskOwner", fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  notes      String?
+  clientName String?
+  tags       String[]            @default([])
+  dueDate    DateTime?
+  columnId   String
+  column     PersonalBoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  position   Int                 @default(0)
+  quoteId    String?
+  quote      Quote?              @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  orderId    String?
+  order      Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@map("personal_tasks")
 }

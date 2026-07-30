@@ -7,10 +7,11 @@ export function NewSector() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
+  const [namePt, setNamePt] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const createSector = useMutation({
-    mutationFn: async () => api.post('/sectors', { name: name.trim() }),
+    mutationFn: async () => api.post('/sectors', { name: name.trim(), namePt: namePt.trim() || undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sectors'] })
       queryClient.invalidateQueries({ queryKey: ['product-sectors'] })
@@ -42,13 +43,21 @@ export function NewSector() {
       >
         {error && <div className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>}
 
-        <label className="mb-1 block text-xs font-medium text-neutral-600">Nome do setor</label>
+        <label className="mb-1 block text-xs font-medium text-neutral-600">Nome do setor (inglês)</label>
         <input
           autoFocus
           required
           placeholder="ex: Spine"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+
+        <label className="mb-1 mt-3 block text-xs font-medium text-neutral-600">Nome em português (opcional)</label>
+        <input
+          placeholder="ex: Coluna"
+          value={namePt}
+          onChange={(e) => setNamePt(e.target.value)}
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
         />
 
