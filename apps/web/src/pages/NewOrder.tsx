@@ -222,8 +222,8 @@ export function NewOrder() {
 
   return (
     <div>
-      <Link to="/pedidos" className="text-sm font-medium text-brand-600 hover:underline">
-        ← Voltar para pedidos
+      <Link to="/pedidos" className="group inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
+        <span className="transition-transform group-hover:-translate-x-0.5">←</span> Voltar para pedidos
       </Link>
 
       <h1 className="mt-3 text-2xl font-bold text-ink-900">Novo pedido</h1>
@@ -249,7 +249,7 @@ export function NewOrder() {
           e.preventDefault()
           createOrder.mutate()
         }}
-        className="mt-4 max-w-3xl space-y-4 rounded-xl border border-neutral-200 bg-white p-5"
+        className="animate-fade-in-up mt-4 max-w-3xl space-y-4 rounded-xl border border-neutral-200 bg-white p-5"
       >
         <div>
           <label className="mb-1 block text-xs font-medium text-neutral-600">Orçamento</label>
@@ -257,7 +257,7 @@ export function NewOrder() {
             required
             value={form.quoteId}
             onChange={(e) => selectQuote(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
           >
             <option value="">Selecione um orçamento…</option>
             {quotes?.map((q) => (
@@ -275,7 +275,7 @@ export function NewOrder() {
             <input
               value={form.purchaseOrder}
               onChange={(e) => update({ purchaseOrder: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
             <p className="mt-1 text-[11px] text-neutral-400">Se vazio, usa o número do orçamento.</p>
           </div>
@@ -286,7 +286,7 @@ export function NewOrder() {
               required
               value={form.orderedByEmail}
               onChange={(e) => update({ orderedByEmail: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -297,7 +297,7 @@ export function NewOrder() {
             type="date"
             value={form.shipDate}
             onChange={(e) => update({ shipDate: e.target.value })}
-            className="w-48 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="w-48 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
 
@@ -310,7 +310,7 @@ export function NewOrder() {
               placeholder={'Attn: Nome\nEndereço\nCidade, Estado. País.\nCEP\nMail: ...\nTel: ...'}
               value={form.billToText}
               onChange={(e) => update({ billToText: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
           <div>
@@ -321,7 +321,7 @@ export function NewOrder() {
               placeholder={'Attn: Nome - Empresa\nEndereço de entrega\n...'}
               value={form.shipToText}
               onChange={(e) => update({ shipToText: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -333,7 +333,7 @@ export function NewOrder() {
           <input
             value={form.shipToNote}
             onChange={(e) => update({ shipToNote: e.target.value })}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
 
@@ -345,7 +345,7 @@ export function NewOrder() {
               step="0.001"
               value={form.netWeightKg}
               onChange={(e) => update({ netWeightKg: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
           <div>
@@ -355,7 +355,7 @@ export function NewOrder() {
               step="0.001"
               value={form.grossWeightKg}
               onChange={(e) => update({ grossWeightKg: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
           <div>
@@ -364,7 +364,7 @@ export function NewOrder() {
               placeholder="ex: DAP MONTERREY"
               value={form.incoterms}
               onChange={(e) => update({ incoterms: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -376,7 +376,7 @@ export function NewOrder() {
             min={1}
             value={packageCount}
             onChange={(e) => updatePackageCount(e.target.value)}
-            className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
           <p className="mt-1 text-[11px] text-neutral-400">
             Preenche "Number of Packages" no invoice/packing list automaticamente (ex: 02 Cartons) e gera uma página
@@ -421,7 +421,7 @@ export function NewOrder() {
                           value={line.label}
                           placeholder="Nome do item ou componente"
                           onChange={(e) => updateBoxLine(line.id, { label: e.target.value })}
-                          className="w-56 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                          className="w-56 rounded-lg border border-neutral-300 px-2 py-1 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                         />
                       </td>
                       <td className="px-2 py-1">
@@ -430,14 +430,14 @@ export function NewOrder() {
                           min={1}
                           value={line.quantity}
                           onChange={(e) => updateBoxLine(line.id, { quantity: Number(e.target.value) || 1 })}
-                          className="w-16 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                          className="w-16 rounded-lg border border-neutral-300 px-2 py-1 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                         />
                       </td>
                       <td className="px-2 py-1">
                         <select
                           value={line.box}
                           onChange={(e) => updateBoxLine(line.id, { box: Number(e.target.value) })}
-                          className="rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+                          className="rounded-lg border border-neutral-300 px-2 py-1 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                         >
                           {Array.from({ length: Math.max(1, Number(packageCount) || 1) }, (_, i) => i + 1).map((b) => (
                             <option key={b} value={b}>
@@ -484,7 +484,7 @@ export function NewOrder() {
                     placeholder="kg/un."
                     value={itemWeights[index] ?? ''}
                     onChange={(e) => updateItemWeight(index, e.target.value)}
-                    className="w-28 rounded-lg border border-neutral-300 px-2 py-1 text-sm"
+                    className="w-28 rounded-lg border border-neutral-300 px-2 py-1 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                 </div>
               ))}
@@ -497,7 +497,7 @@ export function NewOrder() {
           <input
             value={form.awbNumber}
             onChange={(e) => update({ awbNumber: e.target.value })}
-            className="w-64 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="w-64 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
 
@@ -507,7 +507,7 @@ export function NewOrder() {
             <select
               value={form.prepaymentBy}
               onChange={(e) => update({ prepaymentBy: e.target.value as PrepaymentMethod })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             >
               <option value="WIRE_TRANSFER">Wire Transfer</option>
               <option value="PAYPAL">PayPal</option>
@@ -521,7 +521,7 @@ export function NewOrder() {
                 step="0.01"
                 value={form.paypalFee}
                 onChange={(e) => update({ paypalFee: e.target.value })}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </div>
           )}
@@ -534,7 +534,7 @@ export function NewOrder() {
               step="0.0001"
               value={form.exchangeRate}
               onChange={(e) => update({ exchangeRate: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -547,7 +547,7 @@ export function NewOrder() {
             <input
               value={form.nfNumber}
               onChange={(e) => update({ nfNumber: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
           <div>
@@ -556,7 +556,7 @@ export function NewOrder() {
               type="date"
               value={form.nfDate}
               onChange={(e) => update({ nfDate: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -564,7 +564,7 @@ export function NewOrder() {
         <button
           type="submit"
           disabled={createOrder.isPending}
-          className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
         >
           {createOrder.isPending ? 'Gerando documentos…' : 'Criar pedido e gerar documentos'}
         </button>

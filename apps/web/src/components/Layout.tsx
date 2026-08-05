@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from '../assets/logo.svg'
 
@@ -31,6 +31,7 @@ const adminNavItems = [
 export function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [collapsed, setCollapsed] = useState(loadCollapsed)
 
   async function handleLogout() {
@@ -51,10 +52,10 @@ export function Layout() {
   }
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `block rounded-lg border-l-[3px] px-3 py-2 text-sm font-medium transition-colors ${
+    `block rounded-lg border-l-[3px] px-3 py-2 text-sm font-medium transition-all duration-150 ${
       isActive
-        ? 'border-brand-500 bg-brand-50 text-brand-700'
-        : 'border-transparent text-neutral-600 hover:bg-neutral-100 hover:text-ink-900'
+        ? 'border-brand-500 bg-brand-50 text-brand-700 translate-x-0.5'
+        : 'border-transparent text-neutral-600 hover:bg-neutral-100 hover:text-ink-900 hover:translate-x-0.5'
     }`
 
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? '?'
@@ -91,8 +92,11 @@ export function Layout() {
           )}
         </nav>
         <div className="flex items-center gap-3 border-t border-neutral-200 pt-4">
-          <Link to="/minha-conta" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 hover:bg-neutral-100">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
+          <Link
+            to="/minha-conta"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-neutral-100"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white transition-transform hover:scale-105">
               {initial}
             </div>
             <div className="min-w-0 flex-1">
@@ -103,7 +107,7 @@ export function Layout() {
           <button
             onClick={handleLogout}
             title="Sair"
-            className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-500 hover:bg-neutral-100 hover:text-brand-600"
+            className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-brand-600"
           >
             Sair
           </button>
@@ -113,7 +117,7 @@ export function Layout() {
         <button
           onClick={toggleCollapsed}
           title={collapsed ? 'Mostrar menu' : 'Ocultar menu'}
-          className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 shadow-sm hover:bg-neutral-100 hover:text-ink-900"
+          className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 shadow-sm transition-all hover:bg-neutral-100 hover:text-ink-900 active:scale-95"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
             <rect width="18" height="18" x="3" y="3" rx="2" />
@@ -121,7 +125,9 @@ export function Layout() {
           </svg>
         </button>
         <main className="p-8 pt-16">
-          <Outlet />
+          <div key={location.pathname} className="animate-fade-in-up">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

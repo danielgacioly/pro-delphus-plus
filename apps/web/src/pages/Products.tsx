@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { ProductDTO, ProductKind, SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { DropZone } from '../components/DropZone'
+import { EmptyState } from '../components/EmptyState'
+import { IconBox, IconSearch } from '../components/icons'
 import { localize, localizeSector } from '../lib/catalogTranslation'
 import {
   ProductFieldSet,
@@ -40,6 +42,8 @@ export function Products() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const highlightId = searchParams.get('highlight')
 
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState<ProductKind | 'ALL'>('ALL')
@@ -68,6 +72,20 @@ export function Products() {
     (p) =>
       (kindFilter === 'ALL' || p.kind === kindFilter) && (sectorFilter === 'ALL' || p.sectors.includes(sectorFilter)),
   )
+
+  useEffect(() => {
+    if (!highlightId || !products?.some((p) => p.id === highlightId)) return
+    setExpandedId(highlightId)
+    setEditingId(null)
+    const el = document.getElementById(`product-${highlightId}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('highlight')
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, products])
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] })
 
@@ -190,33 +208,41 @@ export function Products() {
         {isAdmin && (
           <Link
             to="/produtos/novo"
-            className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
           >
             + Criar novo produto
           </Link>
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <input
-          placeholder="Buscar por SKU, nome, setor ou descrição"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-        />
-        <select
-          value={kindFilter}
-          onChange={(e) => setKindFilter(e.target.value as ProductKind | 'ALL')}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-        >
-          <option value="ALL">Todos os tipos</option>
-          <option value="COMPLETE_MODEL">{kindLabel.COMPLETE_MODEL}</option>
-          <option value="COMPONENT">{kindLabel.COMPONENT}</option>
-        </select>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <input
+            placeholder="Buscar por SKU, nome, setor ou descrição"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-72 rounded-lg border border-neutral-300 py-2 pl-9 pr-3 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-neutral-200 bg-white p-1 text-sm">
+          {(['ALL', 'COMPLETE_MODEL', 'COMPONENT'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKindFilter(k)}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                kindFilter === k ? 'bg-ink-900 text-white' : 'text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
+              {k === 'ALL' ? 'Todos os tipos' : kindLabel[k]}
+            </button>
+          ))}
+        </div>
         <select
           value={sectorFilter}
           onChange={(e) => setSectorFilter(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:border-neutral-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
         >
           <option value="ALL">Todos os setores</option>
           {sectors?.map((s) => (
@@ -228,26 +254,49 @@ export function Products() {
       </div>
 
       <div className="mt-6 space-y-3">
-        {isLoading && <p className="text-neutral-400">Carregando…</p>}
+        {isLoading && (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4">
+                <div className="skeleton h-12 w-12 shrink-0 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton h-3.5 w-1/3 rounded" />
+                  <div className="skeleton h-3 w-1/2 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {isError && (
           <p className="text-brand-600">
             Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.
           </p>
         )}
         {!isLoading && !isError && filteredProducts?.length === 0 && (
-          <p className="text-neutral-400">Nenhum item encontrado.</p>
+          <EmptyState
+            icon={IconBox}
+            title="Nenhum produto encontrado"
+            description={search || sectorFilter !== 'ALL' || kindFilter !== 'ALL' ? 'Tente ajustar os filtros.' : 'Ainda não há produtos cadastrados.'}
+          />
         )}
-        {filteredProducts?.map((product) => {
+        {filteredProducts?.map((product, index) => {
           const primaryMedia = product.media.find((m) => m.isPrimary)
           const isEditing = editingId === product.id
           return (
-            <div key={product.id} className="rounded-lg border border-neutral-200 bg-white p-4">
+            <div
+              key={product.id}
+              id={`product-${product.id}`}
+              className="animate-fade-in-up scroll-mt-6 rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm"
+              style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {primaryMedia ? (
                     <img src={primaryMedia.url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                   ) : (
-                    <div className="h-12 w-12 shrink-0 rounded-lg bg-neutral-100" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-300">
+                      <IconBox className="h-5 w-5" />
+                    </div>
                   )}
                   <div>
                     <p className="font-medium text-ink-900">
@@ -266,7 +315,7 @@ export function Products() {
                       setExpandedId(expandedId === product.id ? null : product.id)
                       setEditingId(null)
                     }}
-                    className="text-xs font-medium text-brand-600 hover:underline"
+                    className="text-xs font-semibold text-brand-600 hover:underline"
                   >
                     {expandedId === product.id ? 'Fechar' : 'Detalhes'}
                   </button>
@@ -274,13 +323,13 @@ export function Products() {
                     <>
                       <button
                         onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}
-                        className="text-xs font-medium text-brand-600 hover:underline"
+                        className="text-xs font-semibold text-brand-600 hover:underline"
                       >
                         {isEditing ? 'Cancelar' : 'Editar'}
                       </button>
                       <button
                         onClick={() => setDeletingProduct(product)}
-                        className="text-xs font-medium text-brand-600 hover:underline"
+                        className="text-xs font-semibold text-brand-600 hover:underline"
                       >
                         Excluir
                       </button>
@@ -295,13 +344,13 @@ export function Products() {
                     e.preventDefault()
                     updateProduct.mutate(product.id)
                   }}
-                  className="mt-4 grid grid-cols-4 gap-x-4 gap-y-5 border-t border-neutral-100 pt-5"
+                  className="animate-fade-in-up mt-4 grid grid-cols-4 gap-x-4 gap-y-5 border-t border-neutral-100 pt-5"
                 >
                   <ProductFieldSet value={editForm} onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
                   <button
                     type="submit"
                     disabled={updateProduct.isPending}
-                    className="col-span-4 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
+                    className="col-span-4 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
                   >
                     {updateProduct.isPending ? 'Salvando…' : 'Salvar alterações'}
                   </button>
@@ -309,7 +358,7 @@ export function Products() {
               )}
 
               {expandedId === product.id && (
-                <div className="mt-4 space-y-5 border-t border-neutral-100 pt-5">
+                <div className="animate-fade-in-up mt-4 space-y-5 border-t border-neutral-100 pt-5">
                   <dl className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Descrição</dt>

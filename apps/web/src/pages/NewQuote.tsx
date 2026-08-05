@@ -25,6 +25,11 @@ const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>
 
 const emptyItem: DraftItem = { productId: '', query: '', quantity: 1, description: '', unitPrice: '' }
 
+const inputClass =
+  'rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
+const smallInputClass =
+  'rounded-lg border border-neutral-200 px-3 py-1.5 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
+
 export function NewQuote() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -95,8 +100,11 @@ export function NewQuote() {
 
   return (
     <div>
-      <Link to="/orcamentos" className="text-sm font-medium text-brand-600 hover:underline">
-        ← Voltar para orçamentos
+      <Link
+        to="/orcamentos"
+        className="group inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
+      >
+        <span className="transition-transform group-hover:-translate-x-0.5">←</span> Voltar para orçamentos
       </Link>
 
       <h1 className="mt-3 text-2xl font-bold text-ink-900">Novo orçamento</h1>
@@ -107,17 +115,17 @@ export function NewQuote() {
           e.preventDefault()
           createQuote.mutate()
         }}
-        className="mt-4 max-w-2xl rounded-xl border border-neutral-200 bg-white p-4"
+        className="animate-fade-in-up mt-4 max-w-2xl rounded-xl border border-neutral-200 bg-white p-5"
       >
         {error && <div className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>}
 
-        <div className="mb-3 flex gap-3">
+        <div className="mb-3 flex flex-wrap gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Idioma</label>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as QuoteLanguage)}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={inputClass}
             >
               <option value="PT">Português</option>
               <option value="EN">English</option>
@@ -126,11 +134,7 @@ export function NewQuote() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Moeda</label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value as Currency)}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            >
+            <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className={inputClass}>
               <option value="BRL">Real (BRL)</option>
               <option value="USD">Dólar (USD)</option>
               <option value="EUR">Euro (EUR)</option>
@@ -142,7 +146,7 @@ export function NewQuote() {
               <select
                 value={priceTier}
                 onChange={(e) => setPriceTier(e.target.value as PriceTier)}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               >
                 <option value="FINAL">Final</option>
                 <option value="DISTRIBUTOR">Distribuidor</option>
@@ -154,28 +158,31 @@ export function NewQuote() {
             <select
               value={clientPrefix}
               onChange={(e) => setClientPrefix(e.target.value as ClientPrefix)}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={inputClass}
             >
               <option value="NONE">{currentPrefixLabels.NONE}</option>
               <option value="MR">{currentPrefixLabels.MR}</option>
               <option value="MS">{currentPrefixLabels.MS}</option>
             </select>
           </div>
-          <div className="flex-1">
+          <div className="min-w-48 flex-1">
             <label className="mb-1 block text-xs font-medium text-neutral-600">Nome do cliente</label>
             <input
               required
               placeholder="ex: Margarida Cunha"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={`w-full ${inputClass}`}
             />
           </div>
         </div>
 
         <div className="space-y-2">
           {items.map((item, index) => (
-            <div key={index} className="rounded-lg border border-neutral-100 p-2">
+            <div
+              key={index}
+              className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-2.5 transition-colors hover:bg-neutral-50"
+            >
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <input
@@ -188,16 +195,16 @@ export function NewQuote() {
                       setActiveIndex(index)
                     }}
                     onBlur={() => setTimeout(() => setActiveIndex((cur) => (cur === index ? null : cur)), 150)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                    className={`w-full bg-white ${inputClass}`}
                   />
                   {activeIndex === index && suggestions && suggestions.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-lg">
+                    <div className="animate-scale-in absolute z-10 mt-1 w-full origin-top rounded-lg border border-neutral-200 bg-white shadow-lg shadow-ink-900/5">
                       {suggestions.map((product) => (
                         <button
                           type="button"
                           key={product.id}
                           onMouseDown={() => selectProduct(index, product)}
-                          className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50"
+                          className="block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-neutral-50"
                         >
                           <span className="font-medium text-ink-900">{product.name}</span>{' '}
                           <span className="text-neutral-400">— {product.sku}</span>
@@ -212,13 +219,13 @@ export function NewQuote() {
                   required
                   value={item.quantity}
                   onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                  className="w-24 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                  className={`w-24 bg-white ${inputClass}`}
                 />
                 {items.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                    className="text-xs text-brand-600 hover:underline"
+                    className="shrink-0 self-center text-xs font-medium text-neutral-400 transition-colors hover:text-brand-600"
                   >
                     remover
                   </button>
@@ -229,7 +236,7 @@ export function NewQuote() {
                   placeholder="Descrição customizada para este item (opcional — senão usa a do produto)"
                   value={item.description}
                   onChange={(e) => updateItem(index, { description: e.target.value })}
-                  className="flex-1 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs"
+                  className={`flex-1 bg-white ${smallInputClass}`}
                 />
                 <input
                   type="number"
@@ -238,7 +245,7 @@ export function NewQuote() {
                   placeholder="Preço customizado (opcional)"
                   value={item.unitPrice}
                   onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
-                  className="w-44 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs"
+                  className={`w-44 bg-white ${smallInputClass}`}
                 />
               </div>
             </div>
@@ -246,7 +253,7 @@ export function NewQuote() {
           <button
             type="button"
             onClick={() => setItems((prev) => [...prev, { ...emptyItem }])}
-            className="text-xs font-medium text-brand-600 hover:underline"
+            className="text-xs font-semibold text-brand-600 hover:underline"
           >
             + adicionar item
           </button>
@@ -262,7 +269,7 @@ export function NewQuote() {
               placeholder="A definir"
               value={freight}
               onChange={(e) => setFreight(e.target.value)}
-              className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={`w-32 ${inputClass}`}
             />
           </div>
           <div>
@@ -273,7 +280,7 @@ export function NewQuote() {
               min={0}
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
-              className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={`w-32 ${inputClass}`}
             />
           </div>
         </div>
@@ -286,13 +293,13 @@ export function NewQuote() {
           placeholder={'ex: Prazo estimado, forma de pagamento, validade do orçamento...'}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+          className={`w-full ${inputClass}`}
         />
 
         <button
           type="submit"
           disabled={createQuote.isPending}
-          className="mt-4 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+          className="mt-4 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
         >
           {createQuote.isPending ? 'Gerando…' : 'Gerar orçamento'}
         </button>

@@ -89,3 +89,50 @@ export function IconBoard(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconSearch(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m20 20-4.3-4.3" />
+    </Base>
+  )
+}
+
+export function IconInbox(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M3 12h4.5l1.5 3h6l1.5-3H21" />
+      <path d="M5.5 5.5h13L21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6L5.5 5.5Z" />
+    </Base>
+  )
+}
+
+export function IconAlert(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 3 2 20h20L12 3Z" />
+      <path d="M12 10v4" />
+      <circle cx="12" cy="17.2" r="0.15" fill="currentColor" />
+    </Base>
+  )
+}
+
+export function IconChevronDown(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </Base>
+  )
+}
+
+export function IconSliders(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h13M21 18h-2" />
+      <circle cx="15" cy="6" r="2" fill="white" />
+      <circle cx="7" cy="12" r="2" fill="white" />
+      <circle cx="19" cy="18" r="2" fill="white" />
+    </Base>
+  )
+}

@@ -4,10 +4,28 @@ import { Link } from 'react-router-dom'
 import type { SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../../lib/api'
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
+import { EmptyState } from '../../components/EmptyState'
+import { IconAlert, IconLayers, IconSearch } from '../../components/icons'
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: SectorDTO[] }>('/sectors')
   return data.sectors
+}
+
+function SkeletonRows({ columns }: { columns: number }) {
+  return (
+    <>
+      {[0, 1, 2].map((i) => (
+        <tr key={i}>
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className="px-4 py-3">
+              <div className="skeleton h-3 w-full max-w-28 rounded" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
 }
 
 export function AdminSectors() {
@@ -15,6 +33,7 @@ export function AdminSectors() {
   const { data: sectors, isLoading, isError } = useQuery({ queryKey: ['sectors'], queryFn: fetchSectors })
 
   const [search, setSearch] = useState('')
+  const [columnFilter, setColumnFilter] = useState<'ALL' | 'EN' | 'PT'>('ALL')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editNamePt, setEditNamePt] = useState('')
@@ -24,8 +43,15 @@ export function AdminSectors() {
   const filteredSectors = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return sectors ?? []
-    return (sectors ?? []).filter((s) => s.name.toLowerCase().includes(q))
+    return (sectors ?? []).filter(
+      (s) => s.name.toLowerCase().includes(q) || (s.namePt ?? '').toLowerCase().includes(q),
+    )
   }, [sectors, search])
+
+  const showEnColumn = columnFilter !== 'PT'
+  const showPtColumn = columnFilter !== 'EN'
+  const nameColumnCount = showEnColumn && showPtColumn ? 2 : 1
+  const totalColumns = nameColumnCount + 2
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['sectors'] })
@@ -79,123 +105,156 @@ export function AdminSectors() {
         </div>
         <Link
           to="/admin/setores/novo"
-          className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
         >
           + Novo setor
         </Link>
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>}
+      {error && (
+        <div className="animate-fade-in-up mt-4 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+          <IconAlert className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
 
-      <input
-        placeholder="Buscar setor"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mt-4 w-72 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-      />
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="relative w-72">
+          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <input
+            placeholder="Buscar setor"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-neutral-300 py-2 pl-9 pr-3 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-neutral-200 bg-white p-1 text-sm">
+          {(
+            [
+              { key: 'ALL', label: 'Todos' },
+              { key: 'EN', label: 'Nome em inglês' },
+              { key: 'PT', label: 'Nome em português' },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setColumnFilter(opt.key)}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                columnFilter === opt.key ? 'bg-ink-900 text-white' : 'text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-        <table className="min-w-full divide-y divide-neutral-200 text-sm">
-          <thead className="bg-neutral-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome (inglês)</th>
-              <th className="px-4 py-2 text-left font-medium text-neutral-500">Nome (português)</th>
-              <th className="px-4 py-2 text-left font-medium text-neutral-500">Produtos</th>
-              <th className="px-4 py-2 text-right font-medium text-neutral-500">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {isLoading && (
+      <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-neutral-200 text-sm">
+            <thead className="bg-neutral-50">
               <tr>
-                <td colSpan={4} className="px-4 py-4 text-center text-neutral-400">
-                  Carregando…
-                </td>
+                {showEnColumn && <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Nome (inglês)</th>}
+                {showPtColumn && <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Nome (português)</th>}
+                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Produtos</th>
+                <th className="px-4 py-2.5 text-right font-medium text-neutral-500">Ações</th>
               </tr>
-            )}
-            {isError && (
-              <tr>
-                <td colSpan={4} className="px-4 py-4 text-center text-brand-600">
-                  Não foi possível carregar os setores.
-                </td>
-              </tr>
-            )}
-            {!isLoading && !isError && filteredSectors.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-4 text-center text-neutral-400">
-                  {search ? 'Nenhum setor encontrado para essa busca.' : 'Nenhum setor cadastrado.'}
-                </td>
-              </tr>
-            )}
-            {filteredSectors.map((sector) => (
-              <tr key={sector.id}>
-                {editingId === sector.id ? (
-                  <td colSpan={2} className="px-4 py-2 text-ink-900">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        updateSector.mutate(sector.id)
-                      }}
-                      className="flex gap-2"
-                    >
-                      <input
-                        autoFocus
-                        required
-                        placeholder="Nome em inglês"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-sm"
-                      />
-                      <input
-                        placeholder="Nome em português (opcional)"
-                        value={editNamePt}
-                        onChange={(e) => setEditNamePt(e.target.value)}
-                        className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-sm"
-                      />
-                      <button
-                        type="submit"
-                        disabled={updateSector.isPending}
-                        className="rounded-lg bg-ink-900 px-3 py-1 text-xs font-semibold text-white hover:bg-black disabled:opacity-60"
-                      >
-                        Salvar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(null)}
-                        className="text-xs font-medium text-neutral-500 hover:underline"
-                      >
-                        Cancelar
-                      </button>
-                    </form>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {isLoading && <SkeletonRows columns={totalColumns} />}
+              {isError && (
+                <tr>
+                  <td colSpan={totalColumns} className="px-4 py-4 text-center text-brand-600">
+                    Não foi possível carregar os setores.
                   </td>
-                ) : (
-                  <>
-                    <td className="px-4 py-2 text-ink-900">{sector.name}</td>
-                    <td className="px-4 py-2 text-neutral-600">{sector.namePt || '—'}</td>
-                  </>
-                )}
-                <td className="px-4 py-2 text-neutral-600">{sector.productCount}</td>
-                <td className="px-4 py-2 text-right">
-                  {editingId !== sector.id && (
-                    <div className="flex justify-end gap-3">
-                      <button
-                        onClick={() => startEdit(sector)}
-                        className="text-xs font-medium text-brand-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => setDeletingSector(sector)}
-                        className="text-xs font-medium text-brand-600 hover:underline"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </tr>
+              )}
+              {!isLoading &&
+                !isError &&
+                filteredSectors.map((sector, index) => (
+                  <tr
+                    key={sector.id}
+                    className="animate-fade-in-up transition-colors hover:bg-neutral-50"
+                    style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
+                  >
+                    {editingId === sector.id ? (
+                      <td colSpan={nameColumnCount} className="px-4 py-2 text-ink-900">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            updateSector.mutate(sector.id)
+                          }}
+                          className="flex gap-2"
+                        >
+                          <input
+                            autoFocus
+                            required
+                            placeholder="Nome em inglês"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                          />
+                          <input
+                            placeholder="Nome em português (opcional)"
+                            value={editNamePt}
+                            onChange={(e) => setEditNamePt(e.target.value)}
+                            className="flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                          />
+                          <button
+                            type="submit"
+                            disabled={updateSector.isPending}
+                            className="rounded-lg bg-ink-900 px-3 py-1 text-xs font-semibold text-white transition-all hover:bg-black active:scale-95 disabled:opacity-60"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="text-xs font-medium text-neutral-500 hover:underline"
+                          >
+                            Cancelar
+                          </button>
+                        </form>
+                      </td>
+                    ) : (
+                      <>
+                        {showEnColumn && <td className="px-4 py-2.5 font-medium text-ink-900">{sector.name}</td>}
+                        {showPtColumn && <td className="px-4 py-2.5 text-neutral-600">{sector.namePt || '—'}</td>}
+                      </>
+                    )}
+                    <td className="px-4 py-2.5 text-neutral-600">{sector.productCount}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      {editingId !== sector.id && (
+                        <div className="flex justify-end gap-3">
+                          <button
+                            onClick={() => startEdit(sector)}
+                            className="text-xs font-semibold text-brand-600 hover:underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => setDeletingSector(sector)}
+                            className="text-xs font-semibold text-brand-600 hover:underline"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        {!isLoading && !isError && filteredSectors.length === 0 && (
+          <div className="p-4">
+            <EmptyState
+              icon={IconLayers}
+              title={search ? 'Nenhum setor encontrado para essa busca' : 'Nenhum setor cadastrado'}
+            />
+          </div>
+        )}
       </div>
 
       {deletingSector && (

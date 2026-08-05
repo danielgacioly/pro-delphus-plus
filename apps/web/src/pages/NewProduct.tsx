@@ -69,7 +69,9 @@ export function NewProduct() {
       <p className="mt-1 text-neutral-500">Cadastrar aqui já adiciona o produto à tabela de preços.</p>
 
       {error && (
-        <div className="mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>
+        <div className="animate-fade-in-up mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+          {error}
+        </div>
       )}
 
       <form
@@ -77,7 +79,7 @@ export function NewProduct() {
           e.preventDefault()
           createProduct.mutate()
         }}
-        className="mt-4 grid max-w-3xl grid-cols-4 gap-x-4 gap-y-5 rounded-xl border border-neutral-200 bg-white p-6"
+        className="animate-fade-in-up mt-4 grid max-w-3xl grid-cols-4 gap-x-4 gap-y-5 rounded-xl border border-neutral-200 bg-white p-6"
       >
         <ProductFieldSet value={form} onChange={(patch) => setForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
 
@@ -122,7 +124,7 @@ export function NewProduct() {
         <button
           type="submit"
           disabled={createProduct.isPending}
-          className="col-span-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+          className="col-span-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
         >
           {createProduct.isPending ? 'Salvando…' : 'Adicionar produto'}
         </button>

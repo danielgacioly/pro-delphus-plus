@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
@@ -10,6 +10,9 @@ import type {
 } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
+import { EmptyState } from '../components/EmptyState'
+import { IconAlert, IconBoard, IconChevronDown } from '../components/icons'
 
 async function fetchColumns() {
   const { data } = await api.get<{ columns: PersonalBoardColumnDTO[] }>('/tasks/board-columns')
@@ -42,6 +45,25 @@ async function fetchOrders() {
 }
 
 const emptyDraft = { title: '', clientName: '', notes: '', quoteId: '', orderId: '', columnId: '', dueDate: '' }
+
+const COLLAPSED_STORAGE_KEY = 'mydesk-collapsed-columns'
+
+function loadCollapsed(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveCollapsed(value: Record<string, boolean>) {
+  try {
+    localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(value))
+  } catch {
+    // storage indisponível — a preferência só vale para esta sessão
+  }
+}
 
 function isOverdue(dueDate: string | null) {
   if (!dueDate) return false
@@ -86,16 +108,20 @@ function ColumnTitle({ column }: { column: PersonalBoardColumnDTO }) {
             setEditing(false)
           }
         }}
-        className="w-full rounded border border-brand-300 bg-white px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-neutral-700"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full rounded border border-brand-300 bg-white px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     )
   }
 
   return (
     <h3
-      onDoubleClick={() => setEditing(true)}
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        setEditing(true)
+      }}
       title="Clique duas vezes para renomear"
-      className="cursor-text select-none text-xs font-semibold uppercase tracking-wide text-neutral-500"
+      className="cursor-text select-none truncate text-xs font-semibold uppercase tracking-wide text-neutral-500"
     >
       {column.name}
     </h3>
@@ -130,6 +156,9 @@ function EditTaskModal({
   const [tags, setTags] = useState<string[]>(task.tags)
   const [tagDraft, setTagDraft] = useState('')
 
+  const inputClass =
+    'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
+
   const updateTask = useMutation({
     mutationFn: async () =>
       api.patch(`/tasks/${task.id}`, {
@@ -161,21 +190,24 @@ function EditTaskModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4" onClick={onClose}>
+    <div
+      className="animate-fade-in-up fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4"
+      onClick={onClose}
+    >
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault()
           updateTask.mutate()
         }}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
+        className="animate-scale-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-ink-900">Editar tarefa</h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-neutral-400 hover:text-brand-600"
+            className="text-neutral-400 transition-colors hover:text-brand-600"
             aria-label="Fechar"
           >
             ×
@@ -184,13 +216,7 @@ function EditTaskModal({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium text-neutral-600">Título</label>
-            <input
-              required
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            />
+            <input required autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Cliente (opcional)</label>
@@ -198,7 +224,7 @@ function EditTaskModal({
               list="edit-task-clients-datalist"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={inputClass}
             />
             <datalist id="edit-task-clients-datalist">
               {clientSuggestions?.map((c) => (
@@ -208,11 +234,7 @@ function EditTaskModal({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Quadro</label>
-            <select
-              value={columnId}
-              onChange={(e) => setColumnId(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            >
+            <select value={columnId} onChange={(e) => setColumnId(e.target.value)} className={inputClass}>
               {columns.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -222,12 +244,7 @@ function EditTaskModal({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Prazo (opcional)</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            />
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Tags (opcional)</label>
@@ -242,7 +259,7 @@ function EditTaskModal({
                     <button
                       type="button"
                       onClick={() => setTags((s) => s.filter((x) => x !== t))}
-                      className="text-neutral-400 hover:text-brand-600"
+                      className="text-neutral-400 transition-colors hover:text-brand-600"
                       aria-label={`Remover tag ${t}`}
                     >
                       ×
@@ -262,7 +279,7 @@ function EditTaskModal({
                   addTag(tagDraft)
                 }
               }}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className={inputClass}
             />
             <datalist id="edit-task-tags-datalist">
               {tagSuggestions?.map((t) => (
@@ -272,11 +289,7 @@ function EditTaskModal({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Vincular a orçamento (opcional)</label>
-            <select
-              value={quoteId}
-              onChange={(e) => setQuoteId(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            >
+            <select value={quoteId} onChange={(e) => setQuoteId(e.target.value)} className={inputClass}>
               <option value="">—</option>
               {myQuotes.map((q) => (
                 <option key={q.id} value={q.id}>
@@ -287,11 +300,7 @@ function EditTaskModal({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Vincular a pedido (opcional)</label>
-            <select
-              value={orderId}
-              onChange={(e) => setOrderId(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            >
+            <select value={orderId} onChange={(e) => setOrderId(e.target.value)} className={inputClass}>
               <option value="">—</option>
               {myOrders.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -302,26 +311,21 @@ function EditTaskModal({
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium text-neutral-600">Notas (opcional)</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            />
+            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-600 hover:border-neutral-400"
+            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={updateTask.isPending}
-            className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
+            className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.98] disabled:opacity-60"
           >
             {updateTask.isPending ? 'Salvando…' : 'Salvar'}
           </button>
@@ -354,6 +358,8 @@ export function MyDesk() {
   const [newColumnName, setNewColumnName] = useState('')
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [deletingColumn, setDeletingColumn] = useState<PersonalBoardColumnDTO | null>(null)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(loadCollapsed)
 
   const editingTask = useMemo(() => tasks?.find((t) => t.id === editingTaskId) ?? null, [tasks, editingTaskId])
 
@@ -410,12 +416,36 @@ export function MyDesk() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['board-columns'] }),
   })
 
+  const [columnError, setColumnError] = useState<string | null>(null)
+
+  const deleteColumn = useMutation({
+    mutationFn: async (id: string) => api.delete(`/tasks/board-columns/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board-columns'] })
+      setColumnError(null)
+      setDeletingColumn(null)
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        'Não foi possível excluir o quadro.'
+      setColumnError(message)
+      setDeletingColumn(null)
+    },
+  })
+
   const grouped = useMemo(() => {
     const map: Record<string, PersonalTaskDTO[]> = {}
     for (const col of columns ?? []) map[col.id] = []
     for (const t of tasks ?? []) (map[t.columnId] ??= []).push(t)
     return map
   }, [columns, tasks])
+
+  useEffect(() => saveCollapsed(collapsed), [collapsed])
+
+  function toggleCollapsed(columnId: string) {
+    setCollapsed((s) => ({ ...s, [columnId]: !s[columnId] }))
+  }
 
   function addDraftTag(raw: string) {
     const typed = raw.trim()
@@ -451,6 +481,9 @@ export function MyDesk() {
     reorderColumns.mutate(withPositions.map((c) => ({ id: c.id, position: c.position })))
   }
 
+  const inputClass =
+    'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-ink-900">Minha Pro Delphus</h1>
@@ -461,14 +494,14 @@ export function MyDesk() {
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link
           to="/orcamentos"
-          className="rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-brand-200 hover:shadow-sm"
+          className="group rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Meus orçamentos</p>
           <p className="mt-1 text-2xl font-bold text-ink-900">{myQuotes.length}</p>
         </Link>
         <Link
           to="/pedidos"
-          className="rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-brand-200 hover:shadow-sm"
+          className="group rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Meus pedidos</p>
           <p className="mt-1 text-2xl font-bold text-ink-900">{myOrders.length}</p>
@@ -481,19 +514,33 @@ export function MyDesk() {
           <button
             type="button"
             onClick={() => setAddingColumn((s) => !s)}
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-semibold text-neutral-600 hover:border-brand-300 hover:text-brand-600"
+            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-semibold text-neutral-600 transition-colors hover:border-brand-300 hover:text-brand-600"
           >
             {addingColumn ? 'Cancelar' : '+ Novo quadro'}
           </button>
           <button
             type="button"
             onClick={() => setShowForm((s) => !s)}
-            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
           >
             {showForm ? 'Cancelar' : '+ Nova tarefa'}
           </button>
         </div>
       </div>
+
+      {columnError && (
+        <div className="animate-fade-in-up mt-3 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+          <IconAlert className="h-4 w-4 shrink-0" />
+          {columnError}
+          <button
+            type="button"
+            onClick={() => setColumnError(null)}
+            className="ml-auto shrink-0 text-xs font-semibold hover:underline"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
 
       {addingColumn && (
         <form
@@ -501,7 +548,7 @@ export function MyDesk() {
             e.preventDefault()
             if (newColumnName.trim()) createColumn.mutate(newColumnName.trim())
           }}
-          className="mt-3 flex items-center gap-2 rounded-xl border border-neutral-200 bg-white p-3"
+          className="animate-fade-in-up mt-3 flex items-center gap-2 rounded-xl border border-neutral-200 bg-white p-3"
         >
           <input
             autoFocus
@@ -511,12 +558,12 @@ export function MyDesk() {
             onKeyDown={(e) => {
               if (e.key === 'Escape') setAddingColumn(false)
             }}
-            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className={`flex-1 ${inputClass}`}
           />
           <button
             type="submit"
             disabled={createColumn.isPending}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98] disabled:opacity-60"
           >
             Criar quadro
           </button>
@@ -529,7 +576,7 @@ export function MyDesk() {
             e.preventDefault()
             createTask.mutate()
           }}
-          className="mt-3 rounded-xl border border-neutral-200 bg-white p-4"
+          className="animate-fade-in-up mt-3 rounded-xl border border-neutral-200 bg-white p-4"
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -539,7 +586,7 @@ export function MyDesk() {
                 autoFocus
                 value={draft.title}
                 onChange={(e) => setDraft((s) => ({ ...s, title: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               />
             </div>
             <div>
@@ -548,7 +595,7 @@ export function MyDesk() {
                 list="task-clients-datalist"
                 value={draft.clientName}
                 onChange={(e) => setDraft((s) => ({ ...s, clientName: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               />
               <datalist id="task-clients-datalist">
                 {clientSuggestions?.map((c) => (
@@ -561,7 +608,7 @@ export function MyDesk() {
               <select
                 value={draft.columnId}
                 onChange={(e) => setDraft((s) => ({ ...s, columnId: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               >
                 {(columns ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
@@ -576,7 +623,7 @@ export function MyDesk() {
                 type="date"
                 value={draft.dueDate}
                 onChange={(e) => setDraft((s) => ({ ...s, dueDate: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               />
             </div>
             <div>
@@ -592,7 +639,7 @@ export function MyDesk() {
                       <button
                         type="button"
                         onClick={() => setDraftTags((s) => s.filter((x) => x !== t))}
-                        className="text-neutral-400 hover:text-brand-600"
+                        className="text-neutral-400 transition-colors hover:text-brand-600"
                         aria-label={`Remover tag ${t}`}
                       >
                         ×
@@ -612,7 +659,7 @@ export function MyDesk() {
                     addDraftTag(tagDraft)
                   }
                 }}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               />
               <datalist id="task-tags-datalist">
                 {tagSuggestions?.map((t) => (
@@ -625,7 +672,7 @@ export function MyDesk() {
               <select
                 value={draft.quoteId}
                 onChange={(e) => setDraft((s) => ({ ...s, quoteId: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               >
                 <option value="">—</option>
                 {myQuotes.map((q) => (
@@ -640,7 +687,7 @@ export function MyDesk() {
               <select
                 value={draft.orderId}
                 onChange={(e) => setDraft((s) => ({ ...s, orderId: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               >
                 <option value="">—</option>
                 {myOrders.map((o) => (
@@ -656,136 +703,183 @@ export function MyDesk() {
                 rows={2}
                 value={draft.notes}
                 onChange={(e) => setDraft((s) => ({ ...s, notes: e.target.value }))}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className={inputClass}
               />
             </div>
           </div>
           <button
             type="submit"
             disabled={createTask.isPending}
-            className="mt-4 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
+            className="mt-4 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
           >
             {createTask.isPending ? 'Criando…' : 'Criar tarefa'}
           </button>
         </form>
       )}
 
-      <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-        {(columns ?? []).map((col) => (
-          <div
-            key={col.id}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = 'move'
-              setDraggingColumnId(col.id)
-            }}
-            onDragEnd={() => setDraggingColumnId(null)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault()
-              if (draggingColumnId) handleColumnDrop(col.id)
-              else handleDrop(col.id)
-            }}
-            className={`w-72 shrink-0 cursor-grab rounded-xl border border-neutral-200 bg-neutral-100/60 p-3 transition-opacity active:cursor-grabbing ${
-              draggingColumnId === col.id ? 'opacity-40' : ''
-            }`}
-          >
-            <div className="mb-3 flex items-center justify-between gap-2 px-1">
-              <div className="min-w-0 flex-1">
-                <ColumnTitle column={col} />
+      {!columns && (
+        <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="w-72 shrink-0 rounded-xl border border-neutral-200 bg-white p-3">
+              <div className="skeleton h-3 w-24 rounded" />
+              <div className="mt-4 space-y-2">
+                <div className="skeleton h-14 rounded-lg" />
+                <div className="skeleton h-14 rounded-lg" />
               </div>
-              <span className="shrink-0 text-xs text-neutral-400">{(grouped[col.id] ?? []).length}</span>
             </div>
-            <div className="min-h-15 space-y-2">
-              {(grouped[col.id] ?? []).map((task) => {
-                const overdue = isOverdue(task.dueDate)
-                return (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.stopPropagation()
-                      setDraggingId(task.id)
-                    }}
-                    onDragEnd={(e) => {
-                      e.stopPropagation()
-                      setDraggingId(null)
-                    }}
-                    onClick={() => setEditingTaskId(task.id)}
-                    className={`cursor-pointer rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-opacity hover:border-brand-200 active:cursor-grabbing ${
-                      draggingId === task.id ? 'opacity-40' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium text-ink-900">{task.title}</p>
-                      <button
-                        type="button"
-                        onClick={(e) => {
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 flex items-start gap-4 overflow-x-auto pb-2">
+        {(columns ?? []).map((col) => {
+          const isCollapsed = !!collapsed[col.id]
+          const colTasks = grouped[col.id] ?? []
+          return (
+            <div
+              key={col.id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move'
+                setDraggingColumnId(col.id)
+              }}
+              onDragEnd={() => setDraggingColumnId(null)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                if (draggingColumnId) handleColumnDrop(col.id)
+                else handleDrop(col.id)
+              }}
+              className={`w-72 shrink-0 cursor-grab rounded-xl border border-neutral-200 bg-white p-3 shadow-sm transition-all active:cursor-grabbing ${
+                draggingColumnId === col.id ? 'opacity-40' : 'hover:shadow-md'
+              }`}
+            >
+              <div className="mb-1 flex items-center gap-1 px-1">
+                <button
+                  type="button"
+                  onClick={() => toggleCollapsed(col.id)}
+                  title={isCollapsed ? 'Expandir quadro' : 'Recolher quadro'}
+                  aria-label={isCollapsed ? `Expandir quadro ${col.name}` : `Recolher quadro ${col.name}`}
+                  className="shrink-0 text-neutral-300 transition-colors hover:text-neutral-600"
+                >
+                  <IconChevronDown className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <ColumnTitle column={col} />
+                </div>
+                <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-xs text-neutral-500">
+                  {colTasks.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDeletingColumn(col)}
+                  title="Excluir quadro"
+                  aria-label={`Excluir quadro ${col.name}`}
+                  className="shrink-0 text-neutral-300 transition-colors hover:text-brand-600"
+                >
+                  ×
+                </button>
+              </div>
+              {!isCollapsed && (
+                <div className="min-h-15 mt-2 space-y-2">
+                  {colTasks.map((task) => {
+                    const overdue = isOverdue(task.dueDate)
+                    return (
+                      <div
+                        key={task.id}
+                        draggable
+                        onDragStart={(e) => {
                           e.stopPropagation()
-                          deleteTask.mutate(task.id)
+                          setDraggingId(task.id)
                         }}
-                        className="shrink-0 text-neutral-300 hover:text-brand-600"
-                        aria-label="Remover tarefa"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    {task.clientName && <p className="mt-1 text-xs text-neutral-500">{task.clientName}</p>}
-                    {task.notes && <p className="mt-1 line-clamp-2 text-xs text-neutral-400">{task.notes}</p>}
-                    {task.tags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {task.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-ink-900/5 px-2 py-0.5 text-[11px] font-medium text-ink-700"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {task.dueDate && (
-                      <p
-                        className={`mt-2 flex items-center gap-1 text-[11px] font-medium ${
-                          overdue ? 'text-brand-600' : 'text-neutral-400'
+                        onDragEnd={(e) => {
+                          e.stopPropagation()
+                          setDraggingId(null)
+                        }}
+                        onClick={() => setEditingTaskId(task.id)}
+                        className={`cursor-pointer rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md active:cursor-grabbing ${
+                          draggingId === task.id ? 'opacity-40' : ''
                         }`}
                       >
-                        {overdue && <span aria-hidden>⚠</span>}
-                        Prazo: {formatDueDate(task.dueDate)}
-                        {overdue && ' — atrasado'}
-                      </p>
-                    )}
-                    {(task.quoteNumber || task.orderNumber) && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {task.quoteNumber && (
-                          <Link
-                            to="/orcamentos"
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-brand-100"
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-ink-900">{task.title}</p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteTask.mutate(task.id)
+                            }}
+                            className="shrink-0 text-neutral-300 transition-colors hover:text-brand-600"
+                            aria-label="Remover tarefa"
                           >
-                            Orç. {task.quoteNumber}
-                          </Link>
+                            ×
+                          </button>
+                        </div>
+                        {task.clientName && <p className="mt-1 text-xs text-neutral-500">{task.clientName}</p>}
+                        {task.notes && <p className="mt-1 line-clamp-2 text-xs text-neutral-400">{task.notes}</p>}
+                        {task.tags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {task.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-ink-900/5 px-2 py-0.5 text-[11px] font-medium text-ink-700"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         )}
-                        {task.orderNumber && (
-                          <Link
-                            to={`/pedidos/${task.orderId}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600 hover:bg-neutral-200"
+                        {task.dueDate && (
+                          <p
+                            className={`mt-2 flex items-center gap-1 text-[11px] font-medium ${
+                              overdue ? 'text-brand-600' : 'text-neutral-400'
+                            }`}
                           >
-                            Pedido #{task.orderNumber}
-                          </Link>
+                            {overdue && <span aria-hidden>⚠</span>}
+                            Prazo: {formatDueDate(task.dueDate)}
+                            {overdue && ' — atrasado'}
+                          </p>
+                        )}
+                        {(task.quoteNumber || task.orderNumber) && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {task.quoteNumber && (
+                              <Link
+                                to="/orcamentos"
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 transition-colors hover:bg-brand-100"
+                              >
+                                Orç. {task.quoteNumber}
+                              </Link>
+                            )}
+                            {task.orderNumber && (
+                              <Link
+                                to={`/pedidos/${task.orderId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600 transition-colors hover:bg-neutral-200"
+                              >
+                                Pedido #{task.orderNumber}
+                              </Link>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-              {(grouped[col.id] ?? []).length === 0 && (
-                <p className="px-1 py-2 text-xs text-neutral-400">Nada por aqui.</p>
+                    )
+                  })}
+                  {colTasks.length === 0 && <p className="px-1 py-2 text-xs text-neutral-400">Nada por aqui.</p>}
+                </div>
               )}
             </div>
+          )
+        })}
+        {columns && columns.length === 0 && (
+          <div className="w-full">
+            <EmptyState
+              icon={IconBoard}
+              title="Nenhum quadro ainda"
+              description='Clique em "+ Novo quadro" para começar a organizar suas tarefas.'
+            />
           </div>
-        ))}
+        )}
       </div>
 
       {editingTask && (
@@ -797,6 +891,20 @@ export function MyDesk() {
           clientSuggestions={clientSuggestions}
           tagSuggestions={tagSuggestions}
           onClose={() => setEditingTaskId(null)}
+        />
+      )}
+
+      {deletingColumn && (
+        <ConfirmDeleteModal
+          title={`Excluir "${deletingColumn.name}"?`}
+          description={
+            (grouped[deletingColumn.id] ?? []).length > 0
+              ? `Este quadro tem ${(grouped[deletingColumn.id] ?? []).length} tarefa(s). Mova ou exclua as tarefas antes de remover o quadro.`
+              : 'Esta ação não pode ser desfeita.'
+          }
+          isPending={deleteColumn.isPending}
+          onCancel={() => setDeletingColumn(null)}
+          onConfirm={() => deleteColumn.mutate(deletingColumn.id)}
         />
       )}
     </div>

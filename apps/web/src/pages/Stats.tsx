@@ -63,12 +63,33 @@ function fmt(value: number) {
   return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
-const STATUS_COLORS = { PENDING: '#00000', COMPLETED: '#dc2626' }
+const STATUS_COLORS = { PENDING: '#f59e0b', COMPLETED: '#ef1818' }
+
+function StatsSkeleton() {
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm">
+          <div className="skeleton h-3 w-24 rounded" />
+          <div className="skeleton mt-2 h-7 w-16 rounded" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function Stats() {
   const { data, isLoading, isError } = useQuery({ queryKey: ['stats'], queryFn: fetchStats })
 
-  if (isLoading) return <p className="text-neutral-400">Carregando…</p>
+  if (isLoading) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-ink-900">Métricas</h1>
+        <p className="mt-1 text-neutral-500">Vendas por período, status dos pedidos e produtos mais vendidos.</p>
+        <StatsSkeleton />
+      </div>
+    )
+  }
   if (isError || !data) return <p className="text-brand-600">Não foi possível carregar as métricas.</p>
 
   const monthChartData = data.byMonth.map((m) => ({
@@ -106,19 +127,28 @@ export function Stats() {
       <p className="mt-1 text-neutral-500">Vendas por período, status dos pedidos e produtos mais vendidos.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="animate-fade-in-up rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-ink-900/5">
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Pedidos totais</p>
           <p className="mt-1 text-2xl font-bold text-ink-900">{data.totalOrders}</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div
+          className="animate-fade-in-up rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-ink-900/5"
+          style={{ animationDelay: '40ms' }}
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Vendido (USD)</p>
           <p className="mt-1 text-2xl font-bold text-ink-900">$ {fmt(data.totalByCurrency.USD)}</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div
+          className="animate-fade-in-up rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-ink-900/5"
+          style={{ animationDelay: '80ms' }}
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Vendido (BRL)</p>
           <p className="mt-1 text-2xl font-bold text-ink-900">R$ {fmt(data.totalByCurrency.BRL)}</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div
+          className="animate-fade-in-up rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-ink-900/5"
+          style={{ animationDelay: '120ms' }}
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Concluídos</p>
           <p className="mt-1 text-2xl font-bold text-ink-900">
             {data.statusBreakdown.COMPLETED}
@@ -128,7 +158,7 @@ export function Stats() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 lg:col-span-2">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm lg:col-span-2">
           <h2 className="mb-3 text-sm font-semibold text-ink-900">Vendas por mês</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={monthChartData}>
@@ -142,7 +172,7 @@ export function Stats() {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-ink-900">Status dos pedidos</h2>
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
@@ -158,7 +188,7 @@ export function Stats() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-ink-900">Vendas por ano</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={yearChartData}>
@@ -172,7 +202,7 @@ export function Stats() {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-ink-900">Produtos mais vendidos (por quantidade)</h2>
           {productChartData.length === 0 ? (
             <p className="text-sm text-neutral-400">Sem dados suficientes ainda.</p>
@@ -191,7 +221,7 @@ export function Stats() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-ink-900">Áreas vendidas (nº de vendas por setor)</h2>
           <p className="mb-3 text-xs text-neutral-400">
             Conta pedidos que tiveram pelo menos um item do setor — não a quantidade de produtos. Um pedido com

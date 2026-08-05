@@ -112,11 +112,11 @@ export function OrderDetail() {
 
   return (
     <div>
-      <Link to="/pedidos" className="text-sm font-medium text-brand-600 hover:underline">
-        ← Voltar para pedidos
+      <Link to="/pedidos" className="group inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
+        <span className="transition-transform group-hover:-translate-x-0.5">←</span> Voltar para pedidos
       </Link>
 
-      <div className="mt-3 flex items-start justify-between">
+      <div className="animate-fade-in-up mt-3 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink-900">Pedido #{order.orderNumber}</h1>
           <p className="mt-1 text-neutral-500">
@@ -126,14 +126,14 @@ export function OrderDetail() {
         </div>
         <button
           onClick={editing ? () => setEditing(false) : startEdit}
-          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-ink-900 hover:bg-neutral-50"
+          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-ink-900 transition-colors hover:bg-neutral-50"
         >
           {editing ? 'Cancelar' : 'Editar'}
         </button>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-6">
-        <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5">
+      <div className="animate-fade-in-up mt-6 grid grid-cols-2 gap-6">
+        <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 transition-shadow hover:shadow-sm">
           <h2 className="text-sm font-semibold text-neutral-700">Documentos gerados</h2>
           <div className="flex flex-wrap gap-2">
             {order.invoicePdfUrl && (
@@ -141,7 +141,7 @@ export function OrderDetail() {
                 href={order.invoicePdfUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-700 active:scale-95"
               >
                 Invoice
               </a>
@@ -151,7 +151,7 @@ export function OrderDetail() {
                 href={order.packingListPdfUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-700 active:scale-95"
               >
                 Packing List
               </a>
@@ -161,7 +161,7 @@ export function OrderDetail() {
                 href={order.packingListBoxPdfUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-700 active:scale-95"
               >
                 Packing List Box
               </a>
@@ -171,7 +171,7 @@ export function OrderDetail() {
                 href={order.exportDocXlsxUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black"
+                className="rounded-lg bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-black active:scale-95"
               >
                 Doc. de Exportação
               </a>
@@ -219,7 +219,7 @@ export function OrderDetail() {
           </div>
         </div>
 
-        <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5">
+        <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 transition-shadow hover:shadow-sm">
           {editing ? (
             <form
               onSubmit={(e) => {
@@ -234,7 +234,7 @@ export function OrderDetail() {
                 <input
                   value={editForm.purchaseOrder}
                   onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
               <div>
@@ -243,7 +243,7 @@ export function OrderDetail() {
                   type="email"
                   value={editForm.orderedByEmail}
                   onChange={(e) => setEditForm((s) => ({ ...s, orderedByEmail: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
               <div>
@@ -251,7 +251,7 @@ export function OrderDetail() {
                 <input
                   value={editForm.awbNumber}
                   onChange={(e) => setEditForm((s) => ({ ...s, awbNumber: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
               <div>
@@ -259,7 +259,7 @@ export function OrderDetail() {
                 <input
                   value={editForm.incoterms}
                   onChange={(e) => setEditForm((s) => ({ ...s, incoterms: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -268,7 +268,7 @@ export function OrderDetail() {
                   <select
                     value={editForm.prepaymentBy}
                     onChange={(e) => setEditForm((s) => ({ ...s, prepaymentBy: e.target.value as PrepaymentMethod }))}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                   >
                     <option value="WIRE_TRANSFER">Wire Transfer</option>
                     <option value="PAYPAL">PayPal</option>
@@ -282,7 +282,7 @@ export function OrderDetail() {
                       step="0.01"
                       value={editForm.paypalFee}
                       onChange={(e) => setEditForm((s) => ({ ...s, paypalFee: e.target.value }))}
-                      className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                     />
                   </div>
                 )}
@@ -293,7 +293,7 @@ export function OrderDetail() {
                   <input
                     value={editForm.nfNumber}
                     onChange={(e) => setEditForm((s) => ({ ...s, nfNumber: e.target.value }))}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                 </div>
                 <div>
@@ -302,7 +302,7 @@ export function OrderDetail() {
                     type="date"
                     value={editForm.nfDate}
                     onChange={(e) => setEditForm((s) => ({ ...s, nfDate: e.target.value }))}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                 </div>
               </div>
@@ -313,7 +313,7 @@ export function OrderDetail() {
                   step="0.0001"
                   value={editForm.exchangeRate}
                   onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
               <p className="text-[11px] text-neutral-400">
@@ -322,7 +322,7 @@ export function OrderDetail() {
               <button
                 type="submit"
                 disabled={updateOrder.isPending}
-                className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
               >
                 {updateOrder.isPending ? 'Salvando…' : 'Salvar e regenerar documentos'}
               </button>
@@ -369,7 +369,7 @@ export function OrderDetail() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-5">
+      <div className="animate-fade-in-up mt-6 rounded-xl border border-neutral-200 bg-white p-5 transition-shadow hover:shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-neutral-700">Itens (do orçamento {order.quoteNumber})</h2>
         <table className="min-w-full divide-y divide-neutral-200 text-sm">
           <thead>
@@ -382,7 +382,7 @@ export function OrderDetail() {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {order.quote.items.map((item, i) => (
-              <tr key={i}>
+              <tr key={i} className="transition-colors hover:bg-neutral-50">
                 <td className="px-3 py-1.5 text-ink-900">
                   <strong>{item.productName}</strong>
                   {item.description && <span className="text-neutral-500"> — {item.description}</span>}

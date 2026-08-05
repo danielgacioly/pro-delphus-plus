@@ -15,8 +15,8 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
   const canConfirm = value.trim().toLowerCase() === CONFIRM_WORD
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-lg">
+    <div className="animate-fade-in-up fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4">
+      <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">{title}</h2>
         <p className="mt-1 text-sm text-neutral-500">{description}</p>
         <p className="mt-3 text-sm text-neutral-600">
@@ -29,19 +29,19 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
           onKeyDown={(e) => {
             if (e.key === 'Enter' && canConfirm) onConfirm()
           }}
-          className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+          className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
         <div className="mt-4 flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             disabled={!canConfirm || isPending}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98] disabled:opacity-40"
           >
             {isPending ? 'Excluindo…' : 'Excluir'}
           </button>
