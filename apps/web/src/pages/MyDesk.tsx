@@ -12,6 +12,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { EmptyState } from '../components/EmptyState'
+import { Modal } from '../components/Modal'
 import { IconAlert, IconBoard, IconChevronDown } from '../components/icons'
 
 async function fetchColumns() {
@@ -190,10 +191,7 @@ function EditTaskModal({
   }
 
   return (
-    <div
-      className="animate-fade-in-up fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4"
-      onClick={onClose}
-    >
+    <Modal onClose={onClose} dismissOnBackdrop>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
@@ -331,7 +329,7 @@ function EditTaskModal({
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 

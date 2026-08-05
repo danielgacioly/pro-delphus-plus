@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Modal } from './Modal'
 
 interface ConfirmDeleteModalProps {
   title: string
@@ -15,7 +16,7 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
   const canConfirm = value.trim().toLowerCase() === CONFIRM_WORD
 
   return (
-    <div className="animate-fade-in-up fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4">
+    <Modal onClose={onCancel}>
       <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">{title}</h2>
         <p className="mt-1 text-sm text-neutral-500">{description}</p>
@@ -47,6 +48,6 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
