@@ -11,6 +11,8 @@ import { MyDesk } from './pages/MyDesk'
 import { PriceTable } from './pages/PriceTable'
 import { Products } from './pages/Products'
 import { NewProduct } from './pages/NewProduct'
+import { Clients } from './pages/Clients'
+import { ClientDetail } from './pages/ClientDetail'
 import { Quotes } from './pages/Quotes'
 import { NewQuote } from './pages/NewQuote'
 import { Orders } from './pages/Orders'
@@ -34,6 +36,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/precos" element={<PriceTable />} />
           <Route path="/produtos" element={<Products />} />
+          <Route path="/clientes" element={<Clients />} />
+          <Route path="/clientes/:id" element={<ClientDetail />} />
           <Route path="/orcamentos" element={<Quotes />} />
           <Route path="/orcamentos/novo" element={<NewQuote />} />
           <Route path="/pedidos" element={<Orders />} />

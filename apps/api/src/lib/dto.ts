@@ -78,6 +78,7 @@ export function toQuoteDTO(
     priceTier: quote.priceTier,
     clientPrefix: quote.clientPrefix,
     clientName: quote.clientName,
+    clientId: quote.clientId,
     notes: quote.notes,
     freight: quote.freight?.toString() ?? null,
     discount: quote.discount.toString(),

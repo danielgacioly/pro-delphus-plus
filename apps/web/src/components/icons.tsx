@@ -186,6 +186,72 @@ export function IconTrash(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconContacts(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <circle cx="12" cy="10" r="2.5" />
+      <path d="M8 17c.6-1.8 2.1-3 4-3s3.4 1.2 4 3" />
+    </Base>
+  )
+}
+
+export function IconBuilding(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M4 20V6.5a2 2 0 0 1 1.4-1.9l6-1.9a1 1 0 0 1 1.3 1V20" />
+      <path d="M12.7 9.5h5.3a2 2 0 0 1 2 2V20" />
+      <path d="M3 20h18M7.5 8.5v.01M7.5 12v.01M7.5 15.5v.01M16 13v.01M16 16.5v.01" />
+    </Base>
+  )
+}
+
+export function IconMail(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <rect x="3" y="5.5" width="18" height="13" rx="3" />
+      <path d="m4 8 7.1 4.7a1.6 1.6 0 0 0 1.8 0L20 8" />
+    </Base>
+  )
+}
+
+export function IconPhone(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M7.4 3.5h2.1l1.4 3.6-1.8 1.3a12 12 0 0 0 5.5 5.5l1.3-1.8 3.6 1.4v2.1a2.4 2.4 0 0 1-2.6 2.4C10.6 17.4 6.6 13.4 5 6.1A2.4 2.4 0 0 1 7.4 3.5Z" />
+    </Base>
+  )
+}
+
+export function IconPin(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 21c4-4.4 6-7.7 6-10.5A6 6 0 0 0 6 10.5C6 13.3 8 16.6 12 21Z" />
+      <circle cx="12" cy="10.3" r="2.3" />
+    </Base>
+  )
+}
+
+export function IconGlobe(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17" />
+      <path d="M12 3.5c2.2 2.4 3.3 5.2 3.3 8.5S14.2 18.1 12 20.5c-2.2-2.4-3.3-5.2-3.3-8.5S9.8 5.9 12 3.5Z" />
+    </Base>
+  )
+}
+
+export function IconTarget(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.8" />
+      <circle cx="12" cy="12" r="1.2" />
+    </Base>
+  )
+}
+
 export function IconSliders(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ClientPrefix, Currency, PriceTier, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import {
@@ -14,6 +14,7 @@ import {
   Select,
   Textarea,
 } from '../components/ui'
+import { ClientPicker } from '../components/ClientPicker'
 import { IconPlus } from '../components/icons'
 
 interface DraftItem {
@@ -40,12 +41,15 @@ const emptyItem: DraftItem = { productId: '', query: '', quantity: 1, descriptio
 export function NewQuote() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const preselectId = searchParams.get('clientId')
 
   const [language, setLanguage] = useState<QuoteLanguage>('EN')
   const [currency, setCurrency] = useState<Currency>('USD')
   const [priceTier, setPriceTier] = useState<PriceTier>('FINAL')
   const [clientPrefix, setClientPrefix] = useState<ClientPrefix>('NONE')
   const [clientName, setClientName] = useState('')
+  const [clientId, setClientId] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<DraftItem[]>([{ ...emptyItem }])
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -68,6 +72,7 @@ export function NewQuote() {
         priceTier: currency === 'USD' ? priceTier : 'FINAL',
         clientPrefix,
         clientName,
+        clientId: clientId ?? undefined,
         notes: notes || undefined,
         items: items
           .filter((i) => i.productId.trim())
@@ -164,12 +169,22 @@ export function NewQuote() {
                   <option value="MS">{currentPrefixLabels.MS}</option>
                 </Select>
               </Field>
-              <Field label="Nome do cliente" className="min-w-48 flex-1">
-                <Input
-                  required
-                  placeholder="ex: Margarida Cunha"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
+              <Field
+                label="Cliente"
+                className="min-w-48 flex-1"
+                hint="Escolha um cliente do cadastro, crie na hora ou digite só o nome."
+              >
+                <ClientPicker
+                  clientId={clientId}
+                  clientName={clientName}
+                  preselectId={preselectId}
+                  onChange={({ clientId: id, clientName: name, client }) => {
+                    setClientId(id)
+                    setClientName(name)
+                    // Um cliente do cadastro traz o próprio tratamento; digitação
+                    // livre não mexe no que o usuário já escolheu no seletor.
+                    if (client) setClientPrefix(client.prefix)
+                  }}
                 />
               </Field>
             </div>

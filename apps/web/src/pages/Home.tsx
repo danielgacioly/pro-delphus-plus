@@ -8,6 +8,7 @@ import {
   IconBox,
   IconChart,
   IconChevronRight,
+  IconContacts,
   IconLayers,
   IconQuote,
   IconTag,
@@ -28,6 +29,12 @@ const shortcuts: Shortcut[] = [
     title: 'Minha Pro Delphus',
     description: 'Seu mural pessoal de tarefas, lembretes e acesso rápido.',
     icon: IconBoard,
+  },
+  {
+    to: '/clientes',
+    title: 'Clientes',
+    description: 'Contatos, endereços e o histórico de cada cliente.',
+    icon: IconContacts,
   },
   {
     to: '/orcamentos',

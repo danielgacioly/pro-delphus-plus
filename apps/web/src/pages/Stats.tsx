@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Bar,
@@ -15,7 +16,7 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../lib/api'
-import { Card, Page, Skeleton } from '../components/ui'
+import { Card, Page, SegmentedControl, Skeleton } from '../components/ui'
 
 interface MonthStat {
   year: number
@@ -44,6 +45,26 @@ interface SectorStat {
   salesCount: number
 }
 
+/** Funil orçamento→pedido, recortado por vendedor, setor ou cliente. */
+interface Funnel {
+  quotes: number
+  converted: number
+  conversionRate: number
+  avgDaysToConvert: number | null
+  quotedUSD: number
+  quotedBRL: number
+  orderedUSD: number
+  orderedBRL: number
+}
+
+interface Efficiency {
+  overall: Funnel & { medianDaysToConvert: number | null }
+  bySalesperson: (Funnel & { id: string; name: string })[]
+  bySector: (Funnel & { sector: string })[]
+  topClients: (Funnel & { clientId: string | null; name: string })[]
+  byMonth: { year: number; month: number; quotes: number; converted: number }[]
+}
+
 interface StatsResponse {
   totalOrders: number
   totalByCurrency: { USD: number; BRL: number }
@@ -52,6 +73,7 @@ interface StatsResponse {
   byYear: YearStat[]
   topProducts: ProductStat[]
   sectorsSold: SectorStat[]
+  efficiency: Efficiency
 }
 
 async function fetchStats() {
@@ -85,6 +107,31 @@ const tooltipStyle = {
     fontSize: 12,
   },
 } as const
+
+function pct(value: number) {
+  return `${Math.round(value * 100)}%`
+}
+
+function days(value: number | null) {
+  if (value === null) return '—'
+  if (value < 1) return 'Mesmo dia'
+  return `${value.toFixed(value < 10 ? 1 : 0)} d`
+}
+
+/** Barra de progresso fina — lê a taxa de conversão mais rápido que o número. */
+function RateBar({ rate }: { rate: number }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-neutral-500/12">
+        <div
+          className="h-full rounded-full bg-brand-500 transition-[width] duration-500 ease-out"
+          style={{ width: `${Math.min(100, Math.round(rate * 100))}%` }}
+        />
+      </div>
+      <span className="tabular text-[13px] font-medium text-ink-900">{pct(rate)}</span>
+    </div>
+  )
+}
 
 function StatCard({ label, value, sub, delay = 0 }: { label: string; value: ReactNode; sub?: ReactNode; delay?: number }) {
   return (
@@ -148,11 +195,71 @@ function StatsSkeleton() {
   )
 }
 
+/** Tabela de funil reutilizada pelos três recortes (vendedor, setor, cliente). */
+function FunnelTable({
+  label,
+  rows,
+  empty,
+}: {
+  label: string
+  rows: { key: string; name: ReactNode; funnel: Funnel }[]
+  empty: string
+}) {
+  if (rows.length === 0) {
+    return <p className="px-5 pb-6 pt-2 text-[13px] text-neutral-400">{empty}</p>
+  }
+  return (
+    <div className="overflow-x-auto px-2 pb-3">
+      <table className="w-full min-w-[420px] border-collapse">
+        <thead>
+          <tr className="border-b border-neutral-200/70">
+            <th className="px-2 py-2 text-left text-eyebrow text-neutral-400">{label}</th>
+            <th className="px-2 py-2 text-right text-eyebrow text-neutral-400">Orçam.</th>
+            <th className="px-2 py-2 text-right text-eyebrow text-neutral-400">Fechados</th>
+            <th className="px-2 py-2 text-left text-eyebrow text-neutral-400">Conversão</th>
+            <th className="whitespace-nowrap px-2 py-2 text-right text-eyebrow text-neutral-400">Tempo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.key} className="border-b border-neutral-200/50 last:border-0">
+              <td className="max-w-[180px] truncate px-2 py-2.5 text-[13px] font-medium text-ink-900">{row.name}</td>
+              <td className="tabular px-2 py-2.5 text-right text-[13px] text-neutral-600">{row.funnel.quotes}</td>
+              <td className="tabular px-2 py-2.5 text-right text-[13px] text-neutral-600">{row.funnel.converted}</td>
+              <td className="px-2 py-2.5">
+                <RateBar rate={row.funnel.conversionRate} />
+              </td>
+              <td className="tabular whitespace-nowrap px-2 py-2.5 text-right text-[13px] text-neutral-600">
+                {days(row.funnel.avgDaysToConvert)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function Stats() {
   const { data, isLoading, isError } = useQuery({ queryKey: ['stats'], queryFn: fetchStats })
+  const [view, setView] = useState<'sales' | 'efficiency'>('sales')
 
   const page = (children: ReactNode) => (
-    <Page title="Métricas" description="Vendas por período, status dos pedidos e produtos mais vendidos.">
+    <Page
+      title="Métricas"
+      description="Vendas por período, status dos pedidos e a eficiência do funil de orçamentos."
+      actions={
+        <SegmentedControl
+          aria-label="Visão das métricas"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'sales', label: 'Vendas' },
+            { value: 'efficiency', label: 'Eficiência' },
+          ]}
+        />
+      }
+    >
       {children}
     </Page>
   )
@@ -192,6 +299,118 @@ export function Stats() {
   }))
 
   const sectorChartData = data.sectorsSold.map((s) => ({ label: s.sector, Vendas: s.salesCount }))
+
+  // A API pode estar numa versão anterior ao bloco de eficiência; sem ela a aba
+  // simplesmente não tem o que mostrar, em vez de quebrar a página inteira.
+  const eff = data.efficiency
+
+  if (view === 'efficiency') {
+    if (!eff) {
+      return page(
+        <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
+          As métricas de eficiência ainda não estão disponíveis nesta versão da API.
+        </div>,
+      )
+    }
+
+    const funnelChartData = eff.byMonth.map((m) => ({
+      label: `${monthLabels[m.month - 1]}/${String(m.year).slice(2)}`,
+      Orçamentos: m.quotes,
+      Fechados: m.converted,
+    }))
+
+    return page(
+      <>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Taxa de conversão" value={pct(eff.overall.conversionRate)} />
+          <StatCard
+            label="Orçamentos emitidos"
+            value={eff.overall.quotes}
+            sub={`→ ${eff.overall.converted}`}
+            delay={40}
+          />
+          <StatCard
+            label="Tempo médio até fechar"
+            value={days(eff.overall.avgDaysToConvert)}
+            sub={
+              eff.overall.medianDaysToConvert !== null
+                ? `mediana ${days(eff.overall.medianDaysToConvert).toLowerCase()}`
+                : undefined
+            }
+            delay={80}
+          />
+          <StatCard
+            label="Valor convertido"
+            value={`$ ${fmt(eff.overall.orderedUSD)}`}
+            sub={`de $ ${fmt(eff.overall.quotedUSD)}`}
+            delay={120}
+          />
+        </div>
+
+        <div className="mt-4">
+          <ChartCard
+            title="Orçamentos x fechamentos"
+            description="Por mês de emissão do orçamento. Um orçamento conta como fechado quando vira pedido, mesmo que o pedido tenha saído em outro mês."
+          >
+            {funnelChartData.length === 0 ? (
+              <p className="px-3 py-10 text-center text-[13px] text-neutral-400">Sem orçamentos ainda.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={funnelChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+                  <XAxis dataKey="label" {...axisProps} />
+                  <YAxis {...axisProps} allowDecimals={false} />
+                  <Tooltip {...tooltipStyle} cursor={{ fill: 'rgb(23 22 26 / 0.04)' }} />
+                  {/* Mesmo motivo do gráfico de status: a animação de entrada do
+                      recharts não conclui e as barras ficam com altura zero. */}
+                  <Bar dataKey="Orçamentos" fill={INK} radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Fechados" fill={BRAND} radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          <ChartCard title="Por vendedor" description="Quem orça mais e quem converte mais.">
+            <FunnelTable
+              label="Vendedor"
+              empty="Nenhum orçamento emitido ainda."
+              rows={eff.bySalesperson.map((s) => ({ key: s.id, name: s.name, funnel: s }))}
+            />
+          </ChartCard>
+
+          <ChartCard title="Por setor" description="Setor de cada item do orçamento — um orçamento misto conta em todos.">
+            <FunnelTable
+              label="Setor"
+              empty="Sem dados por setor ainda."
+              rows={eff.bySector.map((s) => ({ key: s.sector, name: s.sector, funnel: s }))}
+            />
+          </ChartCard>
+        </div>
+
+        <div className="mt-4">
+          <ChartCard title="Principais clientes" description="Ordenados pelo valor efetivamente fechado.">
+            <FunnelTable
+              label="Cliente"
+              empty="Nenhum cliente com orçamento ainda."
+              rows={eff.topClients.map((c) => ({
+                key: c.clientId ?? c.name,
+                name: c.clientId ? (
+                  <Link to={`/clientes/${c.clientId}`} className="hover:text-brand-600">
+                    {c.name}
+                  </Link>
+                ) : (
+                  <span title="Orçamento sem cliente cadastrado">{c.name}</span>
+                ),
+                funnel: c,
+              }))}
+            />
+          </ChartCard>
+        </div>
+      </>,
+    )
+  }
 
   return page(
     <>

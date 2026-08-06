@@ -7,6 +7,7 @@ import {
   IconBoard,
   IconBox,
   IconChart,
+  IconContacts,
   IconHome,
   IconLayers,
   IconLogout,
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { to: '/minha-pro-delphus', label: 'Minha Pro Delphus', icon: IconBoard },
   { to: '/precos', label: 'Tabela de Preços', icon: IconTag },
   { to: '/produtos', label: 'Produtos', icon: IconBox },
+  { to: '/clientes', label: 'Clientes', icon: IconContacts },
   { to: '/orcamentos', label: 'Orçamentos', icon: IconQuote },
   { to: '/pedidos', label: 'Pedidos', icon: IconTruck },
 ]

@@ -70,6 +70,9 @@ const createQuoteSchema = z.object({
   priceTier: z.enum(['FINAL', 'DISTRIBUTOR']).default('FINAL'),
   clientPrefix: z.enum(['NONE', 'MR', 'MS']).default('NONE'),
   clientName: z.string().min(1),
+  // Vínculo com o cadastro de clientes. Opcional: clientName continua sendo o
+  // que vai impresso no documento, e orçamentos avulsos seguem funcionando.
+  clientId: z.string().min(1).optional(),
   notes: z.string().optional(),
   items: z
     .array(
@@ -99,6 +102,11 @@ quotesRouter.post(
       return priceTier === 'DISTRIBUTOR' ? product.priceUSDDistributor : product.priceUSD
     }
     const tierLabel = priceTier === 'DISTRIBUTOR' ? `${currency} (distribuidor)` : currency
+
+    if (data.clientId) {
+      const exists = await prisma.client.findUnique({ where: { id: data.clientId }, select: { id: true } })
+      if (!exists) throw new HttpError(400, 'Cliente não encontrado')
+    }
 
     const productIds = data.items.map((i) => i.productId)
     const [products, requester] = await Promise.all([
@@ -229,6 +237,7 @@ quotesRouter.post(
         priceTier,
         clientPrefix: data.clientPrefix,
         clientName: data.clientName,
+        clientId: data.clientId ?? null,
         notes,
         freight: data.freight ?? null,
         discount: data.discount,

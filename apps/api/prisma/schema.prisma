@@ -59,6 +59,12 @@ enum PrepaymentMethod {
   WIRE_TRANSFER
 }
 
+enum ClientKind {
+  INDIVIDUAL
+  INSTITUTION
+  DISTRIBUTOR
+}
+
 enum OrderStatus {
   PENDING
   COMPLETED
@@ -92,6 +98,7 @@ model User {
   resetPasswordExpiresAt DateTime?
 
   productUpdates       Product[]             @relation("ProductUpdatedBy")
+  clients              Client[]              @relation("ClientCreatedBy")
   quotes               Quote[]               @relation("QuoteCreatedBy")
   orders               Order[]               @relation("OrderCreatedBy")
   personalTasks        PersonalTask[]        @relation("PersonalTaskOwner")
@@ -167,6 +174,46 @@ model ProductCustomization {
   @@map("product_customizations")
 }
 
+/// Cliente do catálogo — serve tanto para pessoa física (cirurgião) quanto para
+/// instituição ou distribuidor, e para qualquer país. Campos de endereço são
+/// texto livre porque formato postal varia demais entre países; billTo/shipTo
+/// guardam o bloco pronto que o pedido reaproveita.
+model Client {
+  id       String     @id @default(uuid())
+  kind     ClientKind @default(INDIVIDUAL)
+  prefix   ClientPrefix @default(NONE)
+  name     String
+  /// Instituição/hospital quando o cliente é uma pessoa
+  institution String?
+  email    String?
+  phone    String?
+  taxId    String?
+  website  String?
+
+  country String?
+  state   String?
+  city    String?
+  /// Blocos completos reaproveitados no pedido (Invoice / Packing List)
+  billToText String?
+  shipToText String?
+
+  /// Especialidades de interesse — casa com os setores do catálogo
+  sectors String[] @default([])
+  notes   String?
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  quotes Quote[]
+
+  @@index([name])
+  @@map("clients")
+}
+
 model Quote {
   id           String        @id @default(uuid())
   quoteNumber  String        @unique
@@ -174,7 +221,11 @@ model Quote {
   currency     Currency      @default(USD)
   priceTier    PriceTier     @default(FINAL)
   clientPrefix ClientPrefix  @default(NONE)
+  /// Snapshot do nome no momento da emissão: o documento já enviado não pode
+  /// mudar se o cadastro do cliente for renomeado depois.
   clientName   String
+  clientId     String?
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   notes        String?
   freight      Decimal?      @db.Decimal(12, 2)
   discount     Decimal       @db.Decimal(12, 2) @default(0)

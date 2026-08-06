@@ -89,6 +89,36 @@ export interface QuoteItemInput {
   unitPrice?: number
 }
 
+export type ClientKind = 'INDIVIDUAL' | 'INSTITUTION' | 'DISTRIBUTOR'
+
+export interface ClientDTO {
+  id: string
+  kind: ClientKind
+  prefix: ClientPrefix
+  name: string
+  institution: string | null
+  email: string | null
+  phone: string | null
+  taxId: string | null
+  website: string | null
+  country: string | null
+  state: string | null
+  city: string | null
+  billToText: string | null
+  shipToText: string | null
+  sectors: string[]
+  notes: string | null
+  active: boolean
+  createdAt: string
+  /** Agregados calculados no servidor — evitam N+1 na listagem. */
+  stats: {
+    quoteCount: number
+    orderCount: number
+    totalQuoted: string
+    lastQuoteAt: string | null
+  }
+}
+
 export interface QuoteDTO {
   id: string
   quoteNumber: string
@@ -97,6 +127,7 @@ export interface QuoteDTO {
   priceTier: PriceTier
   clientPrefix: ClientPrefix
   clientName: string
+  clientId: string | null
   notes: string | null
   freight: string | null
   discount: string
