@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { DropZone } from '../components/DropZone'
+import { BackLink, Button, Card, Page } from '../components/ui'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -14,6 +15,41 @@ import {
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: string[] }>('/products/sectors')
   return data.sectors
+}
+
+function FilePicker({
+  label,
+  accept,
+  files,
+  onAdd,
+  onClear,
+  hint,
+}: {
+  label: string
+  accept: string
+  files: File[]
+  onAdd: (files: File[]) => void
+  onClear: () => void
+  hint: string
+}) {
+  return (
+    <div className="col-span-4">
+      <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">{label}</label>
+      <DropZone accept={accept} multiple onFiles={onAdd}>
+        <p className="text-[12.5px] text-neutral-500">
+          {hint} ou <span className="font-medium text-brand-600">clique para selecionar</span>
+        </p>
+      </DropZone>
+      {files.length > 0 && (
+        <p className="mt-1.5 text-[12px] text-neutral-500">
+          {files.length} arquivo(s) selecionado(s) —{' '}
+          <button type="button" onClick={onClear} className="font-medium text-brand-600 hover:underline">
+            limpar
+          </button>
+        </p>
+      )}
+    </div>
+  )
 }
 
 export function NewProduct() {
@@ -60,75 +96,62 @@ export function NewProduct() {
   })
 
   return (
-    <div>
-      <Link to="/produtos" className="text-sm font-medium text-brand-600 hover:underline">
-        ← Voltar para produtos
-      </Link>
-
-      <h1 className="mt-3 text-2xl font-bold text-ink-900">Novo produto</h1>
-      <p className="mt-1 text-neutral-500">Cadastrar aqui já adiciona o produto à tabela de preços.</p>
+    <Page title="Novo produto" description="Cadastrar aqui já adiciona o produto à tabela de preços." width="narrow">
+      <div className="-mt-4 mb-5">
+        <BackLink to="/produtos">Produtos</BackLink>
+      </div>
 
       {error && (
-        <div className="animate-fade-in-up mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
-          {error}
-        </div>
+        <div className="animate-fade-in mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{error}</div>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          createProduct.mutate()
-        }}
-        className="animate-fade-in-up mt-4 grid max-w-3xl grid-cols-4 gap-x-4 gap-y-5 rounded-xl border border-neutral-200 bg-white p-6"
-      >
-        <ProductFieldSet value={form} onChange={(patch) => setForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
-
-        <div className="col-span-4">
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Mídias (opcional)</label>
-          <DropZone accept="image/*" multiple onFiles={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}>
-            <p className="text-xs text-neutral-500">
-              Arraste imagens aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
-            </p>
-          </DropZone>
-          {files.length > 0 && (
-            <p className="mt-1 text-xs text-neutral-500">
-              {files.length} arquivo(s) selecionado(s) —{' '}
-              <button type="button" onClick={() => setFiles([])} className="text-brand-600 hover:underline">
-                limpar
-              </button>
-            </p>
-          )}
-        </div>
-
-        <div className="col-span-4">
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Brochuras (opcional)</label>
-          <DropZone
-            accept=".pdf,application/pdf"
-            multiple
-            onFiles={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
-          >
-            <p className="text-xs text-neutral-500">
-              Arraste PDFs aqui ou <span className="font-medium text-brand-600">clique para selecionar</span>
-            </p>
-          </DropZone>
-          {brochureFiles.length > 0 && (
-            <p className="mt-1 text-xs text-neutral-500">
-              {brochureFiles.length} arquivo(s) selecionado(s) —{' '}
-              <button type="button" onClick={() => setBrochureFiles([])} className="text-brand-600 hover:underline">
-                limpar
-              </button>
-            </p>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={createProduct.isPending}
-          className="col-span-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
+      <Card className="p-6">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            createProduct.mutate()
+          }}
         >
-          {createProduct.isPending ? 'Salvando…' : 'Adicionar produto'}
-        </button>
-      </form>
-    </div>
+          <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+            <ProductFieldSet
+              value={form}
+              onChange={(patch) => setForm((s) => ({ ...s, ...patch }))}
+              sectors={sectors ?? []}
+            />
+
+            <div className="text-eyebrow col-span-4 mt-3 border-t border-neutral-200/70 pt-5 text-neutral-400">
+              Arquivos (opcional)
+            </div>
+
+            <FilePicker
+              label="Mídias"
+              accept="image/*"
+              hint="Arraste imagens"
+              files={files}
+              onAdd={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+              onClear={() => setFiles([])}
+            />
+
+            <FilePicker
+              label="Brochuras"
+              accept=".pdf,application/pdf"
+              hint="Arraste PDFs"
+              files={brochureFiles}
+              onAdd={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
+              onClear={() => setBrochureFiles([])}
+            />
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2 border-t border-neutral-200/70 pt-5">
+            <Button type="button" onClick={() => navigate('/produtos')}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary" disabled={createProduct.isPending}>
+              {createProduct.isPending ? 'Salvando…' : 'Adicionar produto'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </Page>
   )
 }

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { formatAmount, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { BackLink, Button, Card, Field, FormSection, Input, Page, Select, Textarea } from '../components/ui'
+import { IconPlus } from '../components/icons'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -220,20 +222,20 @@ export function NewOrder() {
     },
   })
 
-  return (
-    <div>
-      <Link to="/pedidos" className="group inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
-        <span className="transition-transform group-hover:-translate-x-0.5">←</span> Voltar para pedidos
-      </Link>
+  const boxCount = Math.max(1, Number(packageCount) || 1)
 
-      <h1 className="mt-3 text-2xl font-bold text-ink-900">Novo pedido</h1>
-      <p className="mt-1 text-neutral-500">
-        Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de
-        Exportação.
-      </p>
+  return (
+    <Page
+      title="Novo pedido"
+      description="Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de Exportação."
+      width="narrow"
+    >
+      <div className="-mt-4 mb-5">
+        <BackLink to="/pedidos">Pedidos</BackLink>
+      </div>
 
       {duplicateFrom && (
-        <div className="mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+        <div className="animate-fade-in mb-4 rounded-xl bg-amber-500/12 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
           {sourceOrder
             ? `Campos preenchidos a partir do pedido #${sourceOrder.orderNumber}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
             : 'Carregando dados do pedido a duplicar…'}
@@ -241,7 +243,7 @@ export function NewOrder() {
       )}
 
       {error && (
-        <div className="mt-4 max-w-3xl rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>
+        <div className="animate-fade-in mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{error}</div>
       )}
 
       <form
@@ -249,326 +251,259 @@ export function NewOrder() {
           e.preventDefault()
           createOrder.mutate()
         }}
-        className="animate-fade-in-up mt-4 max-w-3xl space-y-4 rounded-xl border border-neutral-200 bg-white p-5"
       >
-        <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Orçamento</label>
-          <select
-            required
-            value={form.quoteId}
-            onChange={(e) => selectQuote(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          >
-            <option value="">Selecione um orçamento…</option>
-            {quotes?.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.quoteNumber} — {q.clientName} — {q.currency} {formatAmount(q.total)}
-              </option>
-            ))}
-          </select>
-          {currency && <p className="mt-1 text-[11px] text-neutral-400">Moeda do orçamento: {currency}</p>}
-        </div>
+        <Card className="space-y-7 p-6">
+          <FormSection title="Orçamento de origem">
+            <Field label="Orçamento" hint={currency ? `Moeda do orçamento: ${currency}` : undefined}>
+              <Select required value={form.quoteId} onChange={(e) => selectQuote(e.target.value)}>
+                <option value="">Selecione um orçamento…</option>
+                {quotes?.map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.quoteNumber} — {q.clientName} — {q.currency} {formatAmount(q.total)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </FormSection>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Purchase Order (opcional)</label>
-            <input
-              value={form.purchaseOrder}
-              onChange={(e) => update({ purchaseOrder: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-            <p className="mt-1 text-[11px] text-neutral-400">Se vazio, usa o número do orçamento.</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">E-mail do comprador (Ordered By)</label>
-            <input
-              type="email"
-              required
-              value={form.orderedByEmail}
-              onChange={(e) => update({ orderedByEmail: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Data de expedição (opcional)</label>
-          <input
-            type="date"
-            value={form.shipDate}
-            onChange={(e) => update({ shipDate: e.target.value })}
-            className="w-48 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Bill To</label>
-            <textarea
-              required
-              rows={5}
-              placeholder={'Attn: Nome\nEndereço\nCidade, Estado. País.\nCEP\nMail: ...\nTel: ...'}
-              value={form.billToText}
-              onChange={(e) => update({ billToText: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Ship To</label>
-            <textarea
-              required
-              rows={5}
-              placeholder={'Attn: Nome - Empresa\nEndereço de entrega\n...'}
-              value={form.shipToText}
-              onChange={(e) => update({ shipToText: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">
-            Observação de entrega (opcional — ex: "HOLD FOR PICKUP – CUSTOMER WILL COLLECT AT DHL OFFICE")
-          </label>
-          <input
-            value={form.shipToNote}
-            onChange={(e) => update({ shipToNote: e.target.value })}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Peso líquido (kg)</label>
-            <input
-              type="number"
-              step="0.001"
-              value={form.netWeightKg}
-              onChange={(e) => update({ netWeightKg: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Peso bruto (kg)</label>
-            <input
-              type="number"
-              step="0.001"
-              value={form.grossWeightKg}
-              onChange={(e) => update({ grossWeightKg: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Incoterms</label>
-            <input
-              placeholder="ex: DAP MONTERREY"
-              value={form.incoterms}
-              onChange={(e) => update({ incoterms: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Número de caixas</label>
-          <input
-            type="number"
-            min={1}
-            value={packageCount}
-            onChange={(e) => updatePackageCount(e.target.value)}
-            className="w-32 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-          <p className="mt-1 text-[11px] text-neutral-400">
-            Preenche "Number of Packages" no invoice/packing list automaticamente (ex: 02 Cartons) e gera uma página
-            do Packing List Box por caixa.
-          </p>
-        </div>
-
-        {selectedQuote && selectedQuote.items.length > 0 && (
-          <div className="rounded-lg border border-neutral-200 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <label className="block text-xs font-medium text-neutral-600">
-                Itens por caixa (Packing List Box)
-              </label>
-              <button
-                type="button"
-                onClick={addCustomBoxLine}
-                className="text-xs font-medium text-brand-600 hover:underline"
-              >
-                + item customizado
-              </button>
+          <FormSection title="Comprador">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Purchase Order (opcional)" hint="Se vazio, usa o número do orçamento.">
+                <Input value={form.purchaseOrder} onChange={(e) => update({ purchaseOrder: e.target.value })} />
+              </Field>
+              <Field label="E-mail do comprador (Ordered By)">
+                <Input
+                  type="email"
+                  required
+                  value={form.orderedByEmail}
+                  onChange={(e) => update({ orderedByEmail: e.target.value })}
+                />
+              </Field>
+              <Field label="Data de expedição (opcional)">
+                <Input type="date" value={form.shipDate} onChange={(e) => update({ shipDate: e.target.value })} />
+              </Field>
             </div>
-            <p className="mb-2 text-[11px] text-neutral-400">
-              Cada item vai para uma única caixa. Se um modelo completo precisar ser dividido em componentes entre
-              caixas, use "dividir" para desmembrar a linha em partes que podem ser renomeadas e realocadas
-              livremente.
-            </p>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs">
-                <thead>
-                  <tr>
-                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Item</th>
-                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Qtd.</th>
-                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Caixa</th>
-                    <th className="px-2 py-1 text-left font-medium text-neutral-500">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {boxLines.map((line) => (
-                    <tr key={line.id}>
-                      <td className="px-2 py-1">
-                        <input
-                          value={line.label}
-                          placeholder="Nome do item ou componente"
-                          onChange={(e) => updateBoxLine(line.id, { label: e.target.value })}
-                          className="w-56 rounded-lg border border-neutral-300 px-2 py-1 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                        />
-                      </td>
-                      <td className="px-2 py-1">
-                        <input
-                          type="number"
-                          min={1}
-                          value={line.quantity}
-                          onChange={(e) => updateBoxLine(line.id, { quantity: Number(e.target.value) || 1 })}
-                          className="w-16 rounded-lg border border-neutral-300 px-2 py-1 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                        />
-                      </td>
-                      <td className="px-2 py-1">
-                        <select
-                          value={line.box}
-                          onChange={(e) => updateBoxLine(line.id, { box: Number(e.target.value) })}
-                          className="rounded-lg border border-neutral-300 px-2 py-1 text-xs transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                        >
-                          {Array.from({ length: Math.max(1, Number(packageCount) || 1) }, (_, i) => i + 1).map((b) => (
-                            <option key={b} value={b}>
-                              Caixa {b}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-2 py-1 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => splitBoxLine(line.id)}
-                          className="mr-2 text-brand-600 hover:underline"
-                        >
-                          dividir
-                        </button>
-                        <button type="button" onClick={() => removeBoxLine(line.id)} className="text-neutral-400 hover:underline">
-                          remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          </FormSection>
+
+          <FormSection title="Endereços">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Bill To">
+                <Textarea
+                  required
+                  rows={5}
+                  placeholder={'Attn: Nome\nEndereço\nCidade, Estado. País.\nCEP\nMail: ...\nTel: ...'}
+                  value={form.billToText}
+                  onChange={(e) => update({ billToText: e.target.value })}
+                />
+              </Field>
+              <Field label="Ship To">
+                <Textarea
+                  required
+                  rows={5}
+                  placeholder={'Attn: Nome - Empresa\nEndereço de entrega\n...'}
+                  value={form.shipToText}
+                  onChange={(e) => update({ shipToText: e.target.value })}
+                />
+              </Field>
             </div>
-          </div>
-        )}
-
-        {selectedQuote && selectedQuote.items.length > 0 && (
-          <div className="rounded-lg border border-neutral-200 p-3">
-            <label className="mb-2 block text-xs font-medium text-neutral-600">
-              Peso por item (kg) — usado no Documento de Exportação
-            </label>
-            <div className="space-y-2">
-              {selectedQuote.items.map((item, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <span className="flex-1 text-xs text-neutral-600">
-                    {item.productName}
-                    {item.description && <span className="text-neutral-400"> — {item.description}</span>}
-                  </span>
-                  <input
-                    type="number"
-                    step="0.001"
-                    placeholder="kg/un."
-                    value={itemWeights[index] ?? ''}
-                    onChange={(e) => updateItemWeight(index, e.target.value)}
-                    className="w-28 rounded-lg border border-neutral-300 px-2 py-1 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">AWB #</label>
-          <input
-            value={form.awbNumber}
-            onChange={(e) => update({ awbNumber: e.target.value })}
-            className="w-64 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Prepayment by</label>
-            <select
-              value={form.prepaymentBy}
-              onChange={(e) => update({ prepaymentBy: e.target.value as PrepaymentMethod })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            <Field
+              label="Observação de entrega (opcional)"
+              hint='ex: "HOLD FOR PICKUP – CUSTOMER WILL COLLECT AT DHL OFFICE"'
+              className="mt-4"
             >
-              <option value="WIRE_TRANSFER">Wire Transfer</option>
-              <option value="PAYPAL">PayPal</option>
-            </select>
-          </div>
-          {form.prepaymentBy === 'PAYPAL' && (
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Taxa do PayPal</label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.paypalFee}
-                onChange={(e) => update({ paypalFee: e.target.value })}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              />
+              <Input value={form.shipToNote} onChange={(e) => update({ shipToNote: e.target.value })} />
+            </Field>
+          </FormSection>
+
+          <FormSection title="Embalagem e pesos">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="Peso líquido (kg)">
+                <Input
+                  type="number"
+                  step="0.001"
+                  className="tabular"
+                  value={form.netWeightKg}
+                  onChange={(e) => update({ netWeightKg: e.target.value })}
+                />
+              </Field>
+              <Field label="Peso bruto (kg)">
+                <Input
+                  type="number"
+                  step="0.001"
+                  className="tabular"
+                  value={form.grossWeightKg}
+                  onChange={(e) => update({ grossWeightKg: e.target.value })}
+                />
+              </Field>
+              <Field label="Incoterms">
+                <Input
+                  placeholder="ex: DAP MONTERREY"
+                  value={form.incoterms}
+                  onChange={(e) => update({ incoterms: e.target.value })}
+                />
+              </Field>
             </div>
-          )}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">
-              Câmbio USD/BRL {liveRate ? `(hoje: ${liveRate})` : ''}
-            </label>
-            <input
-              type="number"
-              step="0.0001"
-              value={form.exchangeRate}
-              onChange={(e) => update({ exchangeRate: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3 border-t border-neutral-100 pt-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">
-              Número da Nota Fiscal (opcional — pode preencher depois)
-            </label>
-            <input
-              value={form.nfNumber}
-              onChange={(e) => update({ nfNumber: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Data de emissão da NF</label>
-            <input
-              type="date"
-              value={form.nfDate}
-              onChange={(e) => update({ nfDate: e.target.value })}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-        </div>
+            <Field
+              label="Número de caixas"
+              hint='Preenche "Number of Packages" no invoice e gera uma página do Packing List Box por caixa.'
+              className="mt-4 w-40"
+            >
+              <Input
+                type="number"
+                min={1}
+                className="tabular"
+                value={packageCount}
+                onChange={(e) => updatePackageCount(e.target.value)}
+              />
+            </Field>
 
-        <button
-          type="submit"
-          disabled={createOrder.isPending}
-          className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
-        >
-          {createOrder.isPending ? 'Gerando documentos…' : 'Criar pedido e gerar documentos'}
-        </button>
+            {selectedQuote && selectedQuote.items.length > 0 && (
+              <div className="mt-5 rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <h3 className="text-eyebrow text-neutral-500">Itens por caixa</h3>
+                  <Button type="button" size="sm" onClick={addCustomBoxLine}>
+                    <IconPlus className="h-3.5 w-3.5" />
+                    Item customizado
+                  </Button>
+                </div>
+                <p className="mb-3 text-[12px] leading-relaxed text-neutral-500">
+                  Cada item vai para uma única caixa. Se um modelo completo precisar ser dividido entre caixas, use
+                  “dividir” para desmembrar a linha em partes que podem ser renomeadas e realocadas.
+                </p>
+
+                <div className="space-y-2">
+                  {boxLines.map((line) => (
+                    <div key={line.id} className="flex flex-wrap items-center gap-2">
+                      <Input
+                        value={line.label}
+                        placeholder="Nome do item ou componente"
+                        onChange={(e) => updateBoxLine(line.id, { label: e.target.value })}
+                        className="h-9 min-w-48 flex-1 text-[13px]"
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        aria-label="Quantidade"
+                        value={line.quantity}
+                        onChange={(e) => updateBoxLine(line.id, { quantity: Number(e.target.value) || 1 })}
+                        className="tabular h-9 w-16 shrink-0 text-center text-[13px]"
+                      />
+                      <Select
+                        auto
+                        aria-label="Caixa"
+                        value={line.box}
+                        onChange={(e) => updateBoxLine(line.id, { box: Number(e.target.value) })}
+                        className="h-9 text-[13px]"
+                      >
+                        {Array.from({ length: boxCount }, (_, i) => i + 1).map((b) => (
+                          <option key={b} value={b}>
+                            Caixa {b}
+                          </option>
+                        ))}
+                      </Select>
+                      <Button type="button" size="sm" onClick={() => splitBoxLine(line.id)}>
+                        Dividir
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => removeBoxLine(line.id)}
+                        aria-label="Remover linha"
+                        className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedQuote && selectedQuote.items.length > 0 && (
+              <div className="mt-4 rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4">
+                <h3 className="text-eyebrow mb-1.5 text-neutral-500">Peso por item</h3>
+                <p className="mb-3 text-[12px] text-neutral-500">Em kg por unidade — usado no Documento de Exportação.</p>
+                <div className="space-y-2">
+                  {selectedQuote.items.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-600">
+                        {item.productName}
+                        {item.description && <span className="text-neutral-400"> — {item.description}</span>}
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        placeholder="kg/un."
+                        aria-label={`Peso de ${item.productName}`}
+                        value={itemWeights[index] ?? ''}
+                        onChange={(e) => updateItemWeight(index, e.target.value)}
+                        className="tabular h-9 w-28 shrink-0 text-[13px]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </FormSection>
+
+          <FormSection title="Pagamento e transporte">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="AWB #">
+                <Input value={form.awbNumber} onChange={(e) => update({ awbNumber: e.target.value })} />
+              </Field>
+              <Field label="Prepayment by">
+                <Select
+                  value={form.prepaymentBy}
+                  onChange={(e) => update({ prepaymentBy: e.target.value as PrepaymentMethod })}
+                >
+                  <option value="WIRE_TRANSFER">Wire Transfer</option>
+                  <option value="PAYPAL">PayPal</option>
+                </Select>
+              </Field>
+              {form.prepaymentBy === 'PAYPAL' && (
+                <Field label="Taxa do PayPal">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="tabular"
+                    value={form.paypalFee}
+                    onChange={(e) => update({ paypalFee: e.target.value })}
+                  />
+                </Field>
+              )}
+              <Field label="Câmbio USD/BRL" hint={liveRate ? `Hoje: ${liveRate}` : undefined}>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  className="tabular"
+                  value={form.exchangeRate}
+                  onChange={(e) => update({ exchangeRate: e.target.value })}
+                />
+              </Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="Nota fiscal" description="Opcional — pode preencher depois no detalhe do pedido.">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Número da NF">
+                <Input value={form.nfNumber} onChange={(e) => update({ nfNumber: e.target.value })} />
+              </Field>
+              <Field label="Data de emissão">
+                <Input type="date" value={form.nfDate} onChange={(e) => update({ nfDate: e.target.value })} />
+              </Field>
+            </div>
+          </FormSection>
+        </Card>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button type="button" onClick={() => navigate('/pedidos')}>
+            Cancelar
+          </Button>
+          <Button type="submit" variant="primary" size="lg" disabled={createOrder.isPending}>
+            {createOrder.isPending ? 'Gerando documentos…' : 'Criar pedido e gerar documentos'}
+          </Button>
+        </div>
       </form>
-    </div>
+    </Page>
   )
 }

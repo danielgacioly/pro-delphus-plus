@@ -126,6 +126,66 @@ export function IconChevronDown(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconHome(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8.5Z" />
+    </Base>
+  )
+}
+
+export function IconUser(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5" />
+    </Base>
+  )
+}
+
+export function IconLogout(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+      <path d="M10 8 6 12l4 4M6 12h9" />
+    </Base>
+  )
+}
+
+export function IconPlus(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Base>
+  )
+}
+
+export function IconChevronRight(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </Base>
+  )
+}
+
+export function IconSidebar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9.5 4v16" />
+    </Base>
+  )
+}
+
+export function IconTrash(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16M9.5 7V5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
+      <path d="M6.5 7l.8 12a1 1 0 0 0 1 .9h7.4a1 1 0 0 0 1-.9L17.5 7" />
+    </Base>
+  )
+}
+
 export function IconSliders(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

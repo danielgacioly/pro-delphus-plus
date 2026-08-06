@@ -1,7 +1,21 @@
-import { useState } from 'react'
+import { useState, type ComponentType, type SVGProps } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { cn } from '../lib/cn'
 import logo from '../assets/logo.svg'
+import {
+  IconBoard,
+  IconBox,
+  IconChart,
+  IconHome,
+  IconLayers,
+  IconLogout,
+  IconQuote,
+  IconSidebar,
+  IconTag,
+  IconTruck,
+  IconUsers,
+} from './icons'
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
 
@@ -13,19 +27,26 @@ function loadCollapsed(): boolean {
   }
 }
 
-const navItems = [
-  { to: '/', label: 'Início', end: true },
-  { to: '/minha-pro-delphus', label: 'Minha Pro Delphus' },
-  { to: '/precos', label: 'Tabela de Preços' },
-  { to: '/produtos', label: 'Produtos' },
-  { to: '/orcamentos', label: 'Orçamentos' },
-  { to: '/pedidos', label: 'Pedidos' },
+interface NavItem {
+  to: string
+  label: string
+  icon: ComponentType<SVGProps<SVGSVGElement>>
+  end?: boolean
+}
+
+const navItems: NavItem[] = [
+  { to: '/', label: 'Início', icon: IconHome, end: true },
+  { to: '/minha-pro-delphus', label: 'Minha Pro Delphus', icon: IconBoard },
+  { to: '/precos', label: 'Tabela de Preços', icon: IconTag },
+  { to: '/produtos', label: 'Produtos', icon: IconBox },
+  { to: '/orcamentos', label: 'Orçamentos', icon: IconQuote },
+  { to: '/pedidos', label: 'Pedidos', icon: IconTruck },
 ]
 
-const adminNavItems = [
-  { to: '/admin/contas', label: 'Contas' },
-  { to: '/admin/setores', label: 'Setores' },
-  { to: '/admin/metricas', label: 'Métricas' },
+const adminNavItems: NavItem[] = [
+  { to: '/admin/contas', label: 'Contas', icon: IconUsers },
+  { to: '/admin/setores', label: 'Setores', icon: IconLayers },
+  { to: '/admin/metricas', label: 'Métricas', icon: IconChart },
 ]
 
 export function Layout() {
@@ -51,85 +72,128 @@ export function Layout() {
     })
   }
 
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `block rounded-lg border-l-[3px] px-3 py-2 text-sm font-medium transition-all duration-150 ${
-      isActive
-        ? 'border-brand-500 bg-brand-50 text-brand-700 translate-x-0.5'
-        : 'border-transparent text-neutral-600 hover:bg-neutral-100 hover:text-ink-900 hover:translate-x-0.5'
-    }`
+  /* Abaixo de `lg` a barra sempre vira trilho de ícones; acima, respeita a
+     preferência salva. Assim não existe estado "escondido" que deixe o app
+     sem navegação em telas pequenas. */
+  const labelClass = collapsed ? 'hidden' : 'hidden lg:inline'
+
+  function renderItem({ to, label, icon: Icon, end }: NavItem) {
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        end={end}
+        title={label}
+        className={({ isActive }) =>
+          cn(
+            'group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px]',
+            'transition-[background-color,color] duration-150 ease-out',
+            collapsed ? 'justify-center' : 'justify-center lg:justify-start',
+            isActive
+              ? 'bg-ink-900/[0.06] font-semibold text-ink-900'
+              : 'font-medium text-neutral-600 hover:bg-ink-900/[0.035] hover:text-ink-900',
+          )
+        }
+      >
+        {({ isActive }) => (
+          <>
+            <Icon
+              className={cn(
+                'h-[18px] w-[18px] shrink-0 transition-colors duration-150',
+                isActive ? 'text-brand-600' : 'text-neutral-400 group-hover:text-neutral-600',
+              )}
+            />
+            <span className={cn('truncate', labelClass)}>{label}</span>
+          </>
+        )}
+      </NavLink>
+    )
+  }
 
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? '?'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-neutral-50">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       <aside
-        className={`flex shrink-0 flex-col bg-white transition-all duration-200 ${
-          collapsed
-            ? 'w-0 overflow-hidden border-r-0 px-0 py-6'
-            : 'w-64 overflow-y-auto border-r border-neutral-200 px-4 py-6'
-        }`}
+        className={cn(
+          'material z-40 flex shrink-0 flex-col border-r border-neutral-200/70',
+          'transition-[width] duration-300 ease-out-expo',
+          collapsed ? 'w-[68px]' : 'w-[68px] lg:w-[248px]',
+        )}
       >
-        <div className="mb-8 px-2">
-          <img src={logo} alt="Pro Delphus" className="h-20 w-auto" />
+        <div
+          className={cn(
+            'flex h-16 shrink-0 items-center px-3',
+            collapsed ? 'justify-center' : 'justify-center lg:justify-between',
+          )}
+        >
+          <Link to="/" className={cn('shrink-0 rounded-md px-1', collapsed ? 'hidden' : 'hidden lg:block')}>
+            <img src={logo} alt="Pro Delphus" className="h-11 w-auto" />
+          </Link>
+          <button
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-ink-900/5 hover:text-ink-900 active:scale-90 lg:flex"
+          >
+            <IconSidebar className="h-[18px] w-[18px]" />
+          </button>
+          <Link to="/" className={cn('lg:hidden', collapsed && 'lg:block')} aria-label="Início">
+            <img src={logo} alt="" className="h-8 w-auto" />
+          </Link>
         </div>
-        <nav className="flex flex-1 flex-col gap-1">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-              {item.label}
-            </NavLink>
-          ))}
+
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2">
+          {navItems.map(renderItem)}
+
           {user?.role === 'ADMIN' && (
             <>
-              <div className="mt-6 mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Administração
+              <div className={cn('mt-6 mb-1.5 px-2.5', collapsed ? 'hidden' : 'hidden lg:block')}>
+                <span className="text-eyebrow text-neutral-400">Administração</span>
               </div>
-              {adminNavItems.map((item) => (
-                <NavLink key={item.to} to={item.to} className={linkClass}>
-                  {item.label}
-                </NavLink>
-              ))}
+              <div className={cn('my-3 h-px bg-neutral-200/80', collapsed ? 'block' : 'block lg:hidden')} />
+              {adminNavItems.map(renderItem)}
             </>
           )}
         </nav>
-        <div className="flex items-center gap-3 border-t border-neutral-200 pt-4">
-          <Link
-            to="/minha-conta"
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-neutral-100"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white transition-transform hover:scale-105">
-              {initial}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-ink-900">{user?.name}</p>
-              <p className="truncate text-xs text-neutral-500">{user?.email}</p>
-            </div>
-          </Link>
-          <button
-            onClick={handleLogout}
-            title="Sair"
-            className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-brand-600"
-          >
-            Sair
-          </button>
+
+        <div className="shrink-0 border-t border-neutral-200/70 p-2.5">
+          <div className={cn('flex items-center gap-2', collapsed ? 'flex-col' : 'flex-col lg:flex-row')}>
+            <Link
+              to="/minha-conta"
+              title={user?.name}
+              className={cn(
+                'flex min-w-0 items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-ink-900/[0.04]',
+                collapsed ? '' : 'lg:flex-1',
+              )}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[13px] font-semibold text-white shadow-sm">
+                {initial}
+              </span>
+              <span className={cn('min-w-0 flex-1', labelClass)}>
+                <span className="block truncate text-[13px] font-medium text-ink-900">{user?.name}</span>
+                <span className="block truncate text-[11.5px] text-neutral-500">{user?.email}</span>
+              </span>
+            </Link>
+            <button
+              onClick={handleLogout}
+              aria-label="Sair"
+              title="Sair"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+            >
+              <IconLogout className="h-[17px] w-[17px]" />
+            </button>
+          </div>
         </div>
       </aside>
-      <div className="relative flex-1 overflow-y-auto">
-        <button
-          onClick={toggleCollapsed}
-          title={collapsed ? 'Mostrar menu' : 'Ocultar menu'}
-          className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 shadow-sm transition-all hover:bg-neutral-100 hover:text-ink-900 active:scale-95"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            <path d="M9 3v18" />
-          </svg>
-        </button>
-        <main className="p-8 pt-16">
-          <div key={location.pathname} className="animate-fade-in-up">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+
+      <main className="relative flex-1 overflow-y-auto">
+        {/* Só opacidade: um `transform` aqui viraria bloco de contenção e
+            quebraria qualquer filho `position: fixed`. */}
+        <div key={location.pathname} className="animate-fade-in">
+          <Outlet />
+        </div>
+      </main>
     </div>
   )
 }

@@ -1,19 +1,97 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { formatAmount, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { DropZone } from '../components/DropZone'
+import {
+  BackLink,
+  Button,
+  Card,
+  Field,
+  Input,
+  Page,
+  Section,
+  Select,
+  Skeleton,
+  TBody,
+  THead,
+  Table,
+  TableShell,
+  Td,
+  Th,
+  Tr,
+} from '../components/ui'
 
 async function fetchOrder(id: string) {
   const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
   return data.order
 }
 
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
+function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-neutral-500">{label}</h3>
-      <p className="mt-0.5 whitespace-pre-line text-sm text-ink-900">{value?.trim() ? value : '—'}</p>
+      <dt className="text-eyebrow text-neutral-400">{label}</dt>
+      <dd className="mt-1 whitespace-pre-line text-[13.5px] leading-relaxed text-ink-900">
+        {value?.trim() ? value : '—'}
+      </dd>
+    </div>
+  )
+}
+
+function DocLink({ href, children, tone = 'brand' }: { href: string; children: ReactNode; tone?: 'brand' | 'ink' }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={`inline-flex h-8 items-center rounded-lg px-3 text-[12.5px] font-semibold text-white shadow-sm transition-[background-color,box-shadow,transform] duration-150 hover:shadow-md active:scale-[0.97] ${
+        tone === 'brand' ? 'bg-brand-600 hover:bg-brand-700' : 'bg-ink-900 hover:bg-black'
+      }`}
+    >
+      {children}
+    </a>
+  )
+}
+
+function ManualUpload({
+  title,
+  url,
+  onFile,
+  isPending,
+}: {
+  title: string
+  url: string | null | undefined
+  onFile: (file: File) => void
+  isPending: boolean
+}) {
+  return (
+    <div className="border-t border-neutral-200/70 pt-4">
+      <h3 className="text-eyebrow mb-2 text-neutral-500">{title}</h3>
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[13px] font-medium text-brand-600 hover:underline"
+        >
+          Ver arquivo enviado
+        </a>
+      ) : (
+        <p className="text-[13px] text-neutral-400">Nenhum arquivo enviado.</p>
+      )}
+      <DropZone
+        className="mt-2.5 py-3"
+        disabled={isPending}
+        onFiles={(files) => {
+          const file = files[0]
+          if (file) onFile(file)
+        }}
+      >
+        <p className="text-[12.5px] text-neutral-500">
+          Arraste o arquivo ou <span className="font-medium text-brand-600">clique para selecionar</span>
+        </p>
+      </DropZone>
     </div>
   )
 }
@@ -22,24 +100,30 @@ export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
 
-  const { data: order, isLoading, isError } = useQuery({
+  const {
+    data: order,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['order', id],
     queryFn: () => fetchOrder(id!),
     enabled: !!id,
   })
 
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState<Partial<{
-    purchaseOrder: string
-    orderedByEmail: string
-    awbNumber: string
-    incoterms: string
-    prepaymentBy: PrepaymentMethod
-    paypalFee: string
-    nfNumber: string
-    nfDate: string
-    exchangeRate: string
-  }>>({})
+  const [editForm, setEditForm] = useState<
+    Partial<{
+      purchaseOrder: string
+      orderedByEmail: string
+      awbNumber: string
+      incoterms: string
+      prepaymentBy: PrepaymentMethod
+      paypalFee: string
+      nfNumber: string
+      nfDate: string
+      exchangeRate: string
+    }>
+  >({})
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['order', id] })
@@ -105,242 +189,194 @@ export function OrderDetail() {
     setEditing(true)
   }
 
-  if (isLoading) return <p className="text-neutral-400">Carregando…</p>
-  if (isError || !order) return <p className="text-brand-600">Não foi possível carregar este pedido.</p>
+  if (isLoading) {
+    return (
+      <Page title="Pedido">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+      </Page>
+    )
+  }
+
+  if (isError || !order) {
+    return (
+      <Page title="Pedido">
+        <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
+          Não foi possível carregar este pedido.
+        </div>
+      </Page>
+    )
+  }
 
   const currency = order.quote.currency
 
   return (
-    <div>
-      <Link to="/pedidos" className="group inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
-        <span className="transition-transform group-hover:-translate-x-0.5">←</span> Voltar para pedidos
-      </Link>
-
-      <div className="animate-fade-in-up mt-3 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900">Pedido #{order.orderNumber}</h1>
-          <p className="mt-1 text-neutral-500">
-            A partir do orçamento{' '}
-            <span className="font-medium text-ink-900">{order.quoteNumber}</span> — {order.quote.clientName}
-          </p>
-        </div>
-        <button
-          onClick={editing ? () => setEditing(false) : startEdit}
-          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-ink-900 transition-colors hover:bg-neutral-50"
-        >
+    <Page
+      title={`Pedido #${order.orderNumber}`}
+      description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
+      actions={
+        <Button size="sm" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
           {editing ? 'Cancelar' : 'Editar'}
-        </button>
+        </Button>
+      }
+    >
+      <div className="-mt-4 mb-6">
+        <BackLink to="/pedidos">Pedidos</BackLink>
       </div>
 
-      <div className="animate-fade-in-up mt-6 grid grid-cols-2 gap-6">
-        <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 transition-shadow hover:shadow-sm">
-          <h2 className="text-sm font-semibold text-neutral-700">Documentos gerados</h2>
-          <div className="flex flex-wrap gap-2">
-            {order.invoicePdfUrl && (
-              <a
-                href={order.invoicePdfUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-700 active:scale-95"
-              >
-                Invoice
-              </a>
-            )}
-            {order.packingListPdfUrl && (
-              <a
-                href={order.packingListPdfUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-700 active:scale-95"
-              >
-                Packing List
-              </a>
-            )}
-            {order.packingListBoxPdfUrl && (
-              <a
-                href={order.packingListBoxPdfUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-700 active:scale-95"
-              >
-                Packing List Box
-              </a>
-            )}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="p-5">
+          <h2 className="text-heading text-ink-900">Documentos</h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {order.invoicePdfUrl && <DocLink href={order.invoicePdfUrl}>Invoice</DocLink>}
+            {order.packingListPdfUrl && <DocLink href={order.packingListPdfUrl}>Packing List</DocLink>}
+            {order.packingListBoxPdfUrl && <DocLink href={order.packingListBoxPdfUrl}>Packing List Box</DocLink>}
             {order.exportDocXlsxUrl && (
-              <a
-                href={order.exportDocXlsxUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-black active:scale-95"
-              >
+              <DocLink href={order.exportDocXlsxUrl} tone="ink">
                 Doc. de Exportação
-              </a>
+              </DocLink>
             )}
           </div>
 
-          <div className="border-t border-neutral-100 pt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">AWB (manual)</h3>
-            {order.awbDocumentUrl ? (
-              <a href={order.awbDocumentUrl} target="_blank" rel="noreferrer" className="text-sm text-brand-600 hover:underline">
-                Ver arquivo enviado
-              </a>
-            ) : (
-              <p className="text-sm text-neutral-400">Nenhum arquivo enviado.</p>
-            )}
-            <input
-              type="file"
-              className="mt-2 text-xs"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) uploadAwb.mutate(file)
-                e.target.value = ''
-              }}
+          <div className="mt-5 space-y-4">
+            <ManualUpload
+              title="AWB (manual)"
+              url={order.awbDocumentUrl}
+              isPending={uploadAwb.isPending}
+              onFile={(file) => uploadAwb.mutate(file)}
+            />
+            <ManualUpload
+              title="Nota Fiscal (manual)"
+              url={order.nfDocumentUrl}
+              isPending={uploadNf.isPending}
+              onFile={(file) => uploadNf.mutate(file)}
             />
           </div>
+        </Card>
 
-          <div className="border-t border-neutral-100 pt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Nota Fiscal (manual)</h3>
-            {order.nfDocumentUrl ? (
-              <a href={order.nfDocumentUrl} target="_blank" rel="noreferrer" className="text-sm text-brand-600 hover:underline">
-                Ver arquivo enviado
-              </a>
-            ) : (
-              <p className="text-sm text-neutral-400">Nenhum arquivo enviado.</p>
-            )}
-            <input
-              type="file"
-              className="mt-2 text-xs"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) uploadNf.mutate(file)
-                e.target.value = ''
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 transition-shadow hover:shadow-sm">
+        <Card className="p-5">
           {editing ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault()
                 updateOrder.mutate()
               }}
-              className="space-y-3"
             >
-              <h2 className="text-sm font-semibold text-neutral-700">Editar pedido</h2>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Purchase Order</label>
-                <input
-                  value={editForm.purchaseOrder}
-                  onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">E-mail do comprador</label>
-                <input
-                  type="email"
-                  value={editForm.orderedByEmail}
-                  onChange={(e) => setEditForm((s) => ({ ...s, orderedByEmail: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">AWB #</label>
-                <input
-                  value={editForm.awbNumber}
-                  onChange={(e) => setEditForm((s) => ({ ...s, awbNumber: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Incoterms</label>
-                <input
-                  value={editForm.incoterms}
-                  onChange={(e) => setEditForm((s) => ({ ...s, incoterms: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-neutral-600">Prepayment by</label>
-                  <select
-                    value={editForm.prepaymentBy}
-                    onChange={(e) => setEditForm((s) => ({ ...s, prepaymentBy: e.target.value as PrepaymentMethod }))}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option value="WIRE_TRANSFER">Wire Transfer</option>
-                    <option value="PAYPAL">PayPal</option>
-                  </select>
-                </div>
-                {editForm.prepaymentBy === 'PAYPAL' && (
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-neutral-600">Taxa do PayPal</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.paypalFee}
-                      onChange={(e) => setEditForm((s) => ({ ...s, paypalFee: e.target.value }))}
-                      className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              <h2 className="text-heading mb-4 text-ink-900">Editar pedido</h2>
+
+              <div className="space-y-4">
+                <Field label="Purchase Order">
+                  <Input
+                    value={editForm.purchaseOrder}
+                    onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
+                  />
+                </Field>
+                <Field label="E-mail do comprador">
+                  <Input
+                    type="email"
+                    value={editForm.orderedByEmail}
+                    onChange={(e) => setEditForm((s) => ({ ...s, orderedByEmail: e.target.value }))}
+                  />
+                </Field>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="AWB #">
+                    <Input
+                      value={editForm.awbNumber}
+                      onChange={(e) => setEditForm((s) => ({ ...s, awbNumber: e.target.value }))}
                     />
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-neutral-600">Número da NF</label>
-                  <input
-                    value={editForm.nfNumber}
-                    onChange={(e) => setEditForm((s) => ({ ...s, nfNumber: e.target.value }))}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                  />
+                  </Field>
+                  <Field label="Incoterms">
+                    <Input
+                      value={editForm.incoterms}
+                      onChange={(e) => setEditForm((s) => ({ ...s, incoterms: e.target.value }))}
+                    />
+                  </Field>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-neutral-600">Data de emissão da NF</label>
-                  <input
-                    type="date"
-                    value={editForm.nfDate}
-                    onChange={(e) => setEditForm((s) => ({ ...s, nfDate: e.target.value }))}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Prepayment by">
+                    <Select
+                      value={editForm.prepaymentBy}
+                      onChange={(e) => setEditForm((s) => ({ ...s, prepaymentBy: e.target.value as PrepaymentMethod }))}
+                    >
+                      <option value="WIRE_TRANSFER">Wire Transfer</option>
+                      <option value="PAYPAL">PayPal</option>
+                    </Select>
+                  </Field>
+                  {editForm.prepaymentBy === 'PAYPAL' && (
+                    <Field label="Taxa do PayPal">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="tabular"
+                        value={editForm.paypalFee}
+                        onChange={(e) => setEditForm((s) => ({ ...s, paypalFee: e.target.value }))}
+                      />
+                    </Field>
+                  )}
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Número da NF">
+                    <Input
+                      value={editForm.nfNumber}
+                      onChange={(e) => setEditForm((s) => ({ ...s, nfNumber: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Emissão da NF">
+                    <Input
+                      type="date"
+                      value={editForm.nfDate}
+                      onChange={(e) => setEditForm((s) => ({ ...s, nfDate: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Câmbio USD/BRL">
+                  <Input
+                    type="number"
+                    step="0.0001"
+                    className="tabular"
+                    value={editForm.exchangeRate}
+                    onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
+                  />
+                </Field>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Câmbio USD/BRL</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={editForm.exchangeRate}
-                  onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <p className="text-[11px] text-neutral-400">
+
+              <p className="mt-4 text-[12px] leading-relaxed text-neutral-400">
                 Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.
               </p>
-              <button
+
+              <Button
                 type="submit"
+                variant="primary"
+                size="lg"
                 disabled={updateOrder.isPending}
-                className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
+                className="mt-4 w-full"
               >
                 {updateOrder.isPending ? 'Salvando…' : 'Salvar e regenerar documentos'}
-              </button>
+              </Button>
             </form>
           ) : (
             <>
-              <h2 className="text-sm font-semibold text-neutral-700">Dados do pedido</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Purchase Order" value={order.purchaseOrder ?? order.quoteNumber} />
-                <Field label="Ordered By" value={order.orderedByEmail} />
-                <Field label="Data de expedição" value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null} />
-                <Field label="Data do invoice" value={new Date(order.invoiceDate).toLocaleDateString('pt-BR')} />
-                <Field label="Nº de pacotes" value={order.numberOfPackages} />
-                <Field label="Peso líquido" value={order.netWeightKg ? `${order.netWeightKg} KG` : null} />
-                <Field label="Peso bruto" value={order.grossWeightKg ? `${order.grossWeightKg} KG` : null} />
-                <Field label="Incoterms" value={order.incoterms} />
-                <Field label="AWB #" value={order.awbNumber} />
-                <Field
+              <h2 className="text-heading text-ink-900">Dados do pedido</h2>
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+                <ReadField label="Purchase Order" value={order.purchaseOrder ?? order.quoteNumber} />
+                <ReadField label="Ordered By" value={order.orderedByEmail} />
+                <ReadField
+                  label="Data de expedição"
+                  value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null}
+                />
+                <ReadField label="Data do invoice" value={new Date(order.invoiceDate).toLocaleDateString('pt-BR')} />
+                <ReadField label="Nº de pacotes" value={order.numberOfPackages} />
+                <ReadField label="Peso líquido" value={order.netWeightKg ? `${order.netWeightKg} KG` : null} />
+                <ReadField label="Peso bruto" value={order.grossWeightKg ? `${order.grossWeightKg} KG` : null} />
+                <ReadField label="Incoterms" value={order.incoterms} />
+                <ReadField label="AWB #" value={order.awbNumber} />
+                <ReadField
                   label="Prepayment"
                   value={
                     order.prepaymentBy === 'PAYPAL'
@@ -348,57 +384,58 @@ export function OrderDetail() {
                       : 'Wire Transfer'
                   }
                 />
-                <Field label="Número da NF" value={order.nfNumber} />
-                <Field label="Data de emissão da NF" value={order.nfDate ? new Date(order.nfDate).toLocaleDateString('pt-BR') : null} />
-                <Field label="Câmbio USD/BRL" value={order.exchangeRate} />
-                <Field label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
+                <ReadField label="Número da NF" value={order.nfNumber} />
+                <ReadField
+                  label="Emissão da NF"
+                  value={order.nfDate ? new Date(order.nfDate).toLocaleDateString('pt-BR') : null}
+                />
+                <ReadField label="Câmbio USD/BRL" value={order.exchangeRate} />
+                <ReadField label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
+              </dl>
+
+              <div className="mt-5 space-y-4 border-t border-neutral-200/70 pt-4">
+                <ReadField label="Bill To" value={order.billToText} />
+                <ReadField label="Ship To" value={order.shipToText} />
+                {order.shipToNote && <ReadField label="Observação de entrega" value={order.shipToNote} />}
               </div>
-              <div className="border-t border-neutral-100 pt-4">
-                <Field label="Bill To" value={order.billToText} />
-              </div>
-              <div className="border-t border-neutral-100 pt-4">
-                <Field label="Ship To" value={order.shipToText} />
-              </div>
-              {order.shipToNote && (
-                <div className="border-t border-neutral-100 pt-4">
-                  <Field label="Observação de entrega" value={order.shipToNote} />
-                </div>
-              )}
             </>
           )}
-        </div>
+        </Card>
       </div>
 
-      <div className="animate-fade-in-up mt-6 rounded-xl border border-neutral-200 bg-white p-5 transition-shadow hover:shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-neutral-700">Itens (do orçamento {order.quoteNumber})</h2>
-        <table className="min-w-full divide-y divide-neutral-200 text-sm">
-          <thead>
-            <tr>
-              <th className="px-3 py-1.5 text-left font-medium text-neutral-500">Item</th>
-              <th className="px-3 py-1.5 text-left font-medium text-neutral-500">Qtd.</th>
-              <th className="px-3 py-1.5 text-left font-medium text-neutral-500">Preço unit.</th>
-              <th className="px-3 py-1.5 text-left font-medium text-neutral-500">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {order.quote.items.map((item, i) => (
-              <tr key={i} className="transition-colors hover:bg-neutral-50">
-                <td className="px-3 py-1.5 text-ink-900">
-                  <strong>{item.productName}</strong>
-                  {item.description && <span className="text-neutral-500"> — {item.description}</span>}
-                </td>
-                <td className="px-3 py-1.5 text-neutral-600">{item.quantity}</td>
-                <td className="px-3 py-1.5 text-neutral-600">
-                  {currency} {formatAmount(item.unitPrice)}
-                </td>
-                <td className="px-3 py-1.5 text-ink-900">
-                  {currency} {formatAmount(item.lineTotal)}
-                </td>
+      <Section title={`Itens do orçamento ${order.quoteNumber}`}>
+        <TableShell>
+          <Table>
+            <THead>
+              <tr>
+                <Th>Item</Th>
+                <Th align="right">Qtd.</Th>
+                <Th align="right">Preço unit.</Th>
+                <Th align="right">Total</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            </THead>
+            <TBody>
+              {order.quote.items.map((item, i) => (
+                <Tr key={i}>
+                  <Td>
+                    <p className="font-medium text-ink-900">{item.productName}</p>
+                    {item.description && (
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-neutral-500">{item.description}</p>
+                    )}
+                  </Td>
+                  <Td className="tabular text-right">{item.quantity}</Td>
+                  <Td className="tabular whitespace-nowrap text-right">
+                    {currency} {formatAmount(item.unitPrice)}
+                  </Td>
+                  <Td className="tabular whitespace-nowrap text-right font-semibold text-ink-900">
+                    {currency} {formatAmount(item.lineTotal)}
+                  </Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+        </TableShell>
+      </Section>
+    </Page>
   )
 }

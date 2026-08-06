@@ -36,7 +36,7 @@ export function Modal({ children, onClose, dismissOnBackdrop }: ModalProps) {
   return createPortal(
     <div
       onClick={dismissOnBackdrop ? onClose : undefined}
-      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-sm"
+      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-ink-900/25 p-4 backdrop-blur-md"
     >
       {children}
     </div>,

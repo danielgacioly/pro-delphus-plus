@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { BackLink, Button, Card, Field, Input, Page } from '../../components/ui'
 
 export function NewSector() {
   const navigate = useNavigate()
@@ -26,49 +27,38 @@ export function NewSector() {
   })
 
   return (
-    <div>
-      <Link to="/admin/setores" className="text-sm font-medium text-brand-600 hover:underline">
-        ← Voltar para setores
-      </Link>
+    <Page
+      title="Novo setor"
+      description="O nome precisa ser único — não pode repetir um setor já existente."
+      width="narrow"
+    >
+      <div className="-mt-4 mb-5">
+        <BackLink to="/admin/setores">Setores</BackLink>
+      </div>
 
-      <h1 className="mt-3 text-2xl font-bold text-ink-900">Novo setor</h1>
-      <p className="mt-1 text-neutral-500">O nome precisa ser único — não pode repetir um setor já existente.</p>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          createSector.mutate()
-        }}
-        className="animate-fade-in-up mt-4 max-w-md rounded-xl border border-neutral-200 bg-white p-5"
-      >
-        {error && <div className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{error}</div>}
-
-        <label className="mb-1 block text-xs font-medium text-neutral-600">Nome do setor (inglês)</label>
-        <input
-          autoFocus
-          required
-          placeholder="ex: Spine"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        />
-
-        <label className="mb-1 mt-3 block text-xs font-medium text-neutral-600">Nome em português (opcional)</label>
-        <input
-          placeholder="ex: Coluna"
-          value={namePt}
-          onChange={(e) => setNamePt(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        />
-
-        <button
-          type="submit"
-          disabled={createSector.isPending}
-          className="mt-4 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
+      <Card className="max-w-md p-6">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            createSector.mutate()
+          }}
+          className="space-y-4"
         >
-          {createSector.isPending ? 'Criando…' : 'Criar setor'}
-        </button>
-      </form>
-    </div>
+          {error && <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{error}</div>}
+
+          <Field label="Nome do setor (inglês)">
+            <Input autoFocus required placeholder="ex: Spine" value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+
+          <Field label="Nome em português (opcional)">
+            <Input placeholder="ex: Coluna" value={namePt} onChange={(e) => setNamePt(e.target.value)} />
+          </Field>
+
+          <Button type="submit" variant="primary" size="lg" disabled={createSector.isPending} className="w-full">
+            {createSector.isPending ? 'Criando…' : 'Criar setor'}
+          </Button>
+        </form>
+      </Card>
+    </Page>
   )
 }

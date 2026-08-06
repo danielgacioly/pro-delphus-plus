@@ -10,10 +10,20 @@ import type {
 } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { cn } from '../lib/cn'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
-import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
-import { IconAlert, IconBoard, IconChevronDown } from '../components/icons'
+import {
+  Button,
+  EmptyState,
+  Field,
+  Input,
+  Page,
+  Select,
+  Skeleton,
+  Textarea,
+} from '../components/ui'
+import { IconAlert, IconBoard, IconChevronDown, IconPlus, IconQuote, IconTruck } from '../components/icons'
 
 async function fetchColumns() {
   const { data } = await api.get<{ columns: PersonalBoardColumnDTO[] }>('/tasks/board-columns')
@@ -75,6 +85,7 @@ function formatDueDate(dueDate: string) {
   return new Date(dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
+/** Duplo clique renomeia o quadro no lugar — sem abrir modal para algo tão pequeno. */
 function ColumnTitle({ column }: { column: PersonalBoardColumnDTO }) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
@@ -110,7 +121,7 @@ function ColumnTitle({ column }: { column: PersonalBoardColumnDTO }) {
           }
         }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full rounded border border-brand-300 bg-white px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        className="text-eyebrow w-full rounded-md border border-brand-300 bg-white px-1.5 py-0.5 text-ink-900 focus:outline-none focus:ring-4 focus:ring-brand-500/10"
       />
     )
   }
@@ -122,7 +133,7 @@ function ColumnTitle({ column }: { column: PersonalBoardColumnDTO }) {
         setEditing(true)
       }}
       title="Clique duas vezes para renomear"
-      className="cursor-text select-none truncate text-xs font-semibold uppercase tracking-wide text-neutral-500"
+      className="text-eyebrow cursor-text select-none truncate text-neutral-500"
     >
       {column.name}
     </h3>
@@ -156,9 +167,6 @@ function EditTaskModal({
   const [orderId, setOrderId] = useState(task.orderId ?? '')
   const [tags, setTags] = useState<string[]>(task.tags)
   const [tagDraft, setTagDraft] = useState('')
-
-  const inputClass =
-    'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
 
   const updateTask = useMutation({
     mutationFn: async () =>
@@ -198,60 +206,55 @@ function EditTaskModal({
           e.preventDefault()
           updateTask.mutate()
         }}
-        className="animate-scale-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
+        className="animate-scale-in max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink-900">Editar tarefa</h3>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <h2 className="text-title text-ink-900">Editar tarefa</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-neutral-400 transition-colors hover:text-brand-600"
             aria-label="Fechar"
+            className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900 active:scale-90"
           >
             ×
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Título</label>
-            <input required autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Cliente (opcional)</label>
-            <input
-              list="edit-task-clients-datalist"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              className={inputClass}
-            />
-            <datalist id="edit-task-clients-datalist">
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Título" className="sm:col-span-2">
+            <Input required autoFocus value={title} onChange={(e) => setTitle(e.target.value)} />
+          </Field>
+
+          <Field label="Cliente (opcional)">
+            <Input list="edit-task-clients" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+            <datalist id="edit-task-clients">
               {clientSuggestions?.map((c) => (
                 <option key={c} value={c} />
               ))}
             </datalist>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Quadro</label>
-            <select value={columnId} onChange={(e) => setColumnId(e.target.value)} className={inputClass}>
+          </Field>
+
+          <Field label="Quadro">
+            <Select value={columnId} onChange={(e) => setColumnId(e.target.value)}>
               {columns.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Prazo (opcional)</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Tags (opcional)</label>
+            </Select>
+          </Field>
+
+          <Field label="Prazo (opcional)">
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+
+          <Field label="Tags (opcional)">
             {tags.length > 0 && (
-              <div className="mb-1.5 flex flex-wrap gap-1.5">
+              <div className="mb-2 flex flex-wrap gap-1.5">
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700"
+                    className="inline-flex items-center gap-1 rounded-full bg-neutral-500/10 px-2.5 py-0.5 text-[12px] font-medium text-neutral-700"
                   >
                     {t}
                     <button
@@ -266,8 +269,8 @@ function EditTaskModal({
                 ))}
               </div>
             )}
-            <input
-              list="edit-task-tags-datalist"
+            <Input
+              list="edit-task-tags"
               placeholder="Digite e aperte Enter"
               value={tagDraft}
               onChange={(e) => setTagDraft(e.target.value)}
@@ -277,56 +280,48 @@ function EditTaskModal({
                   addTag(tagDraft)
                 }
               }}
-              className={inputClass}
             />
-            <datalist id="edit-task-tags-datalist">
+            <datalist id="edit-task-tags">
               {tagSuggestions?.map((t) => (
                 <option key={t} value={t} />
               ))}
             </datalist>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Vincular a orçamento (opcional)</label>
-            <select value={quoteId} onChange={(e) => setQuoteId(e.target.value)} className={inputClass}>
+          </Field>
+
+          <Field label="Vincular a orçamento">
+            <Select value={quoteId} onChange={(e) => setQuoteId(e.target.value)}>
               <option value="">—</option>
               {myQuotes.map((q) => (
                 <option key={q.id} value={q.id}>
                   {q.quoteNumber} — {q.clientName}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Vincular a pedido (opcional)</label>
-            <select value={orderId} onChange={(e) => setOrderId(e.target.value)} className={inputClass}>
+            </Select>
+          </Field>
+
+          <Field label="Vincular a pedido">
+            <Select value={orderId} onChange={(e) => setOrderId(e.target.value)}>
               <option value="">—</option>
               {myOrders.map((o) => (
                 <option key={o.id} value={o.id}>
                   #{o.orderNumber} — {o.quote.clientName}
                 </option>
               ))}
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Notas (opcional)</label>
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />
-          </div>
+            </Select>
+          </Field>
+
+          <Field label="Notas (opcional)" className="sm:col-span-2">
+            <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </Field>
         </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400"
-          >
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={updateTask.isPending}
-            className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.98] disabled:opacity-60"
-          >
+          </Button>
+          <Button type="submit" variant="primary" disabled={updateTask.isPending}>
             {updateTask.isPending ? 'Salvando…' : 'Salvar'}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
@@ -358,6 +353,7 @@ export function MyDesk() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [deletingColumn, setDeletingColumn] = useState<PersonalBoardColumnDTO | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(loadCollapsed)
+  const [columnError, setColumnError] = useState<string | null>(null)
 
   const editingTask = useMemo(() => tasks?.find((t) => t.id === editingTaskId) ?? null, [tasks, editingTaskId])
 
@@ -413,8 +409,6 @@ export function MyDesk() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['board-columns'] }),
   })
-
-  const [columnError, setColumnError] = useState<string | null>(null)
 
   const deleteColumn = useMutation({
     mutationFn: async (id: string) => api.delete(`/tasks/board-columns/${id}`),
@@ -479,61 +473,59 @@ export function MyDesk() {
     reorderColumns.mutate(withPositions.map((c) => ({ id: c.id, position: c.position })))
   }
 
-  const inputClass =
-    'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
-
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-ink-900">Minha Pro Delphus</h1>
-      <p className="mt-1 text-neutral-500">
-        Bem-vindo ao seu espaço pessoal! Veja pendências, lembretes e tenha acesso rápido ao que você já criou.
-      </p>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <Page
+      title="Minha Pro Delphus"
+      description="Seu espaço pessoal: pendências, lembretes e acesso rápido ao que você já criou."
+      actions={
+        <>
+          <Button size="sm" onClick={() => setAddingColumn((s) => !s)}>
+            {addingColumn ? 'Cancelar' : 'Novo quadro'}
+          </Button>
+          <Button size="sm" variant="primary" onClick={() => setShowForm((s) => !s)}>
+            <IconPlus className="h-4 w-4" />
+            {showForm ? 'Cancelar' : 'Nova tarefa'}
+          </Button>
+        </>
+      }
+    >
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link
           to="/orcamentos"
-          className="group rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5"
+          className="group rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Meus orçamentos</p>
-          <p className="mt-1 text-2xl font-bold text-ink-900">{myQuotes.length}</p>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <IconQuote className="h-4 w-4" />
+            </span>
+            <p className="text-eyebrow text-neutral-400">Meus orçamentos</p>
+          </div>
+          <p className="tabular mt-3 text-[28px] font-bold leading-none text-ink-900">{myQuotes.length}</p>
         </Link>
         <Link
           to="/pedidos"
-          className="group rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5"
+          className="group rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Meus pedidos</p>
-          <p className="mt-1 text-2xl font-bold text-ink-900">{myOrders.length}</p>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <IconTruck className="h-4 w-4" />
+            </span>
+            <p className="text-eyebrow text-neutral-400">Meus pedidos</p>
+          </div>
+          <p className="tabular mt-3 text-[28px] font-bold leading-none text-ink-900">{myOrders.length}</p>
         </Link>
       </div>
 
-      <div className="mt-8 flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Mural de tarefas</h2>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setAddingColumn((s) => !s)}
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-semibold text-neutral-600 transition-colors hover:border-brand-300 hover:text-brand-600"
-          >
-            {addingColumn ? 'Cancelar' : '+ Novo quadro'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowForm((s) => !s)}
-            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
-          >
-            {showForm ? 'Cancelar' : '+ Nova tarefa'}
-          </button>
-        </div>
-      </div>
+      <h2 className="text-eyebrow mb-3.5 text-neutral-400">Mural de tarefas</h2>
 
       {columnError && (
-        <div className="animate-fade-in-up mt-3 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+        <div className="animate-fade-in mb-4 flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
           <IconAlert className="h-4 w-4 shrink-0" />
           {columnError}
           <button
             type="button"
             onClick={() => setColumnError(null)}
-            className="ml-auto shrink-0 text-xs font-semibold hover:underline"
+            className="ml-auto shrink-0 text-[12px] font-semibold hover:underline"
           >
             Fechar
           </button>
@@ -546,9 +538,9 @@ export function MyDesk() {
             e.preventDefault()
             if (newColumnName.trim()) createColumn.mutate(newColumnName.trim())
           }}
-          className="animate-fade-in-up mt-3 flex items-center gap-2 rounded-xl border border-neutral-200 bg-white p-3"
+          className="animate-fade-in mb-4 flex items-center gap-2 rounded-2xl border border-neutral-200/70 bg-white p-3 shadow-sm"
         >
-          <input
+          <Input
             autoFocus
             placeholder="Nome do quadro"
             value={newColumnName}
@@ -556,15 +548,11 @@ export function MyDesk() {
             onKeyDown={(e) => {
               if (e.key === 'Escape') setAddingColumn(false)
             }}
-            className={`flex-1 ${inputClass}`}
+            className="flex-1"
           />
-          <button
-            type="submit"
-            disabled={createColumn.isPending}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98] disabled:opacity-60"
-          >
+          <Button type="submit" variant="primary" disabled={createColumn.isPending}>
             Criar quadro
-          </button>
+          </Button>
         </form>
       )}
 
@@ -574,64 +562,59 @@ export function MyDesk() {
             e.preventDefault()
             createTask.mutate()
           }}
-          className="animate-fade-in-up mt-3 rounded-xl border border-neutral-200 bg-white p-4"
+          className="animate-fade-in mb-5 rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm"
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Título</label>
-              <input
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Título" className="sm:col-span-2">
+              <Input
                 required
                 autoFocus
                 value={draft.title}
                 onChange={(e) => setDraft((s) => ({ ...s, title: e.target.value }))}
-                className={inputClass}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Cliente (opcional)</label>
-              <input
-                list="task-clients-datalist"
+            </Field>
+
+            <Field label="Cliente (opcional)">
+              <Input
+                list="task-clients"
                 value={draft.clientName}
                 onChange={(e) => setDraft((s) => ({ ...s, clientName: e.target.value }))}
-                className={inputClass}
               />
-              <datalist id="task-clients-datalist">
+              <datalist id="task-clients">
                 {clientSuggestions?.map((c) => (
                   <option key={c} value={c} />
                 ))}
               </datalist>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Quadro</label>
-              <select
+            </Field>
+
+            <Field label="Quadro">
+              <Select
                 value={draft.columnId}
                 onChange={(e) => setDraft((s) => ({ ...s, columnId: e.target.value }))}
-                className={inputClass}
               >
                 {(columns ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Prazo (opcional)</label>
-              <input
+              </Select>
+            </Field>
+
+            <Field label="Prazo (opcional)">
+              <Input
                 type="date"
                 value={draft.dueDate}
                 onChange={(e) => setDraft((s) => ({ ...s, dueDate: e.target.value }))}
-                className={inputClass}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Tags (opcional)</label>
+            </Field>
+
+            <Field label="Tags (opcional)">
               {draftTags.length > 0 && (
-                <div className="mb-1.5 flex flex-wrap gap-1.5">
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   {draftTags.map((t) => (
                     <span
                       key={t}
-                      className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700"
+                      className="inline-flex items-center gap-1 rounded-full bg-neutral-500/10 px-2.5 py-0.5 text-[12px] font-medium text-neutral-700"
                     >
                       {t}
                       <button
@@ -646,8 +629,8 @@ export function MyDesk() {
                   ))}
                 </div>
               )}
-              <input
-                list="task-tags-datalist"
+              <Input
+                list="task-tags"
                 placeholder="Digite e aperte Enter"
                 value={tagDraft}
                 onChange={(e) => setTagDraft(e.target.value)}
@@ -657,79 +640,68 @@ export function MyDesk() {
                     addDraftTag(tagDraft)
                   }
                 }}
-                className={inputClass}
               />
-              <datalist id="task-tags-datalist">
+              <datalist id="task-tags">
                 {tagSuggestions?.map((t) => (
                   <option key={t} value={t} />
                 ))}
               </datalist>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Vincular a orçamento (opcional)</label>
-              <select
-                value={draft.quoteId}
-                onChange={(e) => setDraft((s) => ({ ...s, quoteId: e.target.value }))}
-                className={inputClass}
-              >
+            </Field>
+
+            <Field label="Vincular a orçamento">
+              <Select value={draft.quoteId} onChange={(e) => setDraft((s) => ({ ...s, quoteId: e.target.value }))}>
                 <option value="">—</option>
                 {myQuotes.map((q) => (
                   <option key={q.id} value={q.id}>
                     {q.quoteNumber} — {q.clientName}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Vincular a pedido (opcional)</label>
-              <select
-                value={draft.orderId}
-                onChange={(e) => setDraft((s) => ({ ...s, orderId: e.target.value }))}
-                className={inputClass}
-              >
+              </Select>
+            </Field>
+
+            <Field label="Vincular a pedido">
+              <Select value={draft.orderId} onChange={(e) => setDraft((s) => ({ ...s, orderId: e.target.value }))}>
                 <option value="">—</option>
                 {myOrders.map((o) => (
                   <option key={o.id} value={o.id}>
                     #{o.orderNumber} — {o.quote.clientName}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Notas (opcional)</label>
-              <textarea
+              </Select>
+            </Field>
+
+            <Field label="Notas (opcional)" className="sm:col-span-2">
+              <Textarea
                 rows={2}
                 value={draft.notes}
                 onChange={(e) => setDraft((s) => ({ ...s, notes: e.target.value }))}
-                className={inputClass}
               />
-            </div>
+            </Field>
           </div>
-          <button
-            type="submit"
-            disabled={createTask.isPending}
-            className="mt-4 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
-          >
-            {createTask.isPending ? 'Criando…' : 'Criar tarefa'}
-          </button>
+
+          <div className="mt-5 flex justify-end">
+            <Button type="submit" variant="primary" disabled={createTask.isPending}>
+              {createTask.isPending ? 'Criando…' : 'Criar tarefa'}
+            </Button>
+          </div>
         </form>
       )}
 
       {!columns && (
-        <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
+        <div className="flex gap-4 overflow-x-auto pb-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="w-72 shrink-0 rounded-xl border border-neutral-200 bg-white p-3">
-              <div className="skeleton h-3 w-24 rounded" />
+            <div key={i} className="w-[288px] shrink-0 rounded-2xl border border-neutral-200/70 bg-white p-3 shadow-sm">
+              <Skeleton className="h-2.5 w-24" />
               <div className="mt-4 space-y-2">
-                <div className="skeleton h-14 rounded-lg" />
-                <div className="skeleton h-14 rounded-lg" />
+                <Skeleton className="h-16 rounded-xl" />
+                <Skeleton className="h-16 rounded-xl" />
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="mt-4 flex items-start gap-4 overflow-x-auto pb-2">
+      <div className="flex items-start gap-4 overflow-x-auto pb-4">
         {(columns ?? []).map((col) => {
           const isCollapsed = !!collapsed[col.id]
           const colTasks = grouped[col.id] ?? []
@@ -748,24 +720,29 @@ export function MyDesk() {
                 if (draggingColumnId) handleColumnDrop(col.id)
                 else handleDrop(col.id)
               }}
-              className={`w-72 shrink-0 cursor-grab rounded-xl border border-neutral-200 bg-white p-3 shadow-sm transition-all active:cursor-grabbing ${
-                draggingColumnId === col.id ? 'opacity-40' : 'hover:shadow-md'
-              }`}
+              className={cn(
+                'shrink-0 cursor-grab rounded-2xl border border-neutral-200/70 bg-white p-3 shadow-sm active:cursor-grabbing',
+                'transition-[opacity,box-shadow,width] duration-200 ease-out',
+                isCollapsed ? 'w-53' : 'w-[288px]',
+                draggingColumnId === col.id ? 'opacity-40' : 'hover:shadow-md',
+              )}
             >
-              <div className="mb-1 flex items-center gap-1 px-1">
+              <div className="flex items-center gap-1 px-1">
                 <button
                   type="button"
                   onClick={() => toggleCollapsed(col.id)}
                   title={isCollapsed ? 'Expandir quadro' : 'Recolher quadro'}
                   aria-label={isCollapsed ? `Expandir quadro ${col.name}` : `Recolher quadro ${col.name}`}
-                  className="shrink-0 text-neutral-300 transition-colors hover:text-neutral-600"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-300 transition-[background-color,color] duration-150 hover:bg-neutral-500/10 hover:text-neutral-600"
                 >
-                  <IconChevronDown className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                  <IconChevronDown
+                    className={cn('h-3.5 w-3.5 transition-transform duration-300 ease-out', isCollapsed && '-rotate-90')}
+                  />
                 </button>
                 <div className="min-w-0 flex-1">
                   <ColumnTitle column={col} />
                 </div>
-                <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-xs text-neutral-500">
+                <span className="tabular shrink-0 rounded-full bg-neutral-500/10 px-1.5 text-[11px] font-medium text-neutral-500">
                   {colTasks.length}
                 </span>
                 <button
@@ -773,13 +750,14 @@ export function MyDesk() {
                   onClick={() => setDeletingColumn(col)}
                   title="Excluir quadro"
                   aria-label={`Excluir quadro ${col.name}`}
-                  className="shrink-0 text-neutral-300 transition-colors hover:text-brand-600"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-300 transition-[background-color,color] duration-150 hover:bg-brand-50 hover:text-brand-600"
                 >
                   ×
                 </button>
               </div>
+
               {!isCollapsed && (
-                <div className="min-h-15 mt-2 space-y-2">
+                <div className="mt-2.5 min-h-16 space-y-2">
                   {colTasks.map((task) => {
                     const overdue = isOverdue(task.dueDate)
                     return (
@@ -795,56 +773,68 @@ export function MyDesk() {
                           setDraggingId(null)
                         }}
                         onClick={() => setEditingTaskId(task.id)}
-                        className={`cursor-pointer rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md active:cursor-grabbing ${
-                          draggingId === task.id ? 'opacity-40' : ''
-                        }`}
+                        className={cn(
+                          'group cursor-pointer rounded-xl border border-neutral-200/70 bg-white p-3 shadow-xs',
+                          'transition-[transform,box-shadow,border-color] duration-200 ease-out',
+                          'hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md active:cursor-grabbing',
+                          draggingId === task.id && 'opacity-40',
+                        )}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-ink-900">{task.title}</p>
+                          <p className="text-[13.5px] font-medium leading-snug text-ink-900">{task.title}</p>
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
                               deleteTask.mutate(task.id)
                             }}
-                            className="shrink-0 text-neutral-300 transition-colors hover:text-brand-600"
                             aria-label="Remover tarefa"
+                            className="-mr-1 -mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-300 opacity-0 transition-[opacity,background-color,color] duration-150 hover:bg-brand-50 hover:text-brand-600 group-hover:opacity-100"
                           >
                             ×
                           </button>
                         </div>
-                        {task.clientName && <p className="mt-1 text-xs text-neutral-500">{task.clientName}</p>}
-                        {task.notes && <p className="mt-1 line-clamp-2 text-xs text-neutral-400">{task.notes}</p>}
+
+                        {task.clientName && (
+                          <p className="mt-1 text-[12px] text-neutral-500">{task.clientName}</p>
+                        )}
+                        {task.notes && (
+                          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-neutral-400">{task.notes}</p>
+                        )}
+
                         {task.tags.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {task.tags.map((tag) => (
                               <span
                                 key={tag}
-                                className="rounded-full bg-ink-900/5 px-2 py-0.5 text-[11px] font-medium text-ink-700"
+                                className="rounded-md bg-neutral-500/10 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600"
                               >
                                 {tag}
                               </span>
                             ))}
                           </div>
                         )}
+
                         {task.dueDate && (
                           <p
-                            className={`mt-2 flex items-center gap-1 text-[11px] font-medium ${
-                              overdue ? 'text-brand-600' : 'text-neutral-400'
-                            }`}
+                            className={cn(
+                              'mt-2 inline-flex items-center gap-1 text-[11.5px] font-medium',
+                              overdue ? 'text-brand-600' : 'text-neutral-400',
+                            )}
                           >
-                            {overdue && <span aria-hidden>⚠</span>}
-                            Prazo: {formatDueDate(task.dueDate)}
-                            {overdue && ' — atrasado'}
+                            {overdue && <IconAlert className="h-3 w-3" />}
+                            {formatDueDate(task.dueDate)}
+                            {overdue && ' · atrasado'}
                           </p>
                         )}
+
                         {(task.quoteNumber || task.orderNumber) && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {task.quoteNumber && (
                               <Link
                                 to="/orcamentos"
                                 onClick={(e) => e.stopPropagation()}
-                                className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 transition-colors hover:bg-brand-100"
+                                className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[11px] font-medium text-brand-700 transition-colors hover:bg-brand-100"
                               >
                                 Orç. {task.quoteNumber}
                               </Link>
@@ -853,7 +843,7 @@ export function MyDesk() {
                               <Link
                                 to={`/pedidos/${task.orderId}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600 transition-colors hover:bg-neutral-200"
+                                className="rounded-md bg-neutral-500/10 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600 transition-colors hover:bg-neutral-500/20"
                               >
                                 Pedido #{task.orderNumber}
                               </Link>
@@ -863,18 +853,29 @@ export function MyDesk() {
                       </div>
                     )
                   })}
-                  {colTasks.length === 0 && <p className="px-1 py-2 text-xs text-neutral-400">Nada por aqui.</p>}
+
+                  {colTasks.length === 0 && (
+                    <p className="rounded-xl border border-dashed border-neutral-200 px-3 py-5 text-center text-[12px] text-neutral-400">
+                      Nada por aqui.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
           )
         })}
+
         {columns && columns.length === 0 && (
-          <div className="w-full">
+          <div className="w-full overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
             <EmptyState
               icon={IconBoard}
               title="Nenhum quadro ainda"
-              description='Clique em "+ Novo quadro" para começar a organizar suas tarefas.'
+              description="Crie o primeiro quadro para começar a organizar suas tarefas."
+              action={
+                <Button size="sm" variant="primary" onClick={() => setAddingColumn(true)}>
+                  Novo quadro
+                </Button>
+              }
             />
           </div>
         )}
@@ -905,6 +906,6 @@ export function MyDesk() {
           onConfirm={() => deleteColumn.mutate(deletingColumn.id)}
         />
       )}
-    </div>
+    </Page>
   )
 }

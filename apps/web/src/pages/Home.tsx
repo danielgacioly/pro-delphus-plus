@@ -1,8 +1,28 @@
+import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { IconBoard, IconBox, IconChart, IconLayers, IconQuote, IconTag, IconTruck, IconUsers } from '../components/icons'
+import { cn } from '../lib/cn'
+import { Page, Section } from '../components/ui'
+import {
+  IconBoard,
+  IconBox,
+  IconChart,
+  IconChevronRight,
+  IconLayers,
+  IconQuote,
+  IconTag,
+  IconTruck,
+  IconUsers,
+} from '../components/icons'
 
-const shortcuts = [
+interface Shortcut {
+  to: string
+  title: string
+  description: string
+  icon: ComponentType<SVGProps<SVGSVGElement>>
+}
+
+const shortcuts: Shortcut[] = [
   {
     to: '/minha-pro-delphus',
     title: 'Minha Pro Delphus',
@@ -10,15 +30,15 @@ const shortcuts = [
     icon: IconBoard,
   },
   {
-    to: '/orcamentos/novo',
-    title: 'Novo orçamento',
-    description: 'Gere um orçamento em PDF a partir do SKU do produto.',
+    to: '/orcamentos',
+    title: 'Orçamentos',
+    description: 'Gere orçamentos em PDF ou Excel a partir do catálogo.',
     icon: IconQuote,
   },
   {
     to: '/precos',
     title: 'Tabela de preços',
-    description: 'Consulte preços em reais e em dólar por setor.',
+    description: 'Consulte preços em real, dólar e euro por setor.',
     icon: IconTag,
   },
   {
@@ -35,15 +55,10 @@ const shortcuts = [
   },
 ]
 
-const adminShortcuts = [
-  { to: '/admin/contas', title: 'Contas', description: 'Aprove cadastros e gerencie o acesso dos usuários.', icon: IconUsers },
-  { to: '/admin/setores', title: 'Setores', description: 'Crie, renomeie e exclua os setores do catálogo.', icon: IconLayers },
-  {
-    to: '/admin/metricas',
-    title: 'Métricas',
-    description: 'Vendas por período, status dos pedidos e produtos mais vendidos.',
-    icon: IconChart,
-  },
+const adminShortcuts: Shortcut[] = [
+  { to: '/admin/contas', title: 'Contas', description: 'Aprove cadastros e gerencie o acesso.', icon: IconUsers },
+  { to: '/admin/setores', title: 'Setores', description: 'Crie, renomeie e exclua setores do catálogo.', icon: IconLayers },
+  { to: '/admin/metricas', title: 'Métricas', description: 'Vendas, status dos pedidos e mais vendidos.', icon: IconChart },
 ]
 
 function greeting() {
@@ -53,54 +68,59 @@ function greeting() {
   return 'Boa noite'
 }
 
+function ShortcutCard({ shortcut, tone, index }: { shortcut: Shortcut; tone: 'brand' | 'neutral'; index: number }) {
+  const { to, title, description, icon: Icon } = shortcut
+  return (
+    <Link
+      to={to}
+      style={{ animationDelay: `${index * 40}ms` }}
+      className={cn(
+        'group animate-fade-in-up relative flex flex-col rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm',
+        'transition-[transform,box-shadow,border-color] duration-200 ease-out',
+        'hover:-translate-y-0.5 hover:shadow-lg',
+        tone === 'brand' ? 'hover:border-brand-200' : 'hover:border-neutral-300',
+      )}
+    >
+      <div
+        className={cn(
+          'flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200',
+          tone === 'brand'
+            ? 'bg-brand-50 text-brand-600 group-hover:bg-brand-100'
+            : 'bg-neutral-500/8 text-ink-800 group-hover:bg-neutral-500/14',
+        )}
+      >
+        <Icon className="h-4.75 w-4.75" />
+      </div>
+
+      <h3 className="text-heading mt-3.5 text-ink-900">{title}</h3>
+      <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{description}</p>
+
+      <IconChevronRight className="absolute right-4 top-5 h-4 w-4 text-neutral-300 transition-[transform,color] duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-neutral-500" />
+    </Link>
+  )
+}
+
 export function Home() {
   const { user } = useAuth()
+  const firstName = user?.name?.trim().split(' ')[0] ?? ''
 
   return (
-    <div>
-      <h1 className="mt-1 text-2xl font-bold uppercase tracking-wider text-brand-600">{greeting()}, {user?.name?.split(' ')[0]}.</h1>
-      <p className="mt-2 text-neutral-500">O que você deseja fazer hoje?</p>
-
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {shortcuts.map((s) => (
-          <Link
-            key={s.to}
-            to={s.to}
-            className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5"
-          >
-            <s.icon className="h-6 w-6 text-brand-600" />
-            <h2 className="mt-3 font-semibold text-ink-900">{s.title}</h2>
-            <p className="mt-1 text-sm text-neutral-500">{s.description}</p>
-            <span className="absolute right-4 top-5 text-neutral-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-500">
-              →
-            </span>
-          </Link>
+    <Page title={`${greeting()}, ${firstName}.`} description="O que você deseja fazer hoje?">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {shortcuts.map((shortcut, i) => (
+          <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" index={i} />
         ))}
       </div>
 
       {user?.role === 'ADMIN' && (
-        <>
-          <h2 className="mt-10 mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Administração
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {adminShortcuts.map((s) => (
-              <Link
-                key={s.to}
-                to={s.to}
-                className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md hover:shadow-ink-900/5"
-              >
-                <s.icon className="h-6 w-6 text-ink-900" />
-                <h2 className="mt-3 font-semibold text-ink-900">{s.title}</h2>
-                <p className="mt-1 text-sm text-neutral-500">{s.description}</p>
-                <span className="absolute right-4 top-5 text-neutral-300 transition-transform group-hover:translate-x-0.5 group-hover:text-ink-700">
-                  →
-                </span>
-              </Link>
+        <Section title="Administração">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {adminShortcuts.map((shortcut, i) => (
+              <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="neutral" index={i} />
             ))}
           </div>
-        </>
+        </Section>
       )}
-    </div>
+    </Page>
   )
 }

@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import type { ProductDTO, ProductKind, SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { cn } from '../lib/cn'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { DropZone } from '../components/DropZone'
-import { EmptyState } from '../components/EmptyState'
-import { IconBox, IconSearch } from '../components/icons'
 import { localize, localizeSector } from '../lib/catalogTranslation'
+import {
+  Badge,
+  Button,
+  ButtonLink,
+  EmptyState,
+  Input,
+  Page,
+  SearchField,
+  SegmentedControl,
+  Select,
+  Skeleton,
+  Toolbar,
+} from '../components/ui'
+import { IconBox, IconChevronDown, IconPlus } from '../components/icons'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -36,6 +49,24 @@ async function fetchSectorList() {
 const kindLabel: Record<ProductKind, string> = {
   COMPLETE_MODEL: 'Modelo completo',
   COMPONENT: 'Componente / peça',
+}
+
+function DetailBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-eyebrow text-neutral-400">{label}</dt>
+      <dd className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-600">{children}</dd>
+    </div>
+  )
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4">
+      <h3 className="text-eyebrow mb-3 text-neutral-500">{title}</h3>
+      {children}
+    </div>
+  )
 }
 
 export function Products() {
@@ -196,53 +227,44 @@ export function Products() {
     })
   }
 
-  return (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900">Produtos</h1>
-          <p className="mt-1 text-neutral-500">
-            Catálogo de produtos Pro Delphus — cadastrar aqui já adiciona à tabela de preços.
-          </p>
-        </div>
-        {isAdmin && (
-          <Link
-            to="/produtos/novo"
-            className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
-          >
-            + Criar novo produto
-          </Link>
-        )}
-      </div>
+  const hasFilters = Boolean(search) || sectorFilter !== 'ALL' || kindFilter !== 'ALL'
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <div className="relative">
-          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-          <input
-            placeholder="Buscar por SKU, nome, setor ou descrição"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-72 rounded-lg border border-neutral-300 py-2 pl-9 pr-3 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-        </div>
-        <div className="flex items-center gap-1 rounded-lg border border-neutral-200 bg-white p-1 text-sm">
-          {(['ALL', 'COMPLETE_MODEL', 'COMPONENT'] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setKindFilter(k)}
-              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-                kindFilter === k ? 'bg-ink-900 text-white' : 'text-neutral-500 hover:bg-neutral-100'
-              }`}
-            >
-              {k === 'ALL' ? 'Todos os tipos' : kindLabel[k]}
-            </button>
-          ))}
-        </div>
-        <select
+  return (
+    <Page
+      title="Produtos"
+      description="Catálogo Pro Delphus — cadastrar aqui já adiciona o item à tabela de preços."
+      actions={
+        isAdmin && (
+          <ButtonLink to="/produtos/novo" variant="primary" size="sm">
+            <IconPlus className="h-4 w-4" />
+            Novo produto
+          </ButtonLink>
+        )
+      }
+    >
+      <Toolbar className="mb-5">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar produtos"
+          className="w-full sm:w-64"
+        />
+        <SegmentedControl
+          aria-label="Tipo de produto"
+          value={kindFilter}
+          onChange={setKindFilter}
+          options={[
+            { value: 'ALL', label: 'Todos' },
+            { value: 'COMPLETE_MODEL', label: 'Modelos' },
+            { value: 'COMPONENT', label: 'Componentes' },
+          ]}
+        />
+        <Select
+          aria-label="Setor"
           value={sectorFilter}
           onChange={(e) => setSectorFilter(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:border-neutral-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          auto
+          className="h-9 text-[13px]"
         >
           <option value="ALL">Todos os setores</option>
           {sectors?.map((s) => (
@@ -250,91 +272,124 @@ export function Products() {
               {localizeSector(s, sectorList, lang)}
             </option>
           ))}
-        </select>
-      </div>
+        </Select>
+        {filteredProducts && !isLoading && (
+          <span className="tabular ml-auto text-[13px] text-neutral-400">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
+          </span>
+        )}
+      </Toolbar>
 
-      <div className="mt-6 space-y-3">
-        {isLoading && (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4">
-                <div className="skeleton h-12 w-12 shrink-0 rounded-lg" />
-                <div className="flex-1 space-y-2">
-                  <div className="skeleton h-3.5 w-1/3 rounded" />
-                  <div className="skeleton h-3 w-1/2 rounded" />
-                </div>
+      {isLoading && (
+        <div className="space-y-2.5">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 rounded-2xl border border-neutral-200/70 bg-white p-4 shadow-sm"
+            >
+              <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-1/2" />
               </div>
-            ))}
-          </div>
-        )}
-        {isError && (
-          <p className="text-brand-600">
-            Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.
-          </p>
-        )}
-        {!isLoading && !isError && filteredProducts?.length === 0 && (
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
+          Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.
+        </div>
+      )}
+
+      {!isLoading && !isError && filteredProducts?.length === 0 && (
+        <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
           <EmptyState
             icon={IconBox}
             title="Nenhum produto encontrado"
-            description={search || sectorFilter !== 'ALL' || kindFilter !== 'ALL' ? 'Tente ajustar os filtros.' : 'Ainda não há produtos cadastrados.'}
+            description={hasFilters ? 'Tente ajustar os filtros.' : 'Ainda não há produtos cadastrados.'}
           />
-        )}
+        </div>
+      )}
+
+      <div className="space-y-2.5">
         {filteredProducts?.map((product, index) => {
           const primaryMedia = product.media.find((m) => m.isPrimary)
           const isEditing = editingId === product.id
+          const isExpanded = expandedId === product.id
+          const open = isEditing || isExpanded
+
           return (
             <div
               key={product.id}
               id={`product-${product.id}`}
-              className="animate-fade-in-up scroll-mt-6 rounded-xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm"
               style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
+              className={cn(
+                'animate-fade-in-up scroll-mt-20 rounded-2xl border bg-white shadow-sm',
+                'transition-[box-shadow,border-color] duration-200',
+                open ? 'border-neutral-300 shadow-md' : 'border-neutral-200/70 hover:border-neutral-300 hover:shadow-md',
+              )}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {primaryMedia ? (
-                    <img src={primaryMedia.url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-300">
-                      <IconBox className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium text-ink-900">
-                      {product.name} <span className="text-neutral-400">— {product.sku}</span>
-                    </p>
-                    <p className="text-sm text-neutral-500">
-                      {product.sectors.map((s) => localizeSector(s, sectorList, lang)).join(', ')} ·{' '}
-                      {kindLabel[product.kind]}
-                      {product.weightKg && ` · ${product.weightKg} kg`}
-                    </p>
+              <div className="flex items-center gap-4 p-4">
+                {primaryMedia ? (
+                  <img
+                    src={primaryMedia.url}
+                    alt=""
+                    className="h-14 w-14 shrink-0 rounded-xl border border-neutral-200/70 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-neutral-500/8 text-neutral-300">
+                    <IconBox className="h-6 w-6" />
                   </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-[15px] font-semibold text-ink-900">{product.name}</p>
+                    <span className="tabular shrink-0 text-[12.5px] text-neutral-400">{product.sku}</span>
+                  </div>
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-500">
+                    <Badge tone={product.kind === 'COMPLETE_MODEL' ? 'brand' : 'neutral'}>
+                      {kindLabel[product.kind]}
+                    </Badge>
+                    <span className="truncate">
+                      {product.sectors.map((s) => localizeSector(s, sectorList, lang)).join(' · ')}
+                    </span>
+                    {product.weightKg && <span className="tabular shrink-0">· {product.weightKg} kg</span>}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setExpandedId(expandedId === product.id ? null : product.id)
-                      setEditingId(null)
-                    }}
-                    className="text-xs font-semibold text-brand-600 hover:underline"
-                  >
-                    {expandedId === product.id ? 'Fechar' : 'Detalhes'}
-                  </button>
+
+                <div className="flex shrink-0 items-center gap-1.5">
                   {isAdmin && (
                     <>
-                      <button
-                        onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}
-                        className="text-xs font-semibold text-brand-600 hover:underline"
-                      >
+                      <Button size="sm" onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}>
                         {isEditing ? 'Cancelar' : 'Editar'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => setDeletingProduct(product)}
-                        className="text-xs font-semibold text-brand-600 hover:underline"
+                        className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
                       >
                         Excluir
-                      </button>
+                      </Button>
                     </>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandedId(isExpanded ? null : product.id)
+                      setEditingId(null)
+                    }}
+                    aria-label={isExpanded ? 'Fechar detalhes' : 'Ver detalhes'}
+                    aria-expanded={isExpanded}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900 active:scale-90"
+                  >
+                    <IconChevronDown
+                      className={cn('h-4 w-4 transition-transform duration-300 ease-out', isExpanded && 'rotate-180')}
+                    />
+                  </button>
                 </div>
               </div>
 
@@ -344,104 +399,101 @@ export function Products() {
                     e.preventDefault()
                     updateProduct.mutate(product.id)
                   }}
-                  className="animate-fade-in-up mt-4 grid grid-cols-4 gap-x-4 gap-y-5 border-t border-neutral-100 pt-5"
+                  className="animate-fade-in border-t border-neutral-200/70 p-5"
                 >
-                  <ProductFieldSet value={editForm} onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
-                  <button
-                    type="submit"
-                    disabled={updateProduct.isPending}
-                    className="col-span-4 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
-                  >
-                    {updateProduct.isPending ? 'Salvando…' : 'Salvar alterações'}
-                  </button>
+                  <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+                    <ProductFieldSet
+                      value={editForm}
+                      onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))}
+                      sectors={sectors ?? []}
+                    />
+                  </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <Button type="button" onClick={() => setEditingId(null)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" variant="primary" disabled={updateProduct.isPending}>
+                      {updateProduct.isPending ? 'Salvando…' : 'Salvar alterações'}
+                    </Button>
+                  </div>
                 </form>
               )}
 
-              {expandedId === product.id && (
-                <div className="animate-fade-in-up mt-4 space-y-5 border-t border-neutral-100 pt-5">
-                  <dl className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Descrição</dt>
-                      <dd className="mt-1 text-sm text-neutral-600">
-                        {localize(product.description, product.descriptionPt, lang) ?? 'Sem descrição cadastrada.'}
-                      </dd>
-                    </div>
+              {isExpanded && (
+                <div className="animate-fade-in space-y-5 border-t border-neutral-200/70 p-5">
+                  <dl className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <DetailBlock label="Descrição">
+                      {localize(product.description, product.descriptionPt, lang) ?? 'Sem descrição cadastrada.'}
+                    </DetailBlock>
                     {product.kind === 'COMPLETE_MODEL' && (
-                      <div>
-                        <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Componentes</dt>
-                        <dd className="mt-1 text-sm text-neutral-600">
-                          {localize(product.components, product.componentsPt, lang) ?? 'Sem componentes cadastrados.'}
-                        </dd>
-                      </div>
+                      <DetailBlock label="Componentes">
+                        {localize(product.components, product.componentsPt, lang) ?? 'Sem componentes cadastrados.'}
+                      </DetailBlock>
                     )}
                     {product.videoLinks.length > 0 && (
                       <div className="lg:col-span-2">
-                        <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-                          Links de vídeo
-                        </dt>
-                        <dd className="mt-1">
-                          <ul className="space-y-0.5">
-                            {product.videoLinks.map((link) => (
-                              <li key={link} className="truncate">
-                                <a
-                                  href={link}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-sm text-brand-600 underline"
-                                >
-                                  {link}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
+                        <dt className="text-eyebrow text-neutral-400">Links de vídeo</dt>
+                        <dd className="mt-1.5 space-y-1">
+                          {product.videoLinks.map((link) => (
+                            <a
+                              key={link}
+                              href={link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block truncate text-[13px] text-brand-600 hover:underline"
+                            >
+                              {link}
+                            </a>
+                          ))}
                         </dd>
                       </div>
                     )}
                   </dl>
 
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="rounded-lg border border-neutral-200 p-3">
-                      <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Mídia</h3>
+                    <Panel title="Mídia">
                       {product.media.length > 0 && (
-                        <div className="mb-3 flex flex-wrap gap-2">
+                        <div className="mb-3 flex flex-wrap gap-2.5">
                           {product.media.map((m) => (
-                            <div key={m.id} className="relative">
+                            <div key={m.id} className="group relative">
                               {m.type === 'IMAGE' ? (
                                 <img
                                   src={m.url}
                                   alt=""
-                                  className={`h-16 w-16 rounded object-cover ${
-                                    m.isPrimary ? 'ring-2 ring-brand-500 ring-offset-1' : ''
-                                  }`}
+                                  className={cn(
+                                    'h-17 w-17 rounded-lg border border-neutral-200/70 object-cover',
+                                    m.isPrimary && 'ring-2 ring-brand-500 ring-offset-2',
+                                  )}
                                 />
                               ) : (
                                 <a
                                   href={m.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-xs text-brand-600 underline"
+                                  className="flex h-17 w-17 items-center justify-center rounded-lg border border-neutral-200 bg-white text-[11px] text-brand-600"
                                 >
                                   arquivo
                                 </a>
+                              )}
+                              {m.isPrimary && (
+                                <span className="absolute bottom-1 left-1 rounded bg-brand-600 px-1.5 py-px text-[9px] font-semibold text-white">
+                                  Principal
+                                </span>
                               )}
                               {isAdmin && m.type === 'IMAGE' && !m.isPrimary && (
                                 <button
                                   onClick={() => setPrimaryMedia.mutate({ productId: product.id, mediaId: m.id })}
                                   title="Tornar principal"
-                                  className="absolute bottom-0 left-0 rounded-tr-md bg-ink-900/80 px-1 text-[9px] font-medium text-white"
+                                  className="absolute bottom-1 left-1 rounded bg-ink-900/75 px-1.5 py-px text-[9px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100"
                                 >
-                                  ★
-                                </button>
-                              )}
-                              {m.isPrimary && (
-                                <span className="absolute bottom-0 left-0 rounded-tr-md bg-brand-600 px-1 text-[9px] font-medium text-white">
                                   Principal
-                                </span>
+                                </button>
                               )}
                               {isAdmin && (
                                 <button
                                   onClick={() => removeMedia.mutate({ productId: product.id, mediaId: m.id })}
-                                  className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white"
+                                  aria-label="Remover mídia"
+                                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink-900 text-[11px] text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
                                 >
                                   ×
                                 </button>
@@ -451,41 +503,40 @@ export function Products() {
                         </div>
                       )}
                       {product.media.length === 0 && !isAdmin && (
-                        <p className="text-sm text-neutral-400">Nenhuma mídia cadastrada.</p>
+                        <p className="text-[13px] text-neutral-400">Nenhuma mídia cadastrada.</p>
                       )}
                       {isAdmin && (
                         <DropZone
                           accept="image/*"
                           multiple
-                          className="py-2"
+                          className="py-3"
                           onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
                         >
-                          <p className="text-xs text-neutral-500">
-                            Arraste imagens aqui ou{' '}
+                          <p className="text-[12.5px] text-neutral-500">
+                            Arraste imagens ou{' '}
                             <span className="font-medium text-brand-600">clique para selecionar</span>
                           </p>
                         </DropZone>
                       )}
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-lg border border-neutral-200 p-3">
-                      <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Brochuras</h3>
+                    <Panel title="Brochuras">
                       {product.brochures.length > 0 && (
-                        <ul className="mb-3 space-y-1">
+                        <ul className="mb-3 space-y-1.5">
                           {product.brochures.map((b) => (
-                            <li key={b.id} className="flex items-center justify-between gap-2 text-sm">
+                            <li key={b.id} className="flex items-center justify-between gap-2">
                               <a
                                 href={b.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="truncate text-brand-600 underline"
+                                className="truncate text-[13px] text-brand-600 hover:underline"
                               >
                                 {b.name}
                               </a>
                               {isAdmin && (
                                 <button
                                   onClick={() => removeBrochure.mutate({ productId: product.id, brochureId: b.id })}
-                                  className="shrink-0 text-xs text-neutral-400 hover:text-brand-600"
+                                  className="shrink-0 text-[12px] text-neutral-400 transition-colors hover:text-brand-600"
                                 >
                                   remover
                                 </button>
@@ -495,39 +546,38 @@ export function Products() {
                         </ul>
                       )}
                       {product.brochures.length === 0 && !isAdmin && (
-                        <p className="text-sm text-neutral-400">Nenhuma brochura enviada.</p>
+                        <p className="text-[13px] text-neutral-400">Nenhuma brochura enviada.</p>
                       )}
                       {isAdmin && (
                         <DropZone
                           accept=".pdf,application/pdf"
                           multiple
-                          className="py-2"
+                          className="py-3"
                           onFiles={(files) => files.forEach((file) => uploadBrochure.mutate({ id: product.id, file }))}
                         >
-                          <p className="text-xs text-neutral-500">
-                            Arraste PDFs aqui ou{' '}
-                            <span className="font-medium text-brand-600">clique para selecionar</span>
+                          <p className="text-[12.5px] text-neutral-500">
+                            Arraste PDFs ou <span className="font-medium text-brand-600">clique para selecionar</span>
                           </p>
                         </DropZone>
                       )}
-                    </div>
+                    </Panel>
                   </div>
 
-                  <div className="rounded-lg border border-neutral-200 p-3">
-                    <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Customizações</h3>
+                  <Panel title="Customizações">
                     {product.customizations.length > 0 && (
-                      <ul className="mb-3 space-y-1">
+                      <ul className="mb-3 space-y-1.5">
                         {product.customizations.map((c) => (
-                          <li key={c.id} className="flex items-center justify-between text-sm">
-                            <span>
-                              <strong>{c.name}:</strong> {Array.isArray(c.options) ? c.options.join(', ') : ''}
+                          <li key={c.id} className="flex items-center justify-between gap-3 text-[13px]">
+                            <span className="min-w-0 truncate text-neutral-600">
+                              <strong className="font-semibold text-ink-900">{c.name}:</strong>{' '}
+                              {Array.isArray(c.options) ? c.options.join(', ') : ''}
                             </span>
                             {isAdmin && (
                               <button
                                 onClick={() =>
                                   removeCustomization.mutate({ productId: product.id, customizationId: c.id })
                                 }
-                                className="text-xs text-brand-600 hover:underline"
+                                className="shrink-0 text-[12px] text-neutral-400 transition-colors hover:text-brand-600"
                               >
                                 remover
                               </button>
@@ -537,7 +587,7 @@ export function Products() {
                       </ul>
                     )}
                     {product.customizations.length === 0 && !isAdmin && (
-                      <p className="text-sm text-neutral-400">Nenhuma customização cadastrada.</p>
+                      <p className="text-[13px] text-neutral-400">Nenhuma customização cadastrada.</p>
                     )}
                     {isAdmin && (
                       <form
@@ -547,29 +597,26 @@ export function Products() {
                         }}
                         className="flex flex-wrap items-center gap-2"
                       >
-                        <input
+                        <Input
                           placeholder="Nome (ex: Cor)"
                           required
                           value={customizationDraft.name}
                           onChange={(e) => setCustomizationDraft((s) => ({ ...s, name: e.target.value }))}
-                          className="w-40 min-w-0 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
+                          className="h-9 w-44 text-[13px]"
                         />
-                        <input
+                        <Input
                           placeholder="Opções separadas por vírgula"
                           required
                           value={customizationDraft.options}
                           onChange={(e) => setCustomizationDraft((s) => ({ ...s, options: e.target.value }))}
-                          className="min-w-40 flex-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
+                          className="h-9 min-w-44 flex-1 text-[13px]"
                         />
-                        <button
-                          type="submit"
-                          className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
-                        >
+                        <Button type="submit" variant="primary" size="sm">
                           Adicionar
-                        </button>
+                        </Button>
                       </form>
                     )}
-                  </div>
+                  </Panel>
                 </div>
               )}
             </div>
@@ -586,6 +633,6 @@ export function Products() {
           onConfirm={() => deleteProduct.mutate(deletingProduct.id)}
         />
       )}
-    </div>
+    </Page>
   )
 }

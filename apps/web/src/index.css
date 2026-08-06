@@ -1,43 +1,155 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #fef2f2;
-  --color-brand-100: #fde3e3;
-  --color-brand-200: #fbcaca;
-  --color-brand-300: #f5a3a3;
-  --color-brand-400: #f16b6b;
-  --color-brand-500: #ef1818;
-  --color-brand-600: #d21414;
-  --color-brand-700: #ab1010;
-  --color-brand-800: #840d0d;
-  --color-brand-900: #5c0909;
+  /* ---- Brand -------------------------------------------------------- */
+  --color-brand-50: #fef3f2;
+  --color-brand-100: #fde4e2;
+  --color-brand-200: #fbcdc9;
+  --color-brand-300: #f5a8a1;
+  --color-brand-400: #ee7368;
+  --color-brand-500: #e14638;
+  --color-brand-600: #cd2b1d;
+  --color-brand-700: #ab2015;
+  --color-brand-800: #8d1e15;
+  --color-brand-900: #751e18;
 
-  --color-ink-900: #171717;
-  --color-ink-800: #262626;
-  --color-ink-700: #343434;
+  /* ---- Ink (warm near-blacks) --------------------------------------- */
+  --color-ink-900: #17161a;
+  --color-ink-800: #232227;
+  --color-ink-700: #33313a;
 
-  --font-sans: 'Inter var', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* ---- Warm neutral ramp (overrides Tailwind's cool grey) ----------- */
+  --color-neutral-50: #faf9f8;
+  --color-neutral-100: #f4f3f1;
+  --color-neutral-200: #e8e6e3;
+  --color-neutral-300: #d8d5d1;
+  --color-neutral-400: #b3afaa;
+  --color-neutral-500: #8a8580;
+  --color-neutral-600: #67635e;
+  --color-neutral-700: #4c4945;
+  --color-neutral-800: #322f2d;
+  --color-neutral-900: #1d1b1a;
+
+  /* App canvas — warm off-white, a touch darker than surfaces so cards lift */
+  --color-canvas: #f6f5f3;
+
+  /* ---- Typography ---------------------------------------------------- */
+  /* System stack first: real SF Pro on Apple platforms. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter var', 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* ---- Soft, layered elevation --------------------------------------- */
+  --shadow-xs: 0 1px 2px rgb(23 22 26 / 0.04);
+  --shadow-sm: 0 1px 3px rgb(23 22 26 / 0.05), 0 1px 2px rgb(23 22 26 / 0.03);
+  --shadow-md: 0 4px 14px rgb(23 22 26 / 0.06), 0 1px 3px rgb(23 22 26 / 0.04);
+  --shadow-lg: 0 14px 36px rgb(23 22 26 / 0.09), 0 3px 10px rgb(23 22 26 / 0.04);
+  --shadow-xl: 0 28px 70px rgb(23 22 26 / 0.14), 0 10px 20px rgb(23 22 26 / 0.06);
+
+  /* ---- Radii — generous, closer to Apple's continuous corners -------- */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+
+  /* ---- Motion --------------------------------------------------------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 :root {
   color-scheme: light;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background-color: #faf9f7;
+  background-color: var(--color-canvas);
+  color: var(--color-ink-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Optical sizing: large type tightens, small type loosens — keeps text feeling
-   hand-set rather than uniformly spaced at every size. */
-h1 {
-  letter-spacing: -0.02em;
-}
-h2 {
-  letter-spacing: -0.01em;
+/* Optical sizing: large type tightens, small type opens up. Mirrors how SF Pro
+   switches between Display and Text optical sizes. */
+.text-display {
+  font-size: 2.125rem;
+  line-height: 1.12;
+  letter-spacing: -0.024em;
+  font-weight: 700;
 }
 
+.text-title {
+  font-size: 1.375rem;
+  line-height: 1.22;
+  letter-spacing: -0.017em;
+  font-weight: 650;
+}
+
+.text-heading {
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  letter-spacing: -0.011em;
+  font-weight: 600;
+}
+
+/* Small all-caps section labels — needs positive tracking to stay legible. */
+.text-eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Tabular figures for money/quantities so columns align optically. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+/* ---- Focus: a single, calm focus ring used app-wide -------------------- */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* ---- Scrollbars: thin and unobtrusive, macOS-like ---------------------- */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(23 22 26 / 0.16);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(23 22 26 / 0.28);
+  }
+}
+
+/* ---- Keyframes --------------------------------------------------------- */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -46,15 +158,6 @@ h2 {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes shimmer {
-  from {
-    background-position: 150% 0;
-  }
-  to {
-    background-position: -150% 0;
   }
 }
 
@@ -70,16 +173,25 @@ h2 {
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.97);
+    transform: scale(0.96) translateY(8px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -150% 0;
   }
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-in-up 0.45s var(--ease-out-expo) both;
 }
 
 .animate-fade-in {
@@ -87,26 +199,50 @@ h2 {
 }
 
 .animate-scale-in {
-  animation: scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: scale-in 0.28s var(--ease-out-expo) both;
 }
 
 .skeleton {
-  background: linear-gradient(110deg, #efeeec 8%, #f7f6f4 18%, #efeeec 33%);
+  background: linear-gradient(
+    110deg,
+    var(--color-neutral-200) 8%,
+    var(--color-neutral-100) 18%,
+    var(--color-neutral-200) 33%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
+  border-radius: var(--radius-md);
 }
 
+/* ---- Accessibility ----------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-in-up,
-  .animate-fade-in,
-  .animate-scale-in,
-  .skeleton {
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .backdrop-blur-sm {
+  .material,
+  .material-thick {
     backdrop-filter: none !important;
+    background-color: #ffffff !important;
   }
+}
+
+/* ---- Materials: translucent surfaces that let content show through ----- */
+.material {
+  background-color: rgb(255 255 255 / 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.material-thick {
+  background-color: rgb(255 255 255 / 0.86);
+  backdrop-filter: saturate(180%) blur(28px);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
 }

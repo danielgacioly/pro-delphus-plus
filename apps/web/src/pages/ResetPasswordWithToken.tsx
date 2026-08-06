@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import logo from '../assets/logo.svg'
+import { AuthLayout, AuthNotice } from '../components/AuthLayout'
+import { Button, Field, Input } from '../components/ui'
 
 export function ResetPasswordWithToken() {
   const [searchParams] = useSearchParams()
@@ -30,75 +31,44 @@ export function ResetPasswordWithToken() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
-      <div className="relative hidden w-[42%] shrink-0 overflow-hidden bg-ink-900 lg:flex lg:flex-col lg:justify-between lg:px-12 lg:py-14">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)',
-            backgroundSize: '22px 22px',
-          }}
-        />
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-600/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 left-0 h-80 w-80 rounded-full bg-brand-600/10 blur-3xl" />
+    <AuthLayout
+      headline={
+        <>
+          Quase lá.
+          <br />
+          Escolha uma nova senha.
+        </>
+      }
+      tagline="Depois disso, é só entrar normalmente."
+      title="Redefinir senha"
+      subtitle="Escolha uma senha com pelo menos 6 caracteres."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <AuthNotice tone="error">{error}</AuthNotice>}
 
-        <div className="relative">
-          <div className="h-1 w-10 rounded-full bg-brand-500" />
-          <p className="mt-4 text-sm font-medium uppercase tracking-wider text-white/50">Pro Delphus+</p>
-        </div>
+        {!token && <AuthNotice tone="error">Link inválido ou incompleto. Solicite uma nova recuperação.</AuthNotice>}
 
-        <div className="relative">
-          <h1 className="text-3xl font-bold leading-tight text-white">
-            Quase lá.
-            <br />
-            Escolha uma nova senha.
-          </h1>
-          <p className="mt-4 max-w-sm text-sm text-white/60">Depois disso, é só entrar normalmente.</p>
-        </div>
-      </div>
-
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
-        <form onSubmit={handleSubmit} className="w-full max-w-sm animate-fade-in-up">
-          <img src={logo} alt="Pro Delphus" className="mb-8 h-12 w-auto lg:hidden" />
-          <h1 className="mb-1 text-2xl font-bold text-ink-900">Escolher nova senha</h1>
-          <p className="mb-8 text-sm text-neutral-500">Defina a nova senha da sua conta.</p>
-
-          {!token && (
-            <div className="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
-              Link inválido — falta o token de redefinição. Solicite um novo link.
-            </div>
-          )}
-          {error && (
-            <div className="animate-fade-in-up mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
-              {error}
-            </div>
-          )}
-
-          <label className="mb-1 block text-sm font-medium text-neutral-700">Nova senha</label>
-          <input
+        <Field label="Nova senha">
+          <Input
             type="password"
             required
             minLength={6}
+            autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="mb-6 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
+        </Field>
 
-          <button
-            type="submit"
-            disabled={submitting || !token}
-            className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60"
-          >
-            {submitting ? 'Salvando…' : 'Redefinir senha'}
-          </button>
+        <Button type="submit" variant="primary" size="lg" disabled={submitting || !token} className="w-full">
+          {submitting ? 'Salvando…' : 'Redefinir senha'}
+        </Button>
 
-          <p className="mt-4 text-center text-sm text-neutral-500">
-            <Link to="/login" className="font-medium text-brand-600 hover:underline">
-              Voltar para o login
-            </Link>
-          </p>
-        </form>
-      </div>
-    </div>
+        <p className="pt-1 text-center text-[13px] text-neutral-500">
+          <Link to="/login" className="font-medium text-brand-600 hover:underline">
+            Voltar para o login
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

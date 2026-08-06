@@ -2,8 +2,26 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Role, UserDTO } from '@prodelphusplus/shared'
 import { api } from '../../lib/api'
+import { cn } from '../../lib/cn'
 import { ResetPasswordModal } from '../../components/ResetPasswordModal'
-import { Badge } from '../../components/Badge'
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  Page,
+  Section,
+  Select,
+  SkeletonRows,
+  TBody,
+  THead,
+  Table,
+  TableShell,
+  Td,
+  Th,
+  Tr,
+} from '../../components/ui'
 
 async function fetchUsers() {
   const { data } = await api.get<{ users: UserDTO[] }>('/users')
@@ -26,6 +44,7 @@ export function AdminUsers() {
   const [role, setRole] = useState<Role>('USER')
   const [phone, setPhone] = useState('')
   const [jobTitle, setJobTitle] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [resetPasswordMessage, setResetPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
@@ -37,7 +56,14 @@ export function AdminUsers() {
 
   const createUser = useMutation({
     mutationFn: async () => {
-      await api.post('/users', { name, email, password, role, phone: phone || undefined, jobTitle: jobTitle || undefined })
+      await api.post('/users', {
+        name,
+        email,
+        password,
+        role,
+        phone: phone || undefined,
+        jobTitle: jobTitle || undefined,
+      })
     },
     onSuccess: () => {
       invalidate()
@@ -48,19 +74,13 @@ export function AdminUsers() {
       setPhone('')
       setJobTitle('')
       setFormError(null)
+      setShowCreate(false)
     },
     onError: () => setFormError('Não foi possível criar a conta. Verifique os dados.'),
   })
 
-  const approve = useMutation({
-    mutationFn: async (id: string) => api.post(`/users/${id}/approve`),
-    onSuccess: invalidate,
-  })
-
-  const reject = useMutation({
-    mutationFn: async (id: string) => api.post(`/users/${id}/reject`),
-    onSuccess: invalidate,
-  })
+  const approve = useMutation({ mutationFn: async (id: string) => api.post(`/users/${id}/approve`), onSuccess: invalidate })
+  const reject = useMutation({ mutationFn: async (id: string) => api.post(`/users/${id}/reject`), onSuccess: invalidate })
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
@@ -95,17 +115,20 @@ export function AdminUsers() {
 
   const pending = users?.filter((u) => u.status === 'PENDING') ?? []
   const others = users?.filter((u) => u.status !== 'PENDING') ?? []
-  const inputClass =
-    'rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-ink-900">Contas cadastradas</h1>
-      <p className="mt-1 text-neutral-500">Gerencie o acesso dos usuários ao Pro Delphus+.</p>
-
+    <Page
+      title="Contas"
+      description="Gerencie o acesso dos usuários ao Pro Delphus+."
+      actions={
+        <Button size="sm" variant={showCreate ? 'secondary' : 'primary'} onClick={() => setShowCreate((s) => !s)}>
+          {showCreate ? 'Cancelar' : 'Criar conta'}
+        </Button>
+      }
+    >
       {pending.length > 0 && (
-        <div className="animate-fade-in-up mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-800">
+        <Card className="mb-6 border-amber-300/50 bg-amber-50/60 p-5">
+          <h2 className="mb-3.5 flex items-center gap-2 text-[13px] font-semibold text-amber-900">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
@@ -113,177 +136,176 @@ export function AdminUsers() {
             Aguardando aprovação ({pending.length})
           </h2>
           <div className="space-y-2">
-            {pending.map((u, index) => (
+            {pending.map((u) => (
               <div
                 key={u.id}
-                className="animate-fade-in-up flex items-center justify-between rounded-lg bg-white px-4 py-2.5 shadow-sm transition-shadow hover:shadow-md"
-                style={{ animationDelay: `${index * 30}ms` }}
+                className="flex items-center justify-between gap-4 rounded-xl bg-white px-4 py-3 shadow-xs"
               >
-                <div>
-                  <p className="text-sm font-medium text-ink-900">{u.name}</p>
-                  <p className="text-xs text-neutral-500">
-                    {u.email} {u.jobTitle && `· ${u.jobTitle}`}
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-medium text-ink-900">{u.name}</p>
+                  <p className="truncate text-[12.5px] text-neutral-500">
+                    {u.email}
+                    {u.jobTitle && ` · ${u.jobTitle}`}
                   </p>
                 </div>
-                <div className="space-x-3">
-                  <button
+                <div className="flex shrink-0 gap-1.5">
+                  <Button
+                    size="sm"
                     onClick={() => approve.mutate(u.id)}
-                    className="text-xs font-semibold text-emerald-700 hover:underline"
+                    className="border-emerald-200 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50"
                   >
                     Aprovar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => reject.mutate(u.id)}
-                    className="text-xs font-semibold text-brand-600 hover:underline"
+                    className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
                   >
                     Rejeitar
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          createUser.mutate()
-        }}
-        className="mt-6 grid max-w-2xl grid-cols-2 gap-3 rounded-xl border border-neutral-200 bg-white p-5"
-      >
-        <h2 className="col-span-2 text-sm font-semibold text-neutral-700">Criar conta diretamente</h2>
-        {formError && <div className="col-span-2 text-sm text-brand-600">{formError}</div>}
-        <input
-          placeholder="Nome"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          placeholder="E-mail"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          placeholder="Senha temporária"
-          type="password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
-        />
-        <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
-          <option value="USER">Usuário</option>
-          <option value="ADMIN">Administrador</option>
-        </select>
-        <input
-          placeholder="Cargo (ex: Vendedor)"
-          value={jobTitle}
-          onChange={(e) => setJobTitle(e.target.value)}
-          className={inputClass}
-        />
-        <input placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-        <button
-          type="submit"
-          disabled={createUser.isPending}
-          className="col-span-2 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
-        >
-          {createUser.isPending ? 'Criando…' : 'Criar conta (aprovada automaticamente)'}
-        </button>
-      </form>
+      {showCreate && (
+        <Card className="animate-fade-in mb-6 max-w-2xl p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              createUser.mutate()
+            }}
+          >
+            <h2 className="text-heading mb-4 text-ink-900">Criar conta diretamente</h2>
+            {formError && (
+              <div className="mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{formError}</div>
+            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Nome">
+                <Input required value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <Field label="E-mail">
+                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </Field>
+              <Field label="Senha temporária">
+                <Input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </Field>
+              <Field label="Papel">
+                <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                  <option value="USER">Usuário</option>
+                  <option value="ADMIN">Administrador</option>
+                </Select>
+              </Field>
+              <Field label="Cargo (opcional)">
+                <Input placeholder="ex: Vendedor" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+              </Field>
+              <Field label="Telefone (opcional)">
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </Field>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button type="submit" variant="primary" disabled={createUser.isPending}>
+                {createUser.isPending ? 'Criando…' : 'Criar conta (aprovada automaticamente)'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       {resetPasswordMessage && (
         <div
-          className={`animate-fade-in-up mt-6 rounded-lg px-3 py-2 text-sm ${
-            resetPasswordMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-brand-50 text-brand-700'
-          }`}
+          className={cn(
+            'animate-fade-in mb-4 rounded-xl px-4 py-3 text-[13px]',
+            resetPasswordMessage.type === 'success' ? 'bg-emerald-500/12 text-emerald-800' : 'bg-brand-50 text-brand-700',
+          )}
         >
           {resetPasswordMessage.text}
         </div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-neutral-200 text-sm">
-            <thead className="bg-neutral-50">
+      <Section title={`Todas as contas${others.length ? ` (${others.length})` : ''}`}>
+        <TableShell>
+          <Table>
+            <THead>
               <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Nome</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">E-mail</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Papel</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Situação</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-500">Ações</th>
+                <Th>Nome</Th>
+                <Th>E-mail</Th>
+                <Th>Papel</Th>
+                <Th>Situação</Th>
+                <Th align="right">Ações</Th>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {isLoading && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-4 text-center text-neutral-400">
-                    Carregando…
-                  </td>
-                </tr>
-              )}
-              {others.map((u, index) => (
-                <tr
-                  key={u.id}
-                  className="animate-fade-in-up transition-colors hover:bg-neutral-50"
-                  style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
-                >
-                  <td className="px-4 py-2.5 font-medium text-ink-900">{u.name}</td>
-                  <td className="px-4 py-2.5 text-neutral-500">{u.email}</td>
-                  <td className="px-4 py-2.5">
-                    <select
+            </THead>
+            <TBody>
+              {isLoading && <SkeletonRows rows={5} columns={5} />}
+
+              {others.map((u) => (
+                <Tr key={u.id}>
+                  <Td className="font-medium text-ink-900">{u.name}</Td>
+                  <Td className="text-neutral-500">{u.email}</Td>
+                  <Td>
+                    <Select
+                      auto
+                      aria-label={`Papel de ${u.name}`}
                       value={u.role}
                       onChange={(e) => changeRole.mutate({ id: u.id, role: e.target.value as Role })}
-                      className="rounded border border-neutral-300 px-2 py-1 text-xs transition-colors hover:border-neutral-400"
+                      className="h-8 text-[12.5px]"
                     >
                       <option value="USER">Usuário</option>
                       <option value="ADMIN">Administrador</option>
-                    </select>
-                  </td>
-                  <td className="space-x-1.5 px-4 py-2.5">
-                    <Badge tone={statusLabel[u.status].tone}>{statusLabel[u.status].label}</Badge>
-                    {u.status === 'APPROVED' && <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Ativo' : 'Desativado'}</Badge>}
-                  </td>
-                  <td className="space-x-2 px-4 py-2.5 text-right">
-                    {u.status === 'REJECTED' && (
-                      <button
-                        onClick={() => approve.mutate(u.id)}
-                        className="text-xs font-semibold text-emerald-700 hover:underline"
+                    </Select>
+                  </Td>
+                  <Td>
+                    <span className="inline-flex flex-wrap items-center gap-1.5">
+                      <Badge tone={statusLabel[u.status].tone} dot>
+                        {statusLabel[u.status].label}
+                      </Badge>
+                      {u.status === 'APPROVED' && !u.active && <Badge tone="neutral">Desativado</Badge>}
+                    </span>
+                  </Td>
+                  <Td className="text-right">
+                    <div className="flex justify-end gap-1.5">
+                      {u.status === 'REJECTED' && (
+                        <Button
+                          size="sm"
+                          onClick={() => approve.mutate(u.id)}
+                          className="border-emerald-200 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50"
+                        >
+                          Aprovar
+                        </Button>
+                      )}
+                      {u.status === 'APPROVED' && (
+                        <Button size="sm" onClick={() => toggleActive.mutate({ id: u.id, active: !u.active })}>
+                          {u.active ? 'Desativar' : 'Ativar'}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setResetPasswordMessage(null)
+                          setResetPasswordError(null)
+                          setResettingUser(u)
+                        }}
                       >
-                        Aprovar
-                      </button>
-                    )}
-                    {u.status === 'APPROVED' && (
-                      <button
-                        onClick={() => toggleActive.mutate({ id: u.id, active: !u.active })}
-                        className="text-xs font-semibold text-brand-600 hover:underline"
-                      >
-                        {u.active ? 'Desativar' : 'Ativar'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setResetPasswordMessage(null)
-                        setResetPasswordError(null)
-                        setResettingUser(u)
-                      }}
-                      className="text-xs font-semibold text-brand-600 hover:underline"
-                    >
-                      Redefinir senha
-                    </button>
-                  </td>
-                </tr>
+                        Redefinir senha
+                      </Button>
+                    </div>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TBody>
+          </Table>
+        </TableShell>
+      </Section>
 
       {resettingUser && (
         <ResetPasswordModal
@@ -294,6 +316,6 @@ export function AdminUsers() {
           onConfirm={(newPassword) => resetPassword.mutate({ id: resettingUser.id, newPassword })}
         />
       )}
-    </div>
+    </Page>
   )
 }

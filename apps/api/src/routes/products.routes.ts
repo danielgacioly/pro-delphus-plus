@@ -113,26 +113,25 @@ productsRouter.get(
   }),
 )
 
-const createProductSchema = z
-  .object({
-    sku: z.string().optional(),
-    name: z.string().min(1),
-    description: z.string().optional(),
-    descriptionPt: z.string().optional(),
-    components: z.string().optional(),
-    componentsPt: z.string().optional(),
-    sectors: z.array(z.string().min(1)).min(1),
-    videoLinks: z.array(z.string().min(1)).optional(),
-    kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).default('COMPLETE_MODEL'),
-    weightKg: z.coerce.number().positive().optional(),
-    priceBRL: z.coerce.number().positive().optional(),
-    priceUSD: z.coerce.number().positive().optional(),
-    priceUSDDistributor: z.coerce.number().positive().optional(),
-    priceEUR: z.coerce.number().positive().optional(),
-  })
-  .refine((data) => data.priceBRL !== undefined || data.priceUSD !== undefined, {
-    message: 'Informe ao menos um preço final (BRL ou USD)',
-  })
+// Preço é opcional no cadastro: produtos novos costumam entrar no catálogo antes
+// de a precificação fechar. Sem preço, o item simplesmente não aparece com valor
+// na tabela e não pode ser orçado até ser preenchido.
+const createProductSchema = z.object({
+  sku: z.string().optional(),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  descriptionPt: z.string().optional(),
+  components: z.string().optional(),
+  componentsPt: z.string().optional(),
+  sectors: z.array(z.string().min(1)).min(1),
+  videoLinks: z.array(z.string().min(1)).optional(),
+  kind: z.enum(['COMPLETE_MODEL', 'COMPONENT']).default('COMPLETE_MODEL'),
+  weightKg: z.coerce.number().positive().optional(),
+  priceBRL: z.coerce.number().positive().optional(),
+  priceUSD: z.coerce.number().positive().optional(),
+  priceUSDDistributor: z.coerce.number().positive().optional(),
+  priceEUR: z.coerce.number().positive().optional(),
+})
 
 productsRouter.post(
   '/',

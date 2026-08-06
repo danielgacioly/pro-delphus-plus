@@ -32,8 +32,8 @@ export function DropZone({ onFiles, accept, multiple, disabled, className = '', 
         if (disabled) return
         handleFiles(e.dataTransfer.files)
       }}
-      className={`cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
-        isDragging ? 'border-brand-500 bg-brand-50' : 'border-neutral-300 hover:border-neutral-400'
+      className={`cursor-pointer rounded-xl border border-dashed bg-white/60 p-4 text-center transition-[background-color,border-color] duration-150 ${
+        isDragging ? 'border-brand-400 bg-brand-50' : 'border-neutral-300 hover:border-neutral-400 hover:bg-white'
       } ${disabled ? 'cursor-not-allowed opacity-60' : ''} ${className}`}
     >
       <input

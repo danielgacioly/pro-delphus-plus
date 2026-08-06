@@ -1,12 +1,27 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { formatAmount, type ClientPrefix, type QuoteDTO, type QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { EmptyState } from '../components/EmptyState'
-import { Badge } from '../components/Badge'
-import { IconQuote } from '../components/icons'
+import {
+  Badge,
+  ButtonLink,
+  EmptyState,
+  Page,
+  SearchField,
+  SegmentedControl,
+  Select,
+  SkeletonRows,
+  TBody,
+  THead,
+  Table,
+  TableShell,
+  Td,
+  Th,
+  Toolbar,
+  Tr,
+} from '../components/ui'
+import { IconPlus, IconQuote } from '../components/icons'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -14,16 +29,12 @@ async function fetchQuotes() {
 }
 
 const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>> = {
-  PT: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
-  EN: { NONE: '—', MR: 'Mr.', MS: 'Ms.' },
-  ES: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
+  PT: { NONE: '', MR: 'Sr.', MS: 'Sra.' },
+  EN: { NONE: '', MR: 'Mr.', MS: 'Ms.' },
+  ES: { NONE: '', MR: 'Sr.', MS: 'Sra.' },
 }
 
-const languageLabel: Record<QuoteLanguage, string> = {
-  PT: 'Português',
-  EN: 'English',
-  ES: 'Español',
-}
+const languageLabel: Record<QuoteLanguage, string> = { PT: 'PT', EN: 'EN', ES: 'ES' }
 
 const monthLabels = [
   'Janeiro',
@@ -40,29 +51,16 @@ const monthLabels = [
   'Dezembro',
 ]
 
-function SkeletonRows() {
-  return (
-    <>
-      {[0, 1, 2, 3].map((i) => (
-        <tr key={i}>
-          {Array.from({ length: 9 }).map((_, j) => (
-            <td key={j} className="px-4 py-3">
-              <div className="skeleton h-3 w-full max-w-20 rounded" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  )
-}
+const COLUMNS = 7
 
 export function Quotes() {
   const { user } = useAuth()
-  const { data: quotes, isLoading } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
+  const { data: quotes, isLoading, isError } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
 
+  const [scope, setScope] = useState<'all' | 'mine'>('all')
   const [yearFilter, setYearFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
-  const [onlyMine, setOnlyMine] = useState(false)
+  const [search, setSearch] = useState('')
 
   const availableYears = useMemo(() => {
     const years = new Set((quotes ?? []).map((q) => new Date(q.createdAt).getFullYear()))
@@ -70,35 +68,44 @@ export function Quotes() {
   }, [quotes])
 
   const filteredQuotes = useMemo(() => {
+    const term = search.trim().toLowerCase()
     return (quotes ?? []).filter((q) => {
       const date = new Date(q.createdAt)
       if (yearFilter !== 'all' && date.getFullYear() !== Number(yearFilter)) return false
       if (monthFilter !== 'all' && date.getMonth() !== Number(monthFilter)) return false
-      if (onlyMine && q.createdBy.id !== user?.id) return false
+      if (scope === 'mine' && q.createdBy.id !== user?.id) return false
+      if (term && !`${q.quoteNumber} ${q.clientName}`.toLowerCase().includes(term)) return false
       return true
     })
-  }, [quotes, yearFilter, monthFilter, onlyMine, user?.id])
+  }, [quotes, yearFilter, monthFilter, scope, user?.id, search])
 
   return (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900">Orçamentos</h1>
-          <p className="mt-1 text-neutral-500">Gere orçamentos automáticos em PDF ou Excel buscando por nome ou SKU.</p>
-        </div>
-        <Link
-          to="/orcamentos/novo"
-          className="mt-7 shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
-        >
-          + Novo orçamento
-        </Link>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <select
+    <Page
+      title="Orçamentos"
+      description="Gere orçamentos automáticos em PDF ou Excel buscando por nome ou SKU."
+      actions={
+        <ButtonLink to="/orcamentos/novo" variant="primary" size="sm">
+          <IconPlus className="h-4 w-4" />
+          Novo orçamento
+        </ButtonLink>
+      }
+    >
+      <Toolbar className="mb-4">
+        <SegmentedControl
+          aria-label="Escopo"
+          value={scope}
+          onChange={setScope}
+          options={[
+            { value: 'all', label: 'Todos' },
+            { value: 'mine', label: 'Meus' },
+          ]}
+        />
+        <Select
+          aria-label="Ano"
           value={yearFilter}
           onChange={(e) => setYearFilter(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-colors hover:border-neutral-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          auto
+          className="h-9 text-[13px]"
         >
           <option value="all">Todos os anos</option>
           {availableYears.map((year) => (
@@ -106,11 +113,13 @@ export function Quotes() {
               {year}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
+          aria-label="Mês"
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-colors hover:border-neutral-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          auto
+          className="h-9 text-[13px]"
         >
           <option value="all">Todos os meses</option>
           {monthLabels.map((label, index) => (
@@ -118,100 +127,107 @@ export function Quotes() {
               {label}
             </option>
           ))}
-        </select>
-        <button
-          type="button"
-          onClick={() => setOnlyMine((s) => !s)}
-          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-            onlyMine
-              ? 'border-brand-300 bg-brand-50 text-brand-700'
-              : 'border-neutral-300 bg-white text-neutral-600 hover:border-neutral-400'
-          }`}
-        >
-          Meus orçamentos
-        </button>
-      </div>
+        </Select>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por número ou cliente"
+          className="ml-auto w-full sm:w-72"
+        />
+      </Toolbar>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-neutral-200 text-sm">
-            <thead className="bg-neutral-50">
+      <TableShell>
+        <Table>
+          <THead>
+            <tr>
+              <Th>Número</Th>
+              <Th>Cliente</Th>
+              <Th>Idioma</Th>
+              <Th>Data</Th>
+              <Th>Criado por</Th>
+              <Th align="right">Total</Th>
+              <Th align="right">Arquivos</Th>
+            </tr>
+          </THead>
+          <TBody>
+            {isLoading && <SkeletonRows rows={6} columns={COLUMNS} />}
+
+            {isError && (
               <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Número</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Cliente</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Idioma</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Moeda</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Data</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Criado por</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Itens</th>
-                <th className="px-4 py-2.5 text-left font-medium text-neutral-500">Total</th>
-                <th className="px-4 py-2.5 text-right font-medium text-neutral-500">Arquivos</th>
+                <td colSpan={COLUMNS} className="px-4 py-6 text-center text-sm text-brand-600">
+                  Não foi possível carregar os orçamentos.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {isLoading && <SkeletonRows />}
-              {!isLoading &&
-                filteredQuotes.map((q, index) => (
-                  <tr
-                    key={q.id}
-                    className="animate-fade-in-up transition-colors hover:bg-neutral-50"
-                    style={{ animationDelay: `${Math.min(index, 12) * 25}ms` }}
-                  >
-                    <td className="px-4 py-2.5 font-medium text-ink-900">{q.quoteNumber}</td>
-                    <td className="px-4 py-2.5 text-neutral-600">
-                      {q.clientPrefix !== 'NONE' && `${prefixLabelsByLanguage[q.language][q.clientPrefix]} `}
-                      {q.clientName}
-                    </td>
-                    <td className="px-4 py-2.5 text-neutral-500">{languageLabel[q.language]}</td>
-                    <td className="px-4 py-2.5 text-neutral-500">
+            )}
+
+            {!isLoading &&
+              !isError &&
+              filteredQuotes.map((q) => {
+                const prefix = prefixLabelsByLanguage[q.language][q.clientPrefix]
+                return (
+                  <Tr key={q.id}>
+                    <Td className="tabular whitespace-nowrap font-semibold text-ink-900">{q.quoteNumber}</Td>
+                    <Td className="max-w-88">
+                      <p className="truncate font-medium text-ink-900">
+                        {prefix && `${prefix} `}
+                        {q.clientName}
+                      </p>
+                      <p className="mt-0.5 truncate text-[12px] text-neutral-500">
+                        {q.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}
+                      </p>
+                    </Td>
+                    <Td>
                       <span className="inline-flex items-center gap-1.5">
-                        {q.currency}
-                        {q.priceTier === 'DISTRIBUTOR' && <Badge>Distribuidor</Badge>}
+                        <Badge>{languageLabel[q.language]}</Badge>
+                        <span className="text-[12px] text-neutral-500">{q.currency}</span>
+                        {q.priceTier === 'DISTRIBUTOR' && <Badge tone="ink">Distrib.</Badge>}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-neutral-500">{new Date(q.createdAt).toLocaleDateString('pt-BR')}</td>
-                    <td className="px-4 py-2.5 text-neutral-500">{q.createdBy.name}</td>
-                    <td className="max-w-xs truncate px-4 py-2.5 text-neutral-600">
-                      {q.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-ink-900">{formatAmount(q.total)}</td>
-                    <td className="space-x-3 px-4 py-2.5 text-right">
-                      {q.pdfUrl && (
-                        <a
-                          href={q.pdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-semibold text-brand-600 hover:underline"
-                        >
-                          PDF
-                        </a>
-                      )}
-                      {q.xlsxUrl && (
-                        <a
-                          href={q.xlsxUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-semibold text-brand-600 hover:underline"
-                        >
-                          Excel
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-        {!isLoading && filteredQuotes.length === 0 && (
-          <div className="p-4">
-            <EmptyState
-              icon={IconQuote}
-              title="Nenhum orçamento encontrado"
-              description="Ajuste os filtros ou crie um novo orçamento."
-            />
-          </div>
+                    </Td>
+                    <Td className="tabular whitespace-nowrap text-neutral-500">
+                      {new Date(q.createdAt).toLocaleDateString('pt-BR')}
+                    </Td>
+                    <Td className="whitespace-nowrap text-neutral-500">{q.createdBy.name}</Td>
+                    <Td className="tabular whitespace-nowrap text-right font-semibold text-ink-900">
+                      {formatAmount(q.total)}
+                    </Td>
+                    <Td className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        {q.pdfUrl && <FileLink href={q.pdfUrl}>PDF</FileLink>}
+                        {q.xlsxUrl && <FileLink href={q.xlsxUrl}>Excel</FileLink>}
+                      </span>
+                    </Td>
+                  </Tr>
+                )
+              })}
+          </TBody>
+        </Table>
+
+        {!isLoading && !isError && filteredQuotes.length === 0 && (
+          <EmptyState
+            icon={IconQuote}
+            title="Nenhum orçamento encontrado"
+            description="Ajuste os filtros ou crie um novo orçamento."
+            action={
+              <ButtonLink to="/orcamentos/novo" variant="secondary" size="sm">
+                Novo orçamento
+              </ButtonLink>
+            }
+          />
         )}
-      </div>
-    </div>
+      </TableShell>
+    </Page>
+  )
+}
+
+function FileLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex h-7 items-center rounded-md border border-neutral-200 bg-white px-2 text-[12px] font-semibold text-neutral-600 shadow-xs transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900 active:scale-95"
+    >
+      {children}
+    </a>
   )
 }
