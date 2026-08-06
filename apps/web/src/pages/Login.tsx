@@ -40,6 +40,11 @@ export function Login() {
       tagline="Tabela de preços, catálogo de produtos e geração de documentos em um único lugar."
       title="Bem-vindo de volta"
       subtitle="Entre com sua conta do Pro Delphus+."
+      footnote={
+        <span>
+          De Olinda para <strong className="font-semibold text-white/75">68 países</strong>
+        </span>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <AuthNotice tone="error">{error}</AuthNotice>}

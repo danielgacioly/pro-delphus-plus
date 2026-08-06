@@ -91,6 +91,7 @@ export function toQuoteDTO(
     items: quote.items.map((item) => ({
       sku: item.sku,
       quantity: item.quantity,
+      listPrice: item.listPrice?.toString() ?? null,
       unitPrice: item.unitPrice.toString(),
       lineTotal: item.lineTotal.toString(),
       productName: item.product.name,

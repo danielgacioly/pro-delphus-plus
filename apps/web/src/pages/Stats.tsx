@@ -16,7 +16,7 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../lib/api'
-import { Card, Page, SegmentedControl, Skeleton } from '../components/ui'
+import { AnimatedNumber, Card, Page, SegmentedControl, Skeleton } from '../components/ui'
 
 interface MonthStat {
   year: number
@@ -321,11 +321,14 @@ export function Stats() {
 
     return page(
       <>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Taxa de conversão" value={pct(eff.overall.conversionRate)} />
+        {/* `key` por visão: sem isso o React reaproveita os cartões da aba
+            anterior e a contagem parte do número errado — "Pedidos totais: 11"
+            virava um "1100%" piscando antes de assentar na taxa de conversão. */}
+        <div key="efficiency" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Taxa de conversão" value={<AnimatedNumber value={eff.overall.conversionRate} format={pct} />} />
           <StatCard
             label="Orçamentos emitidos"
-            value={eff.overall.quotes}
+            value={<AnimatedNumber value={eff.overall.quotes} />}
             sub={`→ ${eff.overall.converted}`}
             delay={40}
           />
@@ -341,7 +344,7 @@ export function Stats() {
           />
           <StatCard
             label="Valor convertido"
-            value={`$ ${fmt(eff.overall.orderedUSD)}`}
+            value={<AnimatedNumber value={eff.overall.orderedUSD} format={(v) => `$ ${fmt(v)}`} />}
             sub={`de $ ${fmt(eff.overall.quotedUSD)}`}
             delay={120}
           />
@@ -414,13 +417,21 @@ export function Stats() {
 
   return page(
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Pedidos totais" value={data.totalOrders} />
-        <StatCard label="Vendido (USD)" value={`$ ${fmt(data.totalByCurrency.USD)}`} delay={40} />
-        <StatCard label="Vendido (BRL)" value={`R$ ${fmt(data.totalByCurrency.BRL)}`} delay={80} />
+      <div key="sales" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Pedidos totais" value={<AnimatedNumber value={data.totalOrders} />} />
+        <StatCard
+          label="Vendido (USD)"
+          value={<AnimatedNumber value={data.totalByCurrency.USD} format={(v) => `$ ${fmt(v)}`} />}
+          delay={40}
+        />
+        <StatCard
+          label="Vendido (BRL)"
+          value={<AnimatedNumber value={data.totalByCurrency.BRL} format={(v) => `R$ ${fmt(v)}`} />}
+          delay={80}
+        />
         <StatCard
           label="Concluídos"
-          value={data.statusBreakdown.COMPLETED}
+          value={<AnimatedNumber value={data.statusBreakdown.COMPLETED} />}
           sub={`/ ${data.totalOrders}`}
           delay={120}
         />

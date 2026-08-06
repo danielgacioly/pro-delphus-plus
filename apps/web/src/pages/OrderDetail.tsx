@@ -425,6 +425,13 @@ export function OrderDetail() {
                   </Td>
                   <Td className="tabular text-right">{item.quantity}</Td>
                   <Td className="tabular whitespace-nowrap text-right">
+                    {/* Preço negociado: mostra o de tabela riscado ao lado, para
+                        ficar claro no pedido que aquele valor não é o do catálogo. */}
+                    {item.listPrice && item.listPrice !== item.unitPrice && (
+                      <span className="mr-1.5 text-neutral-400 line-through">
+                        {formatAmount(item.listPrice)}
+                      </span>
+                    )}
                     {currency} {formatAmount(item.unitPrice)}
                   </Td>
                   <Td className="tabular whitespace-nowrap text-right font-semibold text-ink-900">

@@ -133,9 +133,12 @@ quotesRouter.post(
     const lineItems = await Promise.all(
       data.items.map(async (item) => {
         const product = productById.get(item.productId)!
-        // A manually entered price overrides the catalog price — same
-        // pattern as the description override just below.
-        const unitPrice = item.unitPrice ?? Number(priceOf(product))
+        // O preço de tabela é guardado ao lado do cobrado. Quando os dois
+        // diferem, o documento passa a mostrar a coluna de preço especial — daí
+        // não bastar sobrescrever `unitPrice` e perder a referência.
+        const catalogPrice = priceOf(product)
+        const listPrice = catalogPrice === null || catalogPrice === undefined ? null : Number(catalogPrice)
+        const unitPrice = item.unitPrice ?? listPrice!
         const lineTotal = unitPrice * item.quantity
         // Title (product name/code) is rendered in bold; the descriptive text follows it.
         // A per-item override replaces the descriptive text only, never the title.
@@ -150,6 +153,7 @@ quotesRouter.post(
           productId: product.id,
           title,
           quantity: item.quantity,
+          listPrice,
           unitPrice,
           lineTotal,
           description,
@@ -187,6 +191,7 @@ quotesRouter.post(
           title: i.title,
           description: i.description,
           quantity: i.quantity,
+          listPrice: i.listPrice,
           unitPrice: i.unitPrice,
           lineTotal: i.lineTotal,
           photoDataUri: i.photoDataUri,
@@ -208,6 +213,7 @@ quotesRouter.post(
           title: i.title,
           description: i.description,
           quantity: i.quantity,
+          listPrice: i.listPrice,
           unitPrice: i.unitPrice,
           photoDataUri: i.photoDataUri,
         })),
@@ -251,6 +257,7 @@ quotesRouter.post(
             sku: i.sku,
             productId: i.productId,
             quantity: i.quantity,
+            listPrice: i.listPrice,
             unitPrice: i.unitPrice,
             lineTotal: i.lineTotal,
             description: i.description,

@@ -21,9 +21,21 @@ export interface QuotePdfItem {
   title: string
   description: string
   quantity: number
+  /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
+  listPrice: number | null
+  /** Preço cobrado — igual ao de catálogo, salvo quando houve preço especial. */
   unitPrice: number
   lineTotal: number
   photoDataUri: string | null
+}
+
+/**
+ * Um item tem preço especial quando o cobrado difere do de tabela. A coluna só
+ * existe no documento se pelo menos um item estiver nessa condição — orçamento
+ * sem negociação sai idêntico ao de antes, sem coluna vazia sobrando.
+ */
+function hasSpecialPrice(item: QuotePdfItem) {
+  return item.listPrice !== null && item.unitPrice !== item.listPrice
 }
 
 export interface QuotePdfSignature {
@@ -68,6 +80,8 @@ function renderHtml(data: QuotePdfData) {
   const t = LABELS[data.language]
   const money = (value: number) => formatMoney(value, data.currency, data.language)
 
+  const showSpecial = data.items.some(hasSpecialPrice)
+
   const rows = data.items
     .map(
       (item, index) => `
@@ -78,7 +92,14 @@ function renderHtml(data: QuotePdfData) {
           <td class="photo-cell">${
             item.photoDataUri ? `<img src="${item.photoDataUri}" alt="" />` : ''
           }</td>
-          <td class="num">${money(item.unitPrice)}</td>
+          <td class="num${hasSpecialPrice(item) ? ' struck' : ''}">${
+            item.listPrice === null ? '—' : money(item.listPrice)
+          }</td>
+          ${
+            showSpecial
+              ? `<td class="num special-cell">${hasSpecialPrice(item) || item.listPrice === null ? money(item.unitPrice) : '—'}</td>`
+              : ''
+          }
           <td class="num total-cell">${money(item.lineTotal)}</td>
         </tr>`,
     )
@@ -114,6 +135,8 @@ function renderHtml(data: QuotePdfData) {
   table.items td { padding: 8px; font-size: 12px; color: #1a1a1a; border: 1px solid #e5e3da; vertical-align: middle; }
   table.items .num { text-align: center; white-space: nowrap; }
   table.items .total-cell { color: #ef1818; font-weight: 700; text-align: right; }
+  table.items .special-cell { color: #ef1818; font-weight: 700; }
+  table.items .struck { color: #8a8a8a; text-decoration: line-through; }
   .photo-cell { text-align: center; width: 64px; }
   .photo-cell img { max-width: 56px; max-height: 56px; object-fit: contain; }
   .summary { display: flex; margin-top: 0; border: 1px solid #e5e3da; border-top: none; }
@@ -161,6 +184,7 @@ function renderHtml(data: QuotePdfData) {
         <th>${t.description}</th>
         <th>${t.photo}</th>
         <th class="num">${t.unitPrice}</th>
+        ${showSpecial ? `<th class="num">${t.specialPrice}</th>` : ''}
         <th class="num">${t.total}</th>
       </tr>
     </thead>

@@ -14,6 +14,7 @@ export const LABELS: Record<QuoteLanguage, {
   description: string
   photo: string
   unitPrice: string
+  specialPrice: string
   total: string
   shipping: string
   discount: string
@@ -28,6 +29,7 @@ export const LABELS: Record<QuoteLanguage, {
     description: 'Descrição',
     photo: 'Foto',
     unitPrice: 'Preço unit.',
+    specialPrice: 'Preço especial',
     total: 'Total',
     shipping: 'Frete',
     discount: 'Desconto',
@@ -42,6 +44,7 @@ export const LABELS: Record<QuoteLanguage, {
     description: 'Description',
     photo: 'Photo',
     unitPrice: 'Unit Price',
+    specialPrice: 'Special Price',
     total: 'Total',
     shipping: 'Shipping',
     discount: 'Discount',
@@ -56,6 +59,7 @@ export const LABELS: Record<QuoteLanguage, {
     description: 'Descripción',
     photo: 'Foto',
     unitPrice: 'Precio unit.',
+    specialPrice: 'Precio especial',
     total: 'Total',
     shipping: 'Envío',
     discount: 'Descuento',

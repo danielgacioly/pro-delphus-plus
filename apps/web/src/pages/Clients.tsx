@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { Modal } from '../components/Modal'
 import { CLIENT_KIND_LABEL, ClientForm, type ClientFormValues } from '../components/ClientForm'
 import {
+  AnimatedNumber,
   Badge,
   Button,
   EmptyState,
@@ -165,7 +166,7 @@ export function Clients() {
           >
             <p className="text-eyebrow text-neutral-400">{stat.label}</p>
             <p className="tabular mt-2.5 text-[26px] font-bold leading-none text-ink-900">
-              {isLoading ? '—' : stat.value}
+              {isLoading ? '—' : <AnimatedNumber value={stat.value} />}
             </p>
           </div>
         ))}

@@ -12,8 +12,16 @@ export interface QuoteXlsxItem {
   title: string
   description: string
   quantity: number
+  /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
+  listPrice: number | null
+  /** Preço cobrado — igual ao de catálogo, salvo quando houve preço especial. */
   unitPrice: number
   photoDataUri: string | null
+}
+
+/** Mesmo critério do PDF: só conta como especial se diferir do preço de tabela. */
+function hasSpecialPrice(item: QuoteXlsxItem) {
+  return item.listPrice !== null && item.unitPrice !== item.listPrice
 }
 
 export interface QuoteXlsxSignature {
@@ -62,10 +70,31 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet(t.quote, { views: [{ showGridLines: false }] })
 
+  // A coluna de preço especial entra só quando algum item foi negociado, então
+  // todas as referências abaixo são calculadas em vez de escritas à mão: sem
+  // isso a planilha ganharia uma coluna e os totais continuariam apontando para
+  // a antiga.
+  const showSpecial = data.items.some(hasSpecialPrice)
+  const SPECIAL_COL = 6
+  const totalCol = showSpecial ? 7 : 6
+  const labelCol = totalCol - 1
+  const colLetter = (index: number) => String.fromCharCode(64 + index)
+  const TOTAL = colLetter(totalCol)
+  const LABEL = colLetter(labelCol)
+  const LAST = TOTAL
+
   // Column A is 10 chars (~75px) wide — just for the item-number cells, but
   // also wide enough to hold the 60px header/signature logo without it
   // spilling into column B and overlapping the company name/signature text.
-  sheet.columns = [{ width: 10 }, { width: 8 }, { width: 44 }, { width: 10 }, { width: 18 }, { width: 18 }]
+  sheet.columns = [
+    { width: 10 },
+    { width: 8 },
+    { width: 44 },
+    { width: 10 },
+    { width: 18 },
+    ...(showSpecial ? [{ width: 18 }] : []),
+    { width: 18 },
+  ]
 
   const logoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
   sheet.addImage(logoImageId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 60, height: 49 } })
@@ -84,27 +113,35 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
     sheet.getCell(ref).font = { size: 9, color: { argb: 'FF4A4A4A' } }
   })
 
-  sheet.mergeCells('E1:F1')
-  const titleCell = sheet.getCell('E1')
+  sheet.mergeCells(`${LABEL}1:${TOTAL}1`)
+  const titleCell = sheet.getCell(`${LABEL}1`)
   titleCell.value = t.quote
   titleCell.font = { bold: true, size: 22, color: { argb: INK } }
   titleCell.alignment = { horizontal: 'right' }
 
-  sheet.mergeCells('E2:F2')
-  const numberCell = sheet.getCell('E2')
+  sheet.mergeCells(`${LABEL}2:${TOTAL}2`)
+  const numberCell = sheet.getCell(`${LABEL}2`)
   numberCell.value = `#${data.quoteNumber}`
   numberCell.font = { bold: true, size: 12, color: { argb: INK } }
   numberCell.alignment = { horizontal: 'right' }
 
   const prefix = t.prefix[data.clientPrefix]
-  sheet.mergeCells('A6:F6')
+  sheet.mergeCells(`A6:${LAST}6`)
   const toCell = sheet.getCell('A6')
   toCell.value = `${t.to}: ${[prefix, data.clientName].filter(Boolean).join(' ')}`
   toCell.font = { bold: true, size: 12, color: { argb: INK } }
 
   const headerRowIndex = 8
   const headerRow = sheet.getRow(headerRowIndex)
-  headerRow.values = [t.item, t.qty, t.description, t.photo, t.unitPrice, t.total]
+  headerRow.values = [
+    t.item,
+    t.qty,
+    t.description,
+    t.photo,
+    t.unitPrice,
+    ...(showSpecial ? [t.specialPrice] : []),
+    t.total,
+  ]
   headerRow.eachCell((cell) => {
     cell.font = { bold: true, size: 10, color: { argb: INK } }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }
@@ -121,7 +158,22 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
     const rowIndex = headerRowIndex + 1 + index
     const row = sheet.getRow(rowIndex)
     row.height = ITEM_ROW_HEIGHT
-    row.values = [index + 1, item.quantity, '', '', item.unitPrice, { formula: `E${rowIndex}*B${rowIndex}` }]
+    // A coluna especial fica em branco ("—") nos itens não negociados, igual ao
+    // PDF. Como a planilha precisa continuar recalculando sozinha, a fórmula
+    // escolhe a coluna em tempo de cálculo em vez de duplicar o preço.
+    const special = colLetter(SPECIAL_COL)
+    const priceRef = showSpecial
+      ? `IF(ISNUMBER(${special}${rowIndex}),${special}${rowIndex},E${rowIndex})`
+      : `E${rowIndex}`
+    row.values = [
+      index + 1,
+      item.quantity,
+      '',
+      '',
+      item.listPrice ?? '—',
+      ...(showSpecial ? [hasSpecialPrice(item) || item.listPrice === null ? item.unitPrice : '—'] : []),
+      { formula: `${priceRef}*B${rowIndex}` },
+    ]
     const description = item.description.trim()
     row.getCell(3).value = {
       richText: [
@@ -134,10 +186,20 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
     row.getCell(3).alignment = { wrapText: true, vertical: 'middle' }
     row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' }
     row.getCell(5).alignment = { vertical: 'middle' }
-    row.getCell(6).alignment = { vertical: 'middle' }
-    row.getCell(5).numFmt = `"${data.currency}" #,##0.00`
-    row.getCell(6).numFmt = `"${data.currency}" #,##0.00`
-    row.getCell(6).font = { color: { argb: RED }, bold: true }
+    row.getCell(totalCol).alignment = { vertical: 'middle' }
+    if (item.listPrice !== null) row.getCell(5).numFmt = `"${data.currency}" #,##0.00`
+    if (hasSpecialPrice(item)) row.getCell(5).font = { color: { argb: 'FF8A8A8A' }, strike: true }
+    if (showSpecial) {
+      row.getCell(SPECIAL_COL).alignment = { vertical: 'middle' }
+      if (hasSpecialPrice(item) || item.listPrice === null) {
+        row.getCell(SPECIAL_COL).numFmt = `"${data.currency}" #,##0.00`
+      } else {
+        row.getCell(SPECIAL_COL).alignment = { vertical: 'middle', horizontal: 'center' }
+      }
+      if (hasSpecialPrice(item)) row.getCell(SPECIAL_COL).font = { color: { argb: RED }, bold: true }
+    }
+    row.getCell(totalCol).numFmt = `"${data.currency}" #,##0.00`
+    row.getCell(totalCol).font = { color: { argb: RED }, bold: true }
     row.eachCell((cell) => (cell.border = thinBorder))
 
     if (item.photoDataUri) {
@@ -180,47 +242,47 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   }
 
   let row = summaryTop
-  sheet.getCell(`E${row}`).value = t.shipping
-  sheet.getCell(`E${row}`).font = { bold: true, color: { argb: INK } }
-  sheet.getCell(`E${row}`).border = thinBorder
-  sheet.getCell(`F${row}`).value = data.freight ?? t.toBeDefined
-  if (data.freight !== null) sheet.getCell(`F${row}`).numFmt = `"${data.currency}" #,##0.00`
-  sheet.getCell(`F${row}`).font = { bold: true, color: { argb: RED } }
-  sheet.getCell(`F${row}`).border = thinBorder
+  sheet.getCell(`${LABEL}${row}`).value = t.shipping
+  sheet.getCell(`${LABEL}${row}`).font = { bold: true, color: { argb: INK } }
+  sheet.getCell(`${LABEL}${row}`).border = thinBorder
+  sheet.getCell(`${TOTAL}${row}`).value = data.freight ?? t.toBeDefined
+  if (data.freight !== null) sheet.getCell(`${TOTAL}${row}`).numFmt = `"${data.currency}" #,##0.00`
+  sheet.getCell(`${TOTAL}${row}`).font = { bold: true, color: { argb: RED } }
+  sheet.getCell(`${TOTAL}${row}`).border = thinBorder
   const freightRow = row
   row++
 
   let discountRow: number | null = null
   if (data.discount > 0) {
-    sheet.getCell(`E${row}`).value = t.discount
-    sheet.getCell(`E${row}`).font = { bold: true, color: { argb: INK } }
-    sheet.getCell(`E${row}`).border = thinBorder
-    sheet.getCell(`F${row}`).value = -data.discount
-    sheet.getCell(`F${row}`).numFmt = `"${data.currency}" #,##0.00`
-    sheet.getCell(`F${row}`).font = { bold: true, color: { argb: RED } }
-    sheet.getCell(`F${row}`).border = thinBorder
+    sheet.getCell(`${LABEL}${row}`).value = t.discount
+    sheet.getCell(`${LABEL}${row}`).font = { bold: true, color: { argb: INK } }
+    sheet.getCell(`${LABEL}${row}`).border = thinBorder
+    sheet.getCell(`${TOTAL}${row}`).value = -data.discount
+    sheet.getCell(`${TOTAL}${row}`).numFmt = `"${data.currency}" #,##0.00`
+    sheet.getCell(`${TOTAL}${row}`).font = { bold: true, color: { argb: RED } }
+    sheet.getCell(`${TOTAL}${row}`).border = thinBorder
     discountRow = row
     row++
   }
 
-  sheet.getCell(`E${row}`).value = t.total
-  sheet.getCell(`E${row}`).font = { bold: true, size: 12, color: { argb: INK } }
-  sheet.getCell(`E${row}`).border = thinBorder
-  const freightRef = data.freight !== null ? `F${freightRow}` : '0'
-  const discountRef = discountRow ? `+F${discountRow}` : ''
-  sheet.getCell(`F${row}`).value = {
-    formula: `SUM(F${headerRowIndex + 1}:F${lastItemRow})+${freightRef}${discountRef}`,
+  sheet.getCell(`${LABEL}${row}`).value = t.total
+  sheet.getCell(`${LABEL}${row}`).font = { bold: true, size: 12, color: { argb: INK } }
+  sheet.getCell(`${LABEL}${row}`).border = thinBorder
+  const freightRef = data.freight !== null ? `${TOTAL}${freightRow}` : '0'
+  const discountRef = discountRow ? `+${TOTAL}${discountRow}` : ''
+  sheet.getCell(`${TOTAL}${row}`).value = {
+    formula: `SUM(${TOTAL}${headerRowIndex + 1}:${TOTAL}${lastItemRow})+${freightRef}${discountRef}`,
   }
-  sheet.getCell(`F${row}`).numFmt = `"${data.currency}" #,##0.00`
-  sheet.getCell(`F${row}`).font = { bold: true, size: 12, color: { argb: RED } }
-  sheet.getCell(`F${row}`).border = thinBorder
+  sheet.getCell(`${TOTAL}${row}`).numFmt = `"${data.currency}" #,##0.00`
+  sheet.getCell(`${TOTAL}${row}`).font = { bold: true, size: 12, color: { argb: RED } }
+  sheet.getCell(`${TOTAL}${row}`).border = thinBorder
 
   const sigTop = Math.max(row + 3, notesBottom + 2)
   // A plain top border (not a merge) draws the same divider line without
   // clobbering the independent name/role/contact values written below —
   // merging A:F across every row here previously made every write share
   // one cell, so only the last line (the email) ever survived.
-  ;['A', 'B', 'C', 'D', 'E', 'F'].forEach((col) => {
+  ;Array.from({ length: totalCol }, (_, i) => colLetter(i + 1)).forEach((col) => {
     sheet.getCell(`${col}${sigTop}`).border = { top: { style: 'thin', color: { argb: BORDER_COLOR } } }
   })
 

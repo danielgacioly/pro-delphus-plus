@@ -140,6 +140,9 @@ export interface QuoteDTO {
   items: Array<{
     sku: string
     quantity: number
+    /** Preço de catálogo congelado na emissão; null em itens antigos ou sem preço. */
+    listPrice: string | null
+    /** Preço cobrado. Diferente de `listPrice` = preço especial negociado. */
     unitPrice: string
     lineTotal: string
     productName: string

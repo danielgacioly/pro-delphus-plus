@@ -254,6 +254,11 @@ model QuoteItem {
   sku         String
   description String
   quantity    Int
+  /// Preço de catálogo na moeda/tabela do orçamento, congelado na emissão.
+  /// Null quando o produto não tinha preço e o vendedor digitou um valor à mão.
+  /// Quando difere de `unitPrice`, o documento ganha a coluna de preço especial.
+  listPrice   Decimal? @db.Decimal(12, 2)
+  /// Preço efetivamente cobrado — é ele que vai para o total e para o invoice.
   unitPrice   Decimal @db.Decimal(12, 2)
   lineTotal   Decimal @db.Decimal(12, 2)
 
