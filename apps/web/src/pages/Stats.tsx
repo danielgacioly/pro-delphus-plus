@@ -210,7 +210,7 @@ function FunnelTable({
   }
   return (
     <div className="overflow-x-auto px-2 pb-3">
-      <table className="w-full min-w-[420px] border-collapse">
+      <table className="w-full min-w-105 border-collapse">
         <thead>
           <tr className="border-b border-neutral-200/70">
             <th className="px-2 py-2 text-left text-eyebrow text-neutral-400">{label}</th>
@@ -223,7 +223,7 @@ function FunnelTable({
         <tbody>
           {rows.map((row) => (
             <tr key={row.key} className="border-b border-neutral-200/50 last:border-0">
-              <td className="max-w-[180px] truncate px-2 py-2.5 text-[13px] font-medium text-ink-900">{row.name}</td>
+              <td className="max-w-45 truncate px-2 py-2.5 text-[13px] font-medium text-ink-900">{row.name}</td>
               <td className="tabular px-2 py-2.5 text-right text-[13px] text-neutral-600">{row.funnel.quotes}</td>
               <td className="tabular px-2 py-2.5 text-right text-[13px] text-neutral-600">{row.funnel.converted}</td>
               <td className="px-2 py-2.5">
