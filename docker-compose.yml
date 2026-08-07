@@ -1,18 +1,22 @@
+# Ambiente de DESENVOLVIMENTO — sobe só o Postgres.
+# Para produção use docker-compose.prod.yml.
 services:
   postgres:
     image: postgres:16-alpine
     container_name: prodelphusplus-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: prodelphus
-      POSTGRES_PASSWORD: prodelphus
-      POSTGRES_DB: prodelphusplus
+      POSTGRES_USER: ${POSTGRES_USER:-prodelphus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prodelphus}
+      POSTGRES_DB: ${POSTGRES_DB:-prodelphusplus}
     ports:
-      - "5433:5432"
+      # Só no loopback: sem o 127.0.0.1 o Docker publica em 0.0.0.0 e o banco
+      # de desenvolvimento fica visível para a rede inteira.
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prodelphus -d prodelphusplus"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prodelphus} -d ${POSTGRES_DB:-prodelphusplus}"]
       interval: 5s
       timeout: 5s
       retries: 10

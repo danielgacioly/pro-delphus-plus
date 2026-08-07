@@ -3,8 +3,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
-import { ForgotPassword } from './pages/ForgotPassword'
-import { ResetPasswordWithToken } from './pages/ResetPasswordWithToken'
 import { Home } from './pages/Home'
 import { Account } from './pages/Account'
 import { MyDesk } from './pages/MyDesk'
@@ -28,8 +26,6 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Register />} />
-      <Route path="/esqueci-senha" element={<ForgotPassword />} />
-      <Route path="/redefinir-senha" element={<ResetPasswordWithToken />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>

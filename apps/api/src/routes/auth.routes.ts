@@ -1,4 +1,3 @@
-import crypto from 'node:crypto'
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
@@ -8,14 +7,11 @@ import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { toUserDTO } from '../lib/dto.js'
 import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
-import { sendPasswordResetEmail } from '../lib/mailer.js'
 
 export const authRouter = Router()
 
 const REFRESH_COOKIE = 'pd_refresh_token'
 const isProd = process.env.NODE_ENV === 'production'
-const FRONTEND_URL = process.env.CORS_ORIGIN ?? 'http://localhost:5173'
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -55,7 +51,11 @@ authRouter.post(
       secure: isProd,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/api/auth',
+      // Path '/' (e não '/api/auth') de propósito: o navegador precisa enviar
+      // este cookie também nas requisições de /uploads, que passaram a exigir
+      // sessão — fotos em <img> e PDFs abertos em nova aba não têm como
+      // carregar um header Authorization.
+      path: '/',
     })
 
     res.json({ accessToken, user: toUserDTO(user) })
@@ -123,6 +123,9 @@ authRouter.post(
 )
 
 authRouter.post('/logout', (_req, res) => {
+  res.clearCookie(REFRESH_COOKIE, { path: '/' })
+  // Sessões antigas gravaram o cookie com path '/api/auth'; limpar só o path
+  // novo deixaria esse resquício válido para o refresh — logout que não desloga.
   res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' })
   res.status(204).send()
 })
@@ -222,62 +225,6 @@ authRouter.post(
 
     const passwordHash = await bcrypt.hash(newPassword, 10)
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash } })
-    res.status(204).send()
-  }),
-)
-
-const forgotPasswordSchema = z.object({
-  accountEmail: z.string().email(),
-  deliveryEmail: z.string().email(),
-})
-
-authRouter.post(
-  '/forgot-password',
-  asyncHandler(async (req, res) => {
-    const { accountEmail, deliveryEmail } = forgotPasswordSchema.parse(req.body)
-
-    const user = await prisma.user.findUnique({ where: { email: accountEmail } })
-    if (user) {
-      const token = crypto.randomBytes(32).toString('hex')
-      const resetPasswordTokenHash = crypto.createHash('sha256').update(token).digest('hex')
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { resetPasswordTokenHash, resetPasswordExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
-      })
-      const resetUrl = `${FRONTEND_URL}/redefinir-senha?token=${token}`
-      await sendPasswordResetEmail(deliveryEmail, resetUrl)
-    }
-
-    // Same response whether or not the account exists, so the form can't be used
-    // to discover which e-mails have accounts.
-    res.json({ message: 'Se a conta existir, um e-mail de recuperação foi enviado.' })
-  }),
-)
-
-const resetPasswordWithTokenSchema = z.object({
-  token: z.string().min(1),
-  newPassword: z.string().min(6),
-})
-
-authRouter.post(
-  '/reset-password',
-  asyncHandler(async (req, res) => {
-    const { token, newPassword } = resetPasswordWithTokenSchema.parse(req.body)
-    const resetPasswordTokenHash = crypto.createHash('sha256').update(token).digest('hex')
-
-    const user = await prisma.user.findFirst({
-      where: { resetPasswordTokenHash, resetPasswordExpiresAt: { gt: new Date() } },
-    })
-    if (!user) {
-      throw new HttpError(400, 'Link inválido ou expirado. Solicite uma nova redefinição de senha.')
-    }
-
-    const passwordHash = await bcrypt.hash(newPassword, 10)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash, resetPasswordTokenHash: null, resetPasswordExpiresAt: null },
-    })
-
     res.status(204).send()
   }),
 )

@@ -1,0 +1,18 @@
+# Terminação HTTPS do Pro Delphus+ — o Caddy fica na frente do nginx e cuida
+# do certificado sozinho.
+#
+# O comportamento depende do SITE_ADDRESS (definido em .env.prod):
+#   · domínio público (prodelphus.empresa.com.br) → certificado Let's Encrypt,
+#     emitido e renovado automaticamente. Exige DNS apontando para o servidor
+#     e portas 80/443 alcançáveis da internet.
+#   · IP (192.168.1.50) ou nome sem ponto (prodelphus) → certificado da CA
+#     interna do próprio Caddy, gerado na hora. Os navegadores mostram aviso
+#     até o TI instalar a raiz nas máquinas — ver README, seção HTTPS.
+{$SITE_ADDRESS} {
+	# Nome interno COM pontos (ex.: prodelphus.empresa.local) não qualifica
+	# para Let's Encrypt — nesse caso, descomente a linha abaixo:
+	# tls internal
+
+	encode gzip
+	reverse_proxy web:80
+}

@@ -54,14 +54,11 @@ export function Login() {
         </Field>
 
         <div>
-          <div className="mb-1.5 flex items-baseline justify-between gap-3">
-            <label htmlFor="login-password" className="text-[13px] font-medium text-neutral-700">
-              Senha
-            </label>
-            <Link to="/esqueci-senha" className="text-[12px] font-medium text-brand-600 hover:underline">
-              Esqueci minha senha
-            </Link>
-          </div>
+          {/* Sem link de recuperação: quem esquece a senha pede a um admin, que
+              define uma nova pelo painel de contas. */}
+          <label htmlFor="login-password" className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+            Senha
+          </label>
           <Input
             id="login-password"
             type="password"

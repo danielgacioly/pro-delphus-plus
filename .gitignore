@@ -11,3 +11,9 @@ apps/api/uploads/
 .DS_Store
 *.log
 npm-debug.log*
+
+# Backups locais (banco + uploads) — nunca versionar
+backups/
+
+# Env de produção
+.env.prod

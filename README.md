@@ -68,9 +68,9 @@ Isso aplica o schema (`apps/api/prisma/schema.prisma`) no banco e gera o client 
 npm run prisma:seed
 ```
 
-Isso cria a primeira conta admin usando os dados de `apps/api/.env` (por padrão: `admin@prodelphus.com` / `troque-esta-senha`).
+Isso cria a primeira conta admin com os dados de `apps/api/.env`. **`ADMIN_SEED_PASSWORD` não tem valor padrão** — preencha com pelo menos 10 caracteres antes de rodar, senão o seed recusa.
 
-> Troque essa senha assim que possível pelo próprio painel de administração do sistema.
+> Não existe recuperação de senha por e-mail. Quem esquece a senha pede a um admin, que define uma nova em **Administração → Contas**.
 
 ### 6. Rodar o backend e o frontend
 
@@ -101,6 +101,91 @@ npm run db:up      # sobe o Postgres (se não estiver rodando)
 npm run dev:api    # em um terminal
 npm run dev:web    # em outro terminal
 ```
+
+## Deploy em produção
+
+Tudo em contêiner: Postgres, API (com Chromium para os PDFs), nginx servindo o front e fazendo proxy, e um serviço de backup diário.
+
+### 1. Preencher as variáveis
+
+```bash
+cp .env.prod.example .env.prod
+```
+
+Gere cada segredo — a API **se recusa a subir** com segredo curto ou com valor de exemplo:
+
+```bash
+openssl rand -base64 48   # JWT_ACCESS_SECRET
+openssl rand -base64 48   # JWT_REFRESH_SECRET
+openssl rand -base64 32   # POSTGRES_PASSWORD
+```
+
+Ajuste `PUBLIC_URL` para o endereço real (vira o `CORS_ORIGIN` da API) e `ADMIN_SEED_PASSWORD` com no mínimo 10 caracteres.
+
+### 2. Subir
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+As migrações rodam sozinhas a cada subida, antes de a API aceitar tráfego. Só o nginx publica porta (`HTTP_PORT`, padrão 8080); Postgres e API ficam na rede interna.
+
+### 3. Criar o primeiro admin (só na primeira vez)
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec api \
+  node apps/api/dist/prisma/seed.js
+```
+
+### 4. HTTPS
+
+Já vem resolvido: o serviço `caddy` do compose termina o HTTPS e repassa ao nginx pela rede interna. **Não é opcional** — o cookie de sessão tem a flag `Secure`, e por HTTP puro os navegadores o descartam (o login "não gruda": a pessoa entra e, ao recarregar, cai de volta na tela de login).
+
+O acesso é interno, com quem está fora entrando pela VPN — então o `SITE_ADDRESS` é o IP ou o nome interno do servidor, e o Caddy usa a **CA interna dele mesmo**. Funciona sem depender de internet, mas o navegador mostra aviso de certificado até a raiz ser instalada nas máquinas. Para exportá-la:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod cp \
+  caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+```
+
+O TI instala esse `caddy-root.crt` como autoridade confiável nas máquinas dos usuários — são poucas, e é uma vez só. **Guarde o volume `caddy_data`**: apagá-lo regenera a CA e invalida a raiz já distribuída.
+
+> Se um dia o servidor ganhar um nome de domínio público com DNS apontando para ele e as portas 80/443 abertas, basta trocar o `SITE_ADDRESS` — o Caddy passa a usar Let's Encrypt e os avisos somem sem instalar nada. Nome interno **com** pontos (`prodelphus.empresa.local`) não qualifica para Let's Encrypt; nesse caso descomente `tls internal` no `Caddyfile`.
+
+## Backup e restauração
+
+O serviço `backup` roda todo dia e grava em `./backups/`:
+
+- `db-AAAAMMDD-HHMMSS.sql.gz` — dump do Postgres
+- `uploads-AAAAMMDD-HHMMSS.tar.gz` — PDFs, invoices, fotos e assinaturas
+
+Retenção padrão de 30 dias (`BACKUP_RETENTION_DAYS`). O expurgo só roda depois de um backup bem-sucedido, então uma falha não apaga os antigos.
+
+> **Isso é backup local.** Se a máquina morrer, morre com ela. Configure uma cópia diária de `./backups/` para fora — `rclone`, `aws s3 sync` ou `rsync` para outro host. Sem isso, metade do problema continua de pé.
+
+Para restaurar (destrutivo, pede confirmação):
+
+```bash
+./scripts/restore.sh backups/db-20260807-030000.sql.gz \
+                     backups/uploads-20260807-030000.tar.gz
+```
+
+Use sempre o par do **mesmo carimbo de tempo**: o banco guarda o caminho do PDF e o arquivo vive no volume de uploads. Misturar as duas pontas produz orçamento apontando para arquivo inexistente.
+
+Backup manual, fora da rotina:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup /usr/local/bin/backup.sh
+```
+
+## Segurança
+
+- Arquivos de `/uploads` (orçamentos, invoices, fotos, assinaturas) exigem sessão ativa — os nomes são sequenciais e, sem isso, qualquer pessoa na internet baixaria o histórico comercial contando números
+- `helmet` nos cabeçalhos e limite de corpo de 1 MB nas rotas JSON
+- Login e cadastro: 10 tentativas malsucedidas a cada 10 minutos por IP (acerto não gasta cota); 300 req/min por IP no resto da API
+- Segredos JWT com 32+ caracteres exigidos quando `NODE_ENV=production`
+- A API roda sem privilégio no contêiner; o root é usado só para aplicar migração na subida
+- Sem recuperação de senha por e-mail: redefinição é feita por um admin, em Administração → Contas
 
 ## Estrutura do projeto
 
