@@ -2,6 +2,7 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
+import { COOKIE_SECURE } from '../lib/env.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -11,7 +12,6 @@ import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
 export const authRouter = Router()
 
 const REFRESH_COOKIE = 'pd_refresh_token'
-const isProd = process.env.NODE_ENV === 'production'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -48,7 +48,7 @@ authRouter.post(
 
     res.cookie(REFRESH_COOKIE, refreshToken, {
       httpOnly: true,
-      secure: isProd,
+      secure: COOKIE_SECURE,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       // Path '/' (e não '/api/auth') de propósito: o navegador precisa enviar

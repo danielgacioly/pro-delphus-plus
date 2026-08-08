@@ -2,7 +2,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import helmet from 'helmet'
 import type { Request } from 'express'
 
-const isProd = process.env.NODE_ENV === 'production'
+import { COOKIE_SECURE } from '../lib/env.js'
 
 /**
  * Cabeçalhos de segurança.
@@ -19,7 +19,9 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginEmbedderPolicy: false,
-  hsts: isProd ? { maxAge: 31_536_000, includeSubDomains: true } : false,
+  // HSTS só quando de fato há HTTPS: anunciar 'só me acesse por HTTPS' num
+  // sistema servido por HTTP trancaria o acesso de todo mundo.
+  hsts: COOKIE_SECURE ? { maxAge: 31_536_000, includeSubDomains: true } : false,
 })
 
 /**

@@ -42,6 +42,20 @@ const envSchema = z.object({
   /** Quantos proxies à frente são confiáveis. 1 = o nginx do compose. */
   TRUST_PROXY: z.coerce.number().int().min(0).default(isProd ? 1 : 0),
 
+  /**
+   * Marca o cookie de sessão com a flag `Secure`, que o restringe a conexões
+   * HTTPS. Precisa ser desligado quando o sistema é servido por HTTP puro:
+   * o navegador descarta cookie `Secure` recebido por HTTP (exceto localhost),
+   * e o login deixa de persistir entre recarregamentos.
+   *
+   * `z.coerce.boolean()` não serve aqui — ele converte a string "false" em
+   * true, porque qualquer string não vazia é verdadeira em JavaScript.
+   */
+  COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
+
   ADMIN_SEED_NAME: z.string().default('Administrador'),
   ADMIN_SEED_EMAIL: z.string().email().default('admin@prodelphus.com'),
   // Sem default: o seed é o que cria a primeira conta de admin, e um default
@@ -59,3 +73,17 @@ if (!parsed.success) {
 
 export const env = parsed.data
 export const IS_PRODUCTION = env.NODE_ENV === 'production'
+
+/**
+ * Fonte única da verdade sobre "estamos servindo por HTTPS?". Governa tanto a
+ * flag `Secure` do cookie quanto o HSTS — os dois só fazem sentido juntos.
+ */
+export const COOKIE_SECURE = env.COOKIE_SECURE ?? IS_PRODUCTION
+
+if (IS_PRODUCTION && !COOKIE_SECURE) {
+  console.warn(
+    '\n⚠️  COOKIE_SECURE=false — o sistema está servindo por HTTP puro.\n' +
+      '   Senha e sessão trafegam legíveis na rede. Escolha consciente para\n' +
+      '   rede interna; não use assim em rede aberta.\n',
+  )
+}

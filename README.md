@@ -137,20 +137,36 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec api \
   node apps/api/dist/prisma/seed.js
 ```
 
-### 4. HTTPS
+### 4. HTTP ou HTTPS
 
-Já vem resolvido: o serviço `caddy` do compose termina o HTTPS e repassa ao nginx pela rede interna. **Não é opcional** — o cookie de sessão tem a flag `Secure`, e por HTTP puro os navegadores o descartam (o login "não gruda": a pessoa entra e, ao recarregar, cai de volta na tela de login).
+O padrão é **HTTP puro** — decisão consciente para um sistema interno, com acesso pela rede local ou VPN e um time pequeno e conhecido. Nesse modo:
 
-O acesso é interno, com quem está fora entrando pela VPN — então o `SITE_ADDRESS` é o IP ou o nome interno do servidor, e o Caddy usa a **CA interna dele mesmo**. Funciona sem depender de internet, mas o navegador mostra aviso de certificado até a raiz ser instalada nas máquinas. Para exportá-la:
+- `COOKIE_SECURE=false` no `.env.prod`. **Isso não é opcional em HTTP**: o cookie de sessão com a flag `Secure` é descartado pelos navegadores em conexões não criptografadas (exceto `localhost`), e o login para de persistir entre recarregamentos.
+- O HSTS fica desligado automaticamente, junto com a mesma variável — anunciar "só me acesse por HTTPS" num sistema servido por HTTP trancaria o acesso de todos.
+- A API imprime um aviso na subida lembrando que senha e sessão trafegam legíveis na rede.
+
+O que se abre mão: quem estiver no caminho da rede consegue ler senha e token de sessão, e o Chrome mostra "Não seguro" ao lado do campo de senha. Aceitável em rede fechada; não use assim em rede aberta.
+
+#### Ligar HTTPS depois
+
+Está pronto e testado — é mudança de configuração, sem tocar em código. No `.env.prod`, troque o bloco de endereço pelo comentado (`SITE_ADDRESS`, `WEB_BIND=127.0.0.1`, `COOKIE_SECURE=true`, `TRUST_PROXY=2`) e suba com o perfil:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod cp \
-  caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+docker compose -f docker-compose.prod.yml --env-file .env.prod --profile https up -d --build
 ```
 
-O TI instala esse `caddy-root.crt` como autoridade confiável nas máquinas dos usuários — são poucas, e é uma vez só. **Guarde o volume `caddy_data`**: apagá-lo regenera a CA e invalida a raiz já distribuída.
+O serviço `caddy` entra na frente do nginx e cuida do certificado:
 
-> Se um dia o servidor ganhar um nome de domínio público com DNS apontando para ele e as portas 80/443 abertas, basta trocar o `SITE_ADDRESS` — o Caddy passa a usar Let's Encrypt e os avisos somem sem instalar nada. Nome interno **com** pontos (`prodelphus.empresa.local`) não qualifica para Let's Encrypt; nesse caso descomente `tls internal` no `Caddyfile`.
+- **Domínio público** → Let's Encrypt automático, sem aviso no navegador. Exige DNS apontando para o servidor e portas 80/443 alcançáveis.
+- **IP ou nome sem ponto** → certificado da CA interna do próprio Caddy. A raiz vale 10 anos e precisa ser instalada uma vez em cada máquina:
+
+  ```bash
+  docker compose -f docker-compose.prod.yml --env-file .env.prod cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+  ```
+
+  No Windows: duplo clique → Autoridades de Certificação Raiz Confiáveis. O Firefox tem cofre próprio e precisa da instalação separada. **Guarde o volume `caddy_data`**: apagá-lo regenera a CA e invalida a raiz já distribuída.
+- **Nome interno com pontos** (`prodelphus.empresa.local`) não qualifica para Let's Encrypt; descomente `tls internal` no `Caddyfile`.
 
 ## Backup e restauração
 
@@ -180,7 +196,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup /usr/
 
 ## Segurança
 
-- Arquivos de `/uploads` (orçamentos, invoices, fotos, assinaturas) exigem sessão ativa — os nomes são sequenciais e, sem isso, qualquer pessoa na internet baixaria o histórico comercial contando números
+- Arquivos de `/uploads` (orçamentos, invoices, fotos, assinaturas) exigem sessão ativa — os nomes são sequenciais e, sem isso, bastaria contar números para baixar o histórico comercial inteiro
 - `helmet` nos cabeçalhos e limite de corpo de 1 MB nas rotas JSON
 - Login e cadastro: 10 tentativas malsucedidas a cada 10 minutos por IP (acerto não gasta cota); 300 req/min por IP no resto da API
 - Segredos JWT com 32+ caracteres exigidos quando `NODE_ENV=production`
