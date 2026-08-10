@@ -2,7 +2,8 @@
 #
 #   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
-# Só o nginx publica porta. Postgres e API ficam na rede interna do compose.
+# HTTP puro, sem certificado — sistema interno, acesso pela rede/VPN. Só o
+# nginx publica porta; Postgres e API ficam na rede interna do compose.
 services:
   postgres:
     image: postgres:16-alpine
@@ -32,10 +33,11 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       PORT: 4000
       CORS_ORIGIN: ${PUBLIC_URL}
-      # 1 salto (só o nginx) no modo HTTP; 2 (caddy + nginx) no modo HTTPS.
-      TRUST_PROXY: ${TRUST_PROXY:-1}
-      # false = servindo por HTTP puro. Ver README, seção HTTPS.
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # 1 salto: só o nginx fica entre o navegador e a API.
+      TRUST_PROXY: 1
+      # HTTP puro: o cookie de sessão não pode ter a flag Secure, senão o
+      # navegador o descarta e o login para de persistir. Ver README.
+      COOKIE_SECURE: "false"
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       UPLOADS_DIR: /app/uploads
@@ -56,28 +58,7 @@ services:
     depends_on:
       - api
     ports:
-      # No modo HTTP (padrão) o nginx atende a rede. No modo HTTPS, defina
-      # WEB_BIND=127.0.0.1 para que só o Caddy alcance este serviço.
-      - "${WEB_BIND:-0.0.0.0}:${HTTP_PORT:-8080}:80"
-
-  # HTTPS — opcional. Só sobe com `--profile https`.
-  caddy:
-    image: caddy:2-alpine
-    profiles: ["https"]
-    restart: unless-stopped
-    depends_on:
-      - web
-    ports:
-      - "${CADDY_HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Certificados e a CA interna vivem aqui — apagar este volume força
-      # reemissão e, no caso da CA interna, invalida a raiz já distribuída.
-      - caddy_data:/data
-      - caddy_config:/config
+      - "${HTTP_PORT:-8080}:80"
 
   # Backup diário do banco e dos uploads, com expurgo por idade.
   backup:
@@ -103,5 +84,3 @@ services:
 volumes:
   postgres_data:
   uploads_data:
-  caddy_data:
-  caddy_config:

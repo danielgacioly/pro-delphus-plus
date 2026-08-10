@@ -137,36 +137,15 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec api \
   node apps/api/dist/prisma/seed.js
 ```
 
-### 4. HTTP ou HTTPS
+### 4. HTTP, por enquanto
 
-O padrão é **HTTP puro** — decisão consciente para um sistema interno, com acesso pela rede local ou VPN e um time pequeno e conhecido. Nesse modo:
+O sistema roda em **HTTP puro** — decisão consciente para uso interno, com acesso pela rede local ou VPN e um time pequeno e conhecido. Duas coisas garantem que isso funcione direito, já configuradas no compose:
 
-- `COOKIE_SECURE=false` no `.env.prod`. **Isso não é opcional em HTTP**: o cookie de sessão com a flag `Secure` é descartado pelos navegadores em conexões não criptografadas (exceto `localhost`), e o login para de persistir entre recarregamentos.
-- O HSTS fica desligado automaticamente, junto com a mesma variável — anunciar "só me acesse por HTTPS" num sistema servido por HTTP trancaria o acesso de todos.
+- `COOKIE_SECURE=false`. **Isso não é cosmético**: o cookie de sessão com a flag `Secure` é descartado pelos navegadores em conexões não criptografadas (exceto `localhost`), e sem essa flag desligada o login para de persistir entre recarregamentos.
+- O HSTS fica desligado junto — anunciar "só me acesse por HTTPS" num sistema servido por HTTP trancaria o acesso de todos.
 - A API imprime um aviso na subida lembrando que senha e sessão trafegam legíveis na rede.
 
-O que se abre mão: quem estiver no caminho da rede consegue ler senha e token de sessão, e o Chrome mostra "Não seguro" ao lado do campo de senha. Aceitável em rede fechada; não use assim em rede aberta.
-
-#### Ligar HTTPS depois
-
-Está pronto e testado — é mudança de configuração, sem tocar em código. No `.env.prod`, troque o bloco de endereço pelo comentado (`SITE_ADDRESS`, `WEB_BIND=127.0.0.1`, `COOKIE_SECURE=true`, `TRUST_PROXY=2`) e suba com o perfil:
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod --profile https up -d --build
-```
-
-O serviço `caddy` entra na frente do nginx e cuida do certificado:
-
-- **Domínio público** → Let's Encrypt automático, sem aviso no navegador. Exige DNS apontando para o servidor e portas 80/443 alcançáveis.
-- **IP ou nome sem ponto** → certificado da CA interna do próprio Caddy. A raiz vale 10 anos e precisa ser instalada uma vez em cada máquina:
-
-  ```bash
-  docker compose -f docker-compose.prod.yml --env-file .env.prod cp \
-    caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
-  ```
-
-  No Windows: duplo clique → Autoridades de Certificação Raiz Confiáveis. O Firefox tem cofre próprio e precisa da instalação separada. **Guarde o volume `caddy_data`**: apagá-lo regenera a CA e invalida a raiz já distribuída.
-- **Nome interno com pontos** (`prodelphus.empresa.local`) não qualifica para Let's Encrypt; descomente `tls internal` no `Caddyfile`.
+O que se abre mão: quem estiver no caminho da rede consegue ler senha e token de sessão, e o Chrome mostra "Não seguro" ao lado do campo de senha. Aceitável em rede fechada; se o acesso mudar (rede aberta, exposição externa), revisitar isso antes.
 
 ## Backup e restauração
 
