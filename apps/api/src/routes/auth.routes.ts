@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type Response } from 'express'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
@@ -12,6 +12,31 @@ import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
 export const authRouter = Router()
 
 const REFRESH_COOKIE = 'pd_refresh_token'
+// Precisa bater com JWT_REFRESH_EXPIRES_IN em env.ts — é o que faz a sessão
+// persistir por uso, não só por login: cada /refresh bem-sucedido reemite o
+// cookie com esta mesma janela a partir de agora (ver setRefreshCookie).
+const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Grava o cookie de sessão. Chamada tanto no login quanto em cada refresh
+ * bem-sucedido — é essa segunda chamada que faz a janela de 30 dias
+ * "escorregar" a cada uso, em vez de vencer num prazo fixo contado do login.
+ * Quem abre o sistema pelo menos uma vez a cada 30 dias nunca é deslogado;
+ * só quem some por mais tempo que isso precisa entrar de novo.
+ */
+function setRefreshCookie(res: Response, token: string) {
+  res.cookie(REFRESH_COOKIE, token, {
+    httpOnly: true,
+    secure: COOKIE_SECURE,
+    sameSite: 'lax',
+    maxAge: REFRESH_COOKIE_MAX_AGE_MS,
+    // Path '/' (e não '/api/auth') de propósito: o navegador precisa enviar
+    // este cookie também nas requisições de /uploads, que passaram a exigir
+    // sessão — fotos em <img> e PDFs abertos em nova aba não têm como
+    // carregar um header Authorization.
+    path: '/',
+  })
+}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -45,18 +70,7 @@ authRouter.post(
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role })
     const refreshToken = signRefreshToken({ sub: user.id })
-
-    res.cookie(REFRESH_COOKIE, refreshToken, {
-      httpOnly: true,
-      secure: COOKIE_SECURE,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      // Path '/' (e não '/api/auth') de propósito: o navegador precisa enviar
-      // este cookie também nas requisições de /uploads, que passaram a exigir
-      // sessão — fotos em <img> e PDFs abertos em nova aba não têm como
-      // carregar um header Authorization.
-      path: '/',
-    })
+    setRefreshCookie(res, refreshToken)
 
     res.json({ accessToken, user: toUserDTO(user) })
   }),
@@ -118,6 +132,12 @@ authRouter.post(
     }
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role })
+    // Reemite o cookie a cada refresh bem-sucedido: é isto que faz a sessão
+    // "persistir" de verdade. Sem isto, a janela de 30 dias contava a partir
+    // do login, e quem usasse o sistema todo santo dia ainda caía fora depois
+    // de exatos 30 dias — o mecanismo renovava o token de acesso (15 min) mas
+    // nunca o cookie que o sustenta.
+    setRefreshCookie(res, signRefreshToken({ sub: user.id }))
     res.json({ accessToken, user: toUserDTO(user) })
   }),
 )

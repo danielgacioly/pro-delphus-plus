@@ -35,7 +35,7 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
   JWT_REFRESH_SECRET: secret('JWT_REFRESH_SECRET'),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
   UPLOADS_DIR: z.string().default('./uploads'),
 
