@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO, ClientKind } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import { Modal } from '../components/Modal'
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { CLIENT_KIND_LABEL, ClientForm, type ClientFormValues } from '../components/ClientForm'
 import {
   AnimatedNumber,
@@ -17,7 +19,7 @@ import {
   Skeleton,
   Toolbar,
 } from '../components/ui'
-import { IconBuilding, IconContacts, IconMail, IconPin, IconPlus, IconUser } from '../components/icons'
+import { IconBuilding, IconContacts, IconMail, IconPin, IconPlus, IconTrash, IconUser } from '../components/icons'
 
 async function fetchClients() {
   const { data } = await api.get<{ clients: ClientDTO[] }>('/clients')
@@ -42,7 +44,15 @@ function relativeDate(iso: string | null) {
   return `Há ${years} ${years === 1 ? 'ano' : 'anos'}`
 }
 
-function ClientCard({ client }: { client: ClientDTO }) {
+function ClientCard({
+  client,
+  isAdmin,
+  onDelete,
+}: {
+  client: ClientDTO
+  isAdmin: boolean
+  onDelete: (client: ClientDTO) => void
+}) {
   const Icon = KIND_ICON[client.kind]
   const place = [client.city, client.state, client.country].filter(Boolean).join(', ')
 
@@ -51,7 +61,7 @@ function ClientCard({ client }: { client: ClientDTO }) {
       <InteractiveCard className="h-full p-5 focus-visible:ring-4 focus-visible:ring-brand-500/10">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-500/8 text-neutral-500">
-            <Icon className="h-[18px] w-[18px]" />
+            <Icon className="h-4.5 w-4.5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-semibold text-ink-900">{client.name}</p>
@@ -60,6 +70,21 @@ function ClientCard({ client }: { client: ClientDTO }) {
             </p>
           </div>
           {!client.active && <Badge tone="warning">Inativo</Badge>}
+          {isAdmin && (
+            <button
+              type="button"
+              title={client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
+              aria-label={client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onDelete(client)
+              }}
+              className="-m-1.5 shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+            >
+              <IconTrash className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="mt-4 space-y-1.5 text-[12.5px] text-neutral-500">
@@ -101,12 +126,15 @@ function ClientCard({ client }: { client: ClientDTO }) {
 
 export function Clients() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const { data: clients, isLoading, isError } = useQuery({ queryKey: ['clients'], queryFn: fetchClients })
 
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState<'ALL' | ClientKind>('ALL')
   const [creating, setCreating] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [deletingClient, setDeletingClient] = useState<ClientDTO | null>(null)
 
   const createMutation = useMutation({
     mutationFn: async (values: ClientFormValues) => {
@@ -120,6 +148,14 @@ export function Clients() {
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
       setFormError(err.response?.data?.message ?? 'Não foi possível salvar o cliente.'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => api.delete(`/clients/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] })
+      setDeletingClient(null)
+    },
   })
 
   const filtered = useMemo(() => {
@@ -230,7 +266,7 @@ export function Clients() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((client, i) => (
               <div key={client.id} style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }} className="animate-fade-in-up">
-                <ClientCard client={client} />
+                <ClientCard client={client} isAdmin={isAdmin} onDelete={setDeletingClient} />
               </div>
             ))}
           </div>
@@ -245,7 +281,7 @@ export function Clients() {
           >
             <h2 className="text-title text-ink-900">Novo cliente</h2>
             <p className="mt-1 text-[13px] text-neutral-500">
-              O que você preencher aqui é reaproveitado nos orçamentos e pedidos desse cliente.
+              O que você preencher aqui fica salvo para futuros orçamentos e pedidos desse cliente.
             </p>
             <div className="mt-5">
               <ClientForm
@@ -260,6 +296,20 @@ export function Clients() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {deletingClient && (
+        <ConfirmDeleteModal
+          title={deletingClient.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
+          description={
+            deletingClient.stats.quoteCount > 0
+              ? `${deletingClient.name} tem ${deletingClient.stats.quoteCount} orçamento(s). Ele será desativado e o histórico permanece intacto.`
+              : `${deletingClient.name} será removido definitivamente.`
+          }
+          isPending={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate(deletingClient.id)}
+          onCancel={() => setDeletingClient(null)}
+        />
       )}
     </Page>
   )

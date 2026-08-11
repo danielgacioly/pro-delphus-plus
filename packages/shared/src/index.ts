@@ -138,6 +138,7 @@ export interface QuoteDTO {
   createdAt: string
   createdBy: { id: string; name: string }
   items: Array<{
+    productId: string
     sku: string
     quantity: number
     /** Preço de catálogo congelado na emissão; null em itens antigos ou sem preço. */

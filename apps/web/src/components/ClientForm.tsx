@@ -170,8 +170,8 @@ export function ClientForm({
             <Input
               value={values.state}
               onChange={(e) => set('state', e.target.value)}
-              placeholder="UF"
-              className="w-20 shrink-0"
+              placeholder="Estado"
+              className="w-32 shrink-0"
             />
           </div>
         </Field>
@@ -191,7 +191,7 @@ export function ClientForm({
             <Field
               label="Endereço de faturamento"
               className="sm:col-span-2"
-              hint="Preenche automaticamente o Bill To do pedido."
+              hint="Para sua referência no preenchimento do Bill To do pedido."
             >
               <Textarea rows={3} value={values.billToText} onChange={(e) => set('billToText', e.target.value)} />
             </Field>
@@ -199,7 +199,7 @@ export function ClientForm({
             <Field
               label="Endereço de entrega"
               className="sm:col-span-2"
-              hint="Preenche automaticamente o Ship To do pedido."
+              hint="Para sua referência no preenchimento do Ship To do pedido."
             >
               <Textarea rows={3} value={values.shipToText} onChange={(e) => set('shipToText', e.target.value)} />
             </Field>

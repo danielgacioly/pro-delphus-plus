@@ -30,12 +30,16 @@ export interface QuotePdfItem {
 }
 
 /**
- * Um item tem preço especial quando o cobrado difere do de tabela. A coluna só
- * existe no documento se pelo menos um item estiver nessa condição — orçamento
- * sem negociação sai idêntico ao de antes, sem coluna vazia sobrando.
+ * Um item tem preço especial só quando o cobrado é MENOR que o de tabela — é a
+ * situação de desconto negociado, que vale a pena destacar riscando o preço de
+ * catálogo. Um preço customizado MAIOR não é "especial", é só o preço daquele
+ * item: some direto na coluna normal, sem riscado e sem entrar na coluna de
+ * preço especial. A coluna só existe no documento se pelo menos um item
+ * estiver na condição de desconto — orçamento sem negociação sai idêntico ao
+ * de antes, sem coluna vazia sobrando.
  */
 function hasSpecialPrice(item: QuotePdfItem) {
-  return item.listPrice !== null && item.unitPrice !== item.listPrice
+  return item.listPrice !== null && item.unitPrice < item.listPrice
 }
 
 export interface QuotePdfSignature {
@@ -93,7 +97,7 @@ function renderHtml(data: QuotePdfData) {
             item.photoDataUri ? `<img src="${item.photoDataUri}" alt="" />` : ''
           }</td>
           <td class="num${hasSpecialPrice(item) ? ' struck' : ''}">${
-            item.listPrice === null ? '—' : money(item.listPrice)
+            item.listPrice === null ? '—' : money(hasSpecialPrice(item) ? item.listPrice : item.unitPrice)
           }</td>
           ${
             showSpecial

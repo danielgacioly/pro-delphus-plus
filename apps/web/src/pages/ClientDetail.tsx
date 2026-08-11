@@ -58,7 +58,7 @@ function ContactLine({ icon, children }: { icon: ReactNode; children: ReactNode 
   return (
     <div className="flex items-start gap-2.5 text-[13px] text-neutral-600">
       <span className="mt-0.5 shrink-0 text-neutral-400">{icon}</span>
-      <span className="min-w-0 break-words">{children}</span>
+      <span className="min-w-0 wrap-break-word">{children}</span>
     </div>
   )
 }
@@ -154,15 +154,9 @@ export function ClientDetail() {
         </>
       }
       actions={
-        <>
-          <Button size="sm" onClick={() => setEditing(true)}>
-            Editar
-          </Button>
-          <ButtonLink size="sm" variant="primary" to={`/orcamentos/novo?clientId=${client.id}`}>
-            <IconPlus className="h-4 w-4" />
-            Orçamento
-          </ButtonLink>
-        </>
+        <Button size="sm" onClick={() => setEditing(true)}>
+          Editar
+        </Button>
       }
     >
       <div className="-mt-4 mb-6">

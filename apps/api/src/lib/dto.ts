@@ -89,6 +89,7 @@ export function toQuoteDTO(
     createdAt: quote.createdAt.toISOString(),
     createdBy: { id: quote.createdBy.id, name: quote.createdBy.name },
     items: quote.items.map((item) => ({
+      productId: item.productId,
       sku: item.sku,
       quantity: item.quantity,
       listPrice: item.listPrice?.toString() ?? null,

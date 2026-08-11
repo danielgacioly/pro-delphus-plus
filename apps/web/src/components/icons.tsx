@@ -262,3 +262,13 @@ export function IconSliders(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconHelp(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.3 9a2.8 2.8 0 0 1 5.4.9c0 1.8-2.4 2.1-2.7 3.6" />
+      <circle cx="12" cy="16.8" r="0.15" fill="currentColor" />
+    </Base>
+  )
+}

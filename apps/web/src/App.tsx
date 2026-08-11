@@ -36,6 +36,7 @@ function App() {
           <Route path="/clientes/:id" element={<ClientDetail />} />
           <Route path="/orcamentos" element={<Quotes />} />
           <Route path="/orcamentos/novo" element={<NewQuote />} />
+          <Route path="/orcamentos/:id/editar" element={<NewQuote />} />
           <Route path="/pedidos" element={<Orders />} />
           <Route path="/pedidos/novo" element={<NewOrder />} />
           <Route path="/pedidos/:id" element={<OrderDetail />} />

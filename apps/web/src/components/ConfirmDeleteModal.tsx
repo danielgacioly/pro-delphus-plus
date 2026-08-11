@@ -7,11 +7,12 @@ interface ConfirmDeleteModalProps {
   onConfirm: () => void
   onCancel: () => void
   isPending?: boolean
+  error?: string | null
 }
 
 const CONFIRM_WORD = 'excluir'
 
-export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, isPending }: ConfirmDeleteModalProps) {
+export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, isPending, error }: ConfirmDeleteModalProps) {
   const [value, setValue] = useState('')
   const canConfirm = value.trim().toLowerCase() === CONFIRM_WORD
 
@@ -20,6 +21,7 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
       <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">{title}</h2>
         <p className="mt-1 text-sm text-neutral-500">{description}</p>
+        {error && <p className="mt-3 text-sm text-brand-600">{error}</p>}
         <p className="mt-3 text-sm text-neutral-600">
           Para confirmar, digite <strong className="text-brand-600">excluir</strong> abaixo:
         </p>

@@ -1,9 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { formatAmount, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
+import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
+import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { DropZone } from '../components/DropZone'
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   BackLink,
   Button,
@@ -15,6 +19,7 @@ import {
   Select,
   Skeleton,
   TBody,
+  Textarea,
   THead,
   Table,
   TableShell,
@@ -37,6 +42,19 @@ function ReadField({ label, value }: { label: string; value: string | null | und
       </dd>
     </div>
   )
+}
+
+async function downloadFile(url: string, filename: string) {
+  const response = await fetch(url, { credentials: 'include' })
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(objectUrl)
 }
 
 function DocLink({ href, children, tone = 'brand' }: { href: string; children: ReactNode; tone?: 'brand' | 'ink' }) {
@@ -98,7 +116,9 @@ function ManualUpload({
 
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const {
     data: order,
@@ -111,10 +131,19 @@ export function OrderDetail() {
   })
 
   const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [downloadingAll, setDownloadingAll] = useState(false)
+  const boxEditor = useBoxAssignmentEditor()
   const [editForm, setEditForm] = useState<
     Partial<{
       purchaseOrder: string
       orderedByEmail: string
+      shipDate: string
+      billToText: string
+      shipToText: string
+      shipToNote: string
+      netWeightKg: string
+      grossWeightKg: string
       awbNumber: string
       incoterms: string
       prepaymentBy: PrepaymentMethod
@@ -132,9 +161,16 @@ export function OrderDetail() {
 
   const updateOrder = useMutation({
     mutationFn: async () => {
+      const { itemWeightsKg, packageCount, boxAssignments } = boxEditor.buildPayload()
       const payload = {
         purchaseOrder: editForm.purchaseOrder || undefined,
         orderedByEmail: editForm.orderedByEmail || undefined,
+        shipDate: editForm.shipDate || undefined,
+        billToText: editForm.billToText || undefined,
+        shipToText: editForm.shipToText || undefined,
+        shipToNote: editForm.shipToNote || undefined,
+        netWeightKg: editForm.netWeightKg ? Number(editForm.netWeightKg) : undefined,
+        grossWeightKg: editForm.grossWeightKg ? Number(editForm.grossWeightKg) : undefined,
         awbNumber: editForm.awbNumber || undefined,
         incoterms: editForm.incoterms || undefined,
         prepaymentBy: editForm.prepaymentBy,
@@ -142,6 +178,9 @@ export function OrderDetail() {
         nfNumber: editForm.nfNumber || undefined,
         nfDate: editForm.nfDate || undefined,
         exchangeRate: editForm.exchangeRate ? Number(editForm.exchangeRate) : undefined,
+        itemWeightsKg,
+        packageCount,
+        boxAssignments,
       }
       await api.patch(`/orders/${id}`, payload)
     },
@@ -173,11 +212,47 @@ export function OrderDetail() {
     onSuccess: invalidate,
   })
 
+  const deleteOrder = useMutation({
+    mutationFn: async () => api.delete(`/orders/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      navigate('/pedidos')
+    },
+  })
+
+  async function downloadAllDocuments() {
+    if (!order) return
+    const docs = [
+      order.invoicePdfUrl && { url: order.invoicePdfUrl, filename: `Order-${order.orderNumber}-Invoice.pdf` },
+      order.packingListPdfUrl && { url: order.packingListPdfUrl, filename: `Order-${order.orderNumber}-PackingList.pdf` },
+      order.packingListBoxPdfUrl && {
+        url: order.packingListBoxPdfUrl,
+        filename: `Order-${order.orderNumber}-PackingListBox.pdf`,
+      },
+      order.exportDocXlsxUrl && { url: order.exportDocXlsxUrl, filename: `Order-${order.orderNumber}-Export.xlsx` },
+    ].filter((d): d is { url: string; filename: string } => Boolean(d))
+
+    setDownloadingAll(true)
+    try {
+      for (const doc of docs) {
+        await downloadFile(doc.url, doc.filename)
+      }
+    } finally {
+      setDownloadingAll(false)
+    }
+  }
+
   function startEdit() {
     if (!order) return
     setEditForm({
       purchaseOrder: order.purchaseOrder ?? '',
       orderedByEmail: order.orderedByEmail,
+      shipDate: order.shipDate ? order.shipDate.slice(0, 10) : '',
+      billToText: order.billToText,
+      shipToText: order.shipToText,
+      shipToNote: order.shipToNote ?? '',
+      netWeightKg: order.netWeightKg ?? '',
+      grossWeightKg: order.grossWeightKg ?? '',
       awbNumber: order.awbNumber ?? '',
       incoterms: order.incoterms ?? '',
       prepaymentBy: order.prepaymentBy,
@@ -185,6 +260,12 @@ export function OrderDetail() {
       nfNumber: order.nfNumber ?? '',
       nfDate: order.nfDate ? order.nfDate.slice(0, 10) : '',
       exchangeRate: order.exchangeRate ?? '',
+    })
+    boxEditor.loadExisting({
+      items: order.quote.items,
+      packageCount: order.packageCount,
+      itemWeightsKg: order.itemWeightsKg,
+      boxAssignments: order.boxAssignments,
     })
     setEditing(true)
   }
@@ -228,7 +309,14 @@ export function OrderDetail() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-heading text-ink-900">Documentos</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-heading text-ink-900">Documentos</h2>
+            {(order.invoicePdfUrl || order.packingListPdfUrl || order.packingListBoxPdfUrl || order.exportDocXlsxUrl) && (
+              <Button size="sm" variant="secondary" disabled={downloadingAll} onClick={downloadAllDocuments}>
+                {downloadingAll ? 'Baixando…' : 'Baixar tudo'}
+              </Button>
+            )}
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {order.invoicePdfUrl && <DocLink href={order.invoicePdfUrl}>Invoice</DocLink>}
             {order.packingListPdfUrl && <DocLink href={order.packingListPdfUrl}>Packing List</DocLink>}
@@ -256,7 +344,7 @@ export function OrderDetail() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className={editing ? 'p-5 lg:col-span-2' : 'p-5'}>
           {editing ? (
             <form
               onSubmit={(e) => {
@@ -267,19 +355,74 @@ export function OrderDetail() {
               <h2 className="text-heading mb-4 text-ink-900">Editar pedido</h2>
 
               <div className="space-y-4">
-                <Field label="Purchase Order">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Purchase Order">
+                    <Input
+                      value={editForm.purchaseOrder}
+                      onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="E-mail do comprador">
+                    <Input
+                      type="email"
+                      value={editForm.orderedByEmail}
+                      onChange={(e) => setEditForm((s) => ({ ...s, orderedByEmail: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Data de expedição">
+                    <Input
+                      type="date"
+                      value={editForm.shipDate}
+                      onChange={(e) => setEditForm((s) => ({ ...s, shipDate: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Bill To">
+                    <Textarea
+                      rows={5}
+                      value={editForm.billToText}
+                      onChange={(e) => setEditForm((s) => ({ ...s, billToText: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Ship To">
+                    <Textarea
+                      rows={5}
+                      value={editForm.shipToText}
+                      onChange={(e) => setEditForm((s) => ({ ...s, shipToText: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+                <Field label="Observação de entrega (opcional)">
                   <Input
-                    value={editForm.purchaseOrder}
-                    onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
+                    value={editForm.shipToNote}
+                    onChange={(e) => setEditForm((s) => ({ ...s, shipToNote: e.target.value }))}
                   />
                 </Field>
-                <Field label="E-mail do comprador">
-                  <Input
-                    type="email"
-                    value={editForm.orderedByEmail}
-                    onChange={(e) => setEditForm((s) => ({ ...s, orderedByEmail: e.target.value }))}
-                  />
-                </Field>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Peso líquido (kg)">
+                    <Input
+                      type="number"
+                      step="0.001"
+                      className="tabular"
+                      value={editForm.netWeightKg}
+                      onChange={(e) => setEditForm((s) => ({ ...s, netWeightKg: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Peso bruto (kg)">
+                    <Input
+                      type="number"
+                      step="0.001"
+                      className="tabular"
+                      value={editForm.grossWeightKg}
+                      onChange={(e) => setEditForm((s) => ({ ...s, grossWeightKg: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+
+                <BoxAssignmentFields editor={boxEditor} items={order.quote.items} />
 
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="AWB #">
@@ -339,6 +482,7 @@ export function OrderDetail() {
                   <Input
                     type="number"
                     step="0.0001"
+                    required
                     className="tabular"
                     value={editForm.exchangeRate}
                     onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
@@ -425,9 +569,10 @@ export function OrderDetail() {
                   </Td>
                   <Td className="tabular text-right">{item.quantity}</Td>
                   <Td className="tabular whitespace-nowrap text-right">
-                    {/* Preço negociado: mostra o de tabela riscado ao lado, para
-                        ficar claro no pedido que aquele valor não é o do catálogo. */}
-                    {item.listPrice && item.listPrice !== item.unitPrice && (
+                    {/* Só risca o preço de tabela quando o cobrado é um desconto
+                        negociado (menor). Um preço customizado maior não é
+                        "especial" — é só o preço do item, sem riscado. */}
+                    {item.listPrice && item.listPrice > item.unitPrice && (
                       <span className="mr-1.5 text-neutral-400 line-through">
                         {formatAmount(item.listPrice)}
                       </span>
@@ -443,6 +588,24 @@ export function OrderDetail() {
           </Table>
         </TableShell>
       </Section>
+
+      {user?.role === 'ADMIN' && (
+        <div className="mt-8 flex justify-end">
+          <Button variant="ghost" className="text-brand-600" onClick={() => setDeleting(true)}>
+            Excluir pedido
+          </Button>
+        </div>
+      )}
+
+      {deleting && (
+        <ConfirmDeleteModal
+          title={`Excluir pedido #${order.orderNumber}?`}
+          description="O pedido e os documentos gerados (Invoice, Packing List, etc.) serão removidos definitivamente. O orçamento de origem não é afetado."
+          isPending={deleteOrder.isPending}
+          onConfirm={() => deleteOrder.mutate()}
+          onCancel={() => setDeleting(false)}
+        />
+      )}
     </Page>
   )
 }

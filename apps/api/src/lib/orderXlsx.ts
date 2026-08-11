@@ -79,11 +79,6 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   sheet.getCell('E3').value = '(editável — câmbio do dia)'
   sheet.getCell('E3').font = { italic: true, size: 9, color: { argb: MUTED } }
 
-  sheet.mergeCells('B4:D4')
-  const legendCell = sheet.getCell('B4')
-  legendCell.value = 'Células em amarelo (KG Unit.) precisam ser preenchidas manualmente — o resto calcula sozinho.'
-  legendCell.font = { italic: true, size: 9, color: { argb: MUTED } }
-
   const headerRowIndex = 6
   const headers = [
     'Qtd',

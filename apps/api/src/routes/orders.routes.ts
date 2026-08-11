@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toOrderDTO } from '../lib/dto.js'
 import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf, type PackingListBoxPage } from '../lib/orderPdf.js'
@@ -249,7 +249,14 @@ ordersRouter.post(
     if (quote.items.length === 0) throw new HttpError(400, 'Este orçamento não possui itens')
 
     const orderNumber = await nextOrderNumber()
-    const exchangeRate = data.exchangeRate ?? (await fetchUsdBrlRate().catch(() => 1))
+    // Nunca cair silenciosamente para um câmbio de 1 — isso corrompe o valor
+    // total do Invoice/Export Doc sem aviso nenhum. Se não veio do form e a
+    // busca automática falhar, é melhor recusar e pedir para digitar à mão.
+    const exchangeRate =
+      data.exchangeRate ??
+      (await fetchUsdBrlRate().catch(() => {
+        throw new HttpError(400, 'Não foi possível obter o câmbio automaticamente. Informe o valor manualmente.')
+      }))
     const packageCount = data.packageCount ?? 1
     const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
 
@@ -385,6 +392,29 @@ ordersRouter.patch(
 
     const order = await prisma.order.update({ where: { id: existing.id }, data: { status }, include })
     res.json({ order: toOrderDTO(order) })
+  }),
+)
+
+ordersRouter.delete(
+  '/:id',
+  requireRole('ADMIN'),
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.order.findUnique({ where: { id: req.params.id } })
+    if (!existing) throw new HttpError(404, 'Pedido não encontrado')
+
+    for (const url of [
+      existing.invoicePdfUrl,
+      existing.packingListPdfUrl,
+      existing.packingListBoxPdfUrl,
+      existing.exportDocXlsxUrl,
+      existing.awbDocumentUrl,
+      existing.nfDocumentUrl,
+    ]) {
+      if (url) deleteStoredFile(url)
+    }
+
+    await prisma.order.delete({ where: { id: existing.id } })
+    res.status(204).send()
   }),
 )
 

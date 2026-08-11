@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatAmount, type ClientPrefix, type QuoteDTO, type QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   Badge,
+  Button,
   ButtonLink,
   EmptyState,
   Page,
@@ -21,7 +24,7 @@ import {
   Toolbar,
   Tr,
 } from '../components/ui'
-import { IconPlus, IconQuote } from '../components/icons'
+import { IconPlus, IconQuote, IconTrash } from '../components/icons'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -55,12 +58,23 @@ const COLUMNS = 7
 
 export function Quotes() {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const { data: quotes, isLoading, isError } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
+  const isAdmin = user?.role === 'ADMIN'
 
   const [scope, setScope] = useState<'all' | 'mine'>('all')
   const [yearFilter, setYearFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [deletingQuote, setDeletingQuote] = useState<QuoteDTO | null>(null)
+
+  const deleteQuote = useMutation({
+    mutationFn: async (quoteId: string) => api.delete(`/quotes/${quoteId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] })
+      setDeletingQuote(null)
+    },
+  })
 
   const availableYears = useMemo(() => {
     const years = new Set((quotes ?? []).map((q) => new Date(q.createdAt).getFullYear()))
@@ -194,6 +208,25 @@ export function Quotes() {
                       <span className="inline-flex items-center gap-1">
                         {q.pdfUrl && <FileLink href={q.pdfUrl}>PDF</FileLink>}
                         {q.xlsxUrl && <FileLink href={q.xlsxUrl}>Excel</FileLink>}
+                        <Link
+                          to={`/orcamentos/${q.id}/editar`}
+                          title="Editar orçamento"
+                          className="inline-flex h-7 items-center rounded-md border border-neutral-200 bg-white px-2 text-[12px] font-semibold text-neutral-600 shadow-xs transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900 active:scale-95"
+                        >
+                          Editar
+                        </Link>
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Excluir orçamento"
+                            aria-label="Excluir orçamento"
+                            onClick={() => setDeletingQuote(q)}
+                            className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                          >
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </span>
                     </Td>
                   </Tr>
@@ -215,6 +248,25 @@ export function Quotes() {
           />
         )}
       </TableShell>
+
+      {deletingQuote && (
+        <ConfirmDeleteModal
+          title={`Excluir orçamento ${deletingQuote.quoteNumber}?`}
+          description="O orçamento e os arquivos PDF/Excel gerados serão removidos definitivamente."
+          isPending={deleteQuote.isPending}
+          error={
+            deleteQuote.isError
+              ? ((deleteQuote.error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+                'Não foi possível excluir este orçamento.')
+              : null
+          }
+          onConfirm={() => deleteQuote.mutate(deletingQuote.id)}
+          onCancel={() => {
+            setDeletingQuote(null)
+            deleteQuote.reset()
+          }}
+        />
+      )}
     </Page>
   )
 }

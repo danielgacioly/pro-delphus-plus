@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { ClientPrefix, Currency, PriceTier, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import {
@@ -30,6 +30,11 @@ async function searchProducts(search: string) {
   return data.products
 }
 
+async function fetchQuote(id: string) {
+  const { data } = await api.get<{ quote: QuoteDTO }>(`/quotes/${id}`)
+  return data.quote
+}
+
 const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>> = {
   PT: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
   EN: { NONE: '—', MR: 'Mr.', MS: 'Ms.' },
@@ -41,6 +46,8 @@ const emptyItem: DraftItem = { productId: '', query: '', quantity: 1, descriptio
 export function NewQuote() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { id: editId } = useParams<{ id: string }>()
+  const isEditing = !!editId
   const [searchParams] = useSearchParams()
   const preselectId = searchParams.get('clientId')
 
@@ -56,6 +63,46 @@ export function NewQuote() {
   const [freight, setFreight] = useState('')
   const [discount, setDiscount] = useState('0')
   const [error, setError] = useState<string | null>(null)
+  const prefilled = useRef(false)
+
+  const { data: existingQuote, isLoading: loadingQuote } = useQuery({
+    queryKey: ['quote', editId],
+    queryFn: () => fetchQuote(editId as string),
+    enabled: isEditing,
+  })
+
+  // Preenche o form a partir do orçamento existente uma única vez, quando
+  // editando — depois disso o estado é só do usuário, sem re-sincronizar.
+  useEffect(() => {
+    if (!existingQuote || prefilled.current) return
+    prefilled.current = true
+    setLanguage(existingQuote.language)
+    setCurrency(existingQuote.currency)
+    setPriceTier(existingQuote.priceTier)
+    setClientPrefix(existingQuote.clientPrefix)
+    setClientName(existingQuote.clientName)
+    setClientId(existingQuote.clientId)
+    setNotes(existingQuote.notes ?? '')
+    setFreight(existingQuote.freight ?? '')
+    setDiscount(existingQuote.discount)
+    setItems(
+      existingQuote.items.map((item) => {
+        const listPrice = item.listPrice !== null ? Number(item.listPrice) : null
+        const unitPrice = Number(item.unitPrice)
+        // Só marca como "customizado" quando difere do preço de tabela (ou
+        // não existe preço de tabela) — senão o campo fica vazio e o preço
+        // continua acompanhando a tabela normalmente.
+        const isCustomPrice = listPrice === null || unitPrice !== listPrice
+        return {
+          productId: item.productId,
+          query: `${item.productName} (${item.sku})`,
+          quantity: item.quantity,
+          description: item.description,
+          unitPrice: isCustomPrice ? String(unitPrice) : '',
+        }
+      }),
+    )
+  }, [existingQuote])
 
   const activeQuery = activeIndex !== null ? items[activeIndex].query.trim() : ''
   const { data: suggestions } = useQuery({
@@ -66,7 +113,7 @@ export function NewQuote() {
 
   const createQuote = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<{ quote: QuoteDTO }>('/quotes', {
+      const payload = {
         language,
         currency,
         priceTier: currency === 'USD' ? priceTier : 'FINAL',
@@ -84,17 +131,21 @@ export function NewQuote() {
           })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
-      })
+      }
+      const { data } = isEditing
+        ? await api.patch<{ quote: QuoteDTO }>(`/quotes/${editId}`, payload)
+        : await api.post<{ quote: QuoteDTO }>('/quotes', payload)
       return data.quote
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
+      if (isEditing) queryClient.invalidateQueries({ queryKey: ['quote', editId] })
       navigate('/orcamentos')
     },
     onError: (err: unknown) => {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível gerar o orçamento.'
+        (isEditing ? 'Não foi possível salvar o orçamento.' : 'Não foi possível gerar o orçamento.')
       setError(message)
     },
   })
@@ -110,10 +161,25 @@ export function NewQuote() {
 
   const currentPrefixLabels = prefixLabelsByLanguage[language]
 
+  if (isEditing && loadingQuote) {
+    return (
+      <Page title="Editar orçamento" width="narrow">
+        <div className="-mt-4 mb-5">
+          <BackLink to="/orcamentos">Orçamentos</BackLink>
+        </div>
+        <p className="text-[13px] text-neutral-500">Carregando orçamento…</p>
+      </Page>
+    )
+  }
+
   return (
     <Page
-      title="Novo orçamento"
-      description="Gere um orçamento automático em PDF ou Excel buscando produtos por nome ou SKU."
+      title={isEditing ? `Editar orçamento ${existingQuote?.quoteNumber ?? ''}` : 'Novo orçamento'}
+      description={
+        isEditing
+          ? 'Altera os dados do orçamento e regenera o PDF e o Excel automaticamente.'
+          : 'Gere um orçamento automático em PDF ou Excel buscando produtos por nome ou SKU.'
+      }
       width="narrow"
     >
       <div className="-mt-4 mb-5">
@@ -195,7 +261,7 @@ export function NewQuote() {
               {items.map((item, index) => (
                 <div key={index} className="rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-3">
                   <div className="flex gap-2">
-                    <div className="relative flex-1">
+                    <Field label="Produto" hint="Busca por nome, SKU ou palavra da descrição" className="relative flex-1">
                       <Input
                         placeholder="Buscar por nome ou SKU"
                         required
@@ -222,43 +288,55 @@ export function NewQuote() {
                           ))}
                         </div>
                       )}
-                    </div>
-                    <Input
-                      type="number"
-                      min={1}
-                      required
-                      aria-label="Quantidade"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                      className="tabular w-20 shrink-0 text-center"
-                    />
+                    </Field>
+                    <Field label="Qtd." className="w-20 shrink-0">
+                      <Input
+                        type="number"
+                        min={1}
+                        required
+                        aria-label="Quantidade"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                        className="tabular text-center"
+                      />
+                    </Field>
                     {items.length > 1 && (
                       <button
                         type="button"
                         onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
                         aria-label="Remover item"
-                        className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+                        className="mt-[26px] flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
                       >
                         ×
                       </button>
                     )}
                   </div>
                   <div className="mt-2 flex gap-2">
-                    <Input
-                      placeholder="Descrição customizada (opcional)"
-                      value={item.description}
-                      onChange={(e) => updateItem(index, { description: e.target.value })}
-                      className="h-9 flex-1 text-[13px]"
-                    />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      placeholder="Preço customizado"
-                      value={item.unitPrice}
-                      onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
-                      className="tabular h-9 w-44 shrink-0 text-[13px]"
-                    />
+                    <Field
+                      label="Descrição customizada"
+                      hint="Opcional — substitui a descrição do catálogo só neste orçamento"
+                      className="flex-1"
+                    >
+                      <Input
+                        value={item.description}
+                        onChange={(e) => updateItem(index, { description: e.target.value })}
+                        className="h-9 text-[13px]"
+                      />
+                    </Field>
+                    <Field
+                      label="Preço customizado"
+                      hint="Opcional — sobrescreve o preço de tabela só neste item"
+                      className="w-44 shrink-0"
+                    >
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={item.unitPrice}
+                        onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
+                        className="tabular h-9 text-[13px]"
+                      />
+                    </Field>
                   </div>
                 </div>
               ))}
@@ -316,7 +394,13 @@ export function NewQuote() {
             Cancelar
           </Button>
           <Button type="submit" variant="primary" size="lg" disabled={createQuote.isPending}>
-            {createQuote.isPending ? 'Gerando…' : 'Gerar orçamento'}
+            {createQuote.isPending
+              ? isEditing
+                ? 'Salvando…'
+                : 'Gerando…'
+              : isEditing
+                ? 'Salvar orçamento'
+                : 'Gerar orçamento'}
           </Button>
         </div>
       </form>

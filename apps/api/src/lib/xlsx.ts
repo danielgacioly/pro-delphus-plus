@@ -19,9 +19,13 @@ export interface QuoteXlsxItem {
   photoDataUri: string | null
 }
 
-/** Mesmo critério do PDF: só conta como especial se diferir do preço de tabela. */
+/**
+ * Mesmo critério do PDF: só conta como especial quando o preço cobrado é
+ * MENOR que o de tabela (desconto negociado). Um preço customizado maior não
+ * é "especial" — é só o preço daquele item, sem riscado e sem coluna extra.
+ */
 function hasSpecialPrice(item: QuoteXlsxItem) {
-  return item.listPrice !== null && item.unitPrice !== item.listPrice
+  return item.listPrice !== null && item.unitPrice < item.listPrice
 }
 
 export interface QuoteXlsxSignature {
@@ -170,7 +174,7 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
       item.quantity,
       '',
       '',
-      item.listPrice ?? '—',
+      item.listPrice === null ? '—' : hasSpecialPrice(item) ? item.listPrice : item.unitPrice,
       ...(showSpecial ? [hasSpecialPrice(item) || item.listPrice === null ? item.unitPrice : '—'] : []),
       { formula: `${priceRef}*B${rowIndex}` },
     ]
@@ -223,21 +227,26 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   // range would silently overwrite the merge's shared value.
   let notesBottom = summaryTop - 1
 
+  // Notes span every column up to right before the summary labels (LABEL),
+  // not just A:C — stopping at C left D/E as a blank gap between the notes
+  // box and the Shipping/Total block, since both sit on the same rows.
+  const notesLastCol = colLetter(labelCol - 1)
+
   if (data.notes) {
     // Give the notes block exactly as many rows as it has lines (plus a
     // little breathing room), instead of a fixed count that clipped longer
     // note lists — each line here is short enough to stay on one wrapped
-    // row within column A:C's combined width.
+    // row within the combined column width.
     const noteLineCount = data.notes.split('\n').length
     const notesRowSpan = Math.max(6, noteLineCount + 1)
     notesBottom = summaryTop + notesRowSpan - 1
-    sheet.mergeCells(`A${summaryTop}:C${notesBottom}`)
+    sheet.mergeCells(`A${summaryTop}:${notesLastCol}${notesBottom}`)
     const notesCell = sheet.getCell(`A${summaryTop}`)
     notesCell.value = data.notes
     notesCell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' }
     notesCell.font = { size: 9, color: { argb: 'FF4A4A4A' } }
     for (let r = summaryTop; r <= notesBottom; r++) {
-      ;['A', 'B', 'C'].forEach((col) => (sheet.getCell(`${col}${r}`).border = thinBorder))
+      for (let c = 1; c <= labelCol - 1; c++) sheet.getCell(`${colLetter(c)}${r}`).border = thinBorder
     }
   }
 
@@ -286,33 +295,29 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
     sheet.getCell(`${col}${sigTop}`).border = { top: { style: 'thin', color: { argb: BORDER_COLOR } } }
   })
 
-  if (data.signature.signatureImageDataUri) {
-    // Own signature replaces the company logo + text block entirely.
-    const { base64, extension } = dataUriToImage(data.signature.signatureImageDataUri)
-    const sigImageId = workbook.addImage({ base64, extension })
-    sheet.addImage(sigImageId, { tl: { col: 0.2, row: sigTop - 1 + 0.3 }, ext: { width: 180, height: 70 } })
-  } else {
-    const sigLogoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
-    // Column A is 75px wide and this logo is 50px, so — unlike before this
-    // column was widened — it no longer needs a row offset to avoid
-    // overlapping the bold name text next to it in column B.
-    sheet.addImage(sigLogoImageId, { tl: { col: 0.15, row: sigTop - 1 + 0.15 }, ext: { width: 50, height: 41 } })
+  // Ao contrário do PDF, o Excel nunca embute a assinatura manual (a imagem
+  // enviada em Minha Conta) — sempre usa o logo + bloco de nome/cargo/contato,
+  // já que a planilha é editável e a assinatura manual perde sentido nela.
+  const sigLogoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
+  // Column A is 75px wide and this logo is 50px, so — unlike before this
+  // column was widened — it no longer needs a row offset to avoid
+  // overlapping the bold name text next to it in column B.
+  sheet.addImage(sigLogoImageId, { tl: { col: 0.15, row: sigTop - 1 + 0.15 }, ext: { width: 50, height: 41 } })
 
-    const nameCell = sheet.getCell(`B${sigTop}`)
-    nameCell.value = data.signature.name
-    nameCell.font = { bold: true, size: 11, color: { argb: INK } }
+  const nameCell = sheet.getCell(`B${sigTop}`)
+  nameCell.value = data.signature.name
+  nameCell.font = { bold: true, size: 11, color: { argb: INK } }
 
-    const roleCell = sheet.getCell(`B${sigTop + 1}`)
-    roleCell.value = data.signature.jobTitle ?? 'Sales Assistant'
-    roleCell.font = { size: 9, color: { argb: 'FF6A6A6A' } }
+  const roleCell = sheet.getCell(`B${sigTop + 1}`)
+  roleCell.value = data.signature.jobTitle ?? 'Sales Assistant'
+  roleCell.font = { size: 9, color: { argb: 'FF6A6A6A' } }
 
-    const contactLines = [data.signature.phone, data.signature.email, COMPANY.website].filter(Boolean)
-    contactLines.forEach((line, i) => {
-      const cell = sheet.getCell(`B${sigTop + 2 + i}`)
-      cell.value = line ?? ''
-      cell.font = { size: 9, color: { argb: 'FF4A4A4A' } }
-    })
-  }
+  const contactLines = [data.signature.phone, data.signature.email, COMPANY.website].filter(Boolean)
+  contactLines.forEach((line, i) => {
+    const cell = sheet.getCell(`B${sigTop + 2 + i}`)
+    cell.value = line ?? ''
+    cell.font = { size: 9, color: { argb: 'FF4A4A4A' } }
+  })
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)

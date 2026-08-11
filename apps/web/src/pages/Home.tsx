@@ -1,14 +1,16 @@
-import type { ComponentType, SVGProps } from 'react'
+import { useState, type ComponentType, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
-import { Page, Section } from '../components/ui'
+import { Page, Section, Button } from '../components/ui'
+import { HelpModal } from '../components/HelpModal'
 import {
   IconBoard,
   IconBox,
   IconChart,
   IconChevronRight,
   IconContacts,
+  IconHelp,
   IconLayers,
   IconQuote,
   IconTag,
@@ -110,9 +112,19 @@ function ShortcutCard({ shortcut, tone, index }: { shortcut: Shortcut; tone: 'br
 export function Home() {
   const { user } = useAuth()
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
+  const [helpOpen, setHelpOpen] = useState(false)
 
   return (
-    <Page title={`${greeting()}, ${firstName}.`} description="O que você deseja fazer hoje?">
+    <Page
+      title={`${greeting()}, ${firstName}.`}
+      description="O que você deseja fazer hoje?"
+      actions={
+        <Button size="sm" onClick={() => setHelpOpen(true)}>
+          <IconHelp className="h-4 w-4" />
+          Ajuda
+        </Button>
+      }
+    >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {shortcuts.map((shortcut, i) => (
           <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" index={i} />
@@ -128,6 +140,8 @@ export function Home() {
           </div>
         </Section>
       )}
+
+      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
     </Page>
   )
 }
