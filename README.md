@@ -122,7 +122,24 @@ openssl rand -base64 32   # POSTGRES_PASSWORD
 
 Ajuste `PUBLIC_URL` para o endereço real (vira o `CORS_ORIGIN` da API) e `ADMIN_SEED_PASSWORD` com no mínimo 10 caracteres.
 
-### 2. Subir
+### 2. Onde os dados ficam guardados
+
+Por padrão, o Docker guarda tudo (imagens, volumes) em `/var/lib/docker`. Se essa pasta estiver na mesma partição do sistema operacional, o banco de dados e os arquivos enviados (fotos, PDFs) crescem ali dentro e podem, um dia, lotar o disco do próprio SO.
+
+Este projeto evita isso: os dois volumes (`postgres_data`, `uploads_data`) são amarrados a um diretório explícito no host, via a variável `DATA_ROOT`. Configure-a em `.env.prod` apontando para um disco/partição **separado** do sistema operacional (ex.: `/data/prodelphusplus`), montado antes deste passo.
+
+```bash
+# Ajuste DATA_ROOT no .env.prod primeiro, depois:
+mkdir -p "$DATA_ROOT"/postgres "$DATA_ROOT"/uploads
+```
+
+**Esse `mkdir` é obrigatório antes do primeiro `up`** — o Docker não cria essas pastas sozinho; se elas não existirem, a subida falha com um erro de "no such file or directory" ao montar o volume.
+
+Sem `DATA_ROOT` definida, o padrão é `./data` — uma pasta dentro do próprio projeto, útil só para testar localmente. Não use o padrão em produção: o objetivo inteiro é sair da partição do sistema.
+
+> A pasta de backups (`./backups`) e o próprio código clonado do repositório **não** são cobertos por `DATA_ROOT` — eles ficam onde o repositório for clonado no servidor. Se quiser tudo fora da partição do SO, clone o projeto inteiro dentro do disco separado (ex.: `/data/prodelphusplus/app`), não em `/root` ou `/home`.
+
+### 3. Subir
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
@@ -130,14 +147,14 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
 As migrações rodam sozinhas a cada subida, antes de a API aceitar tráfego. Só o nginx publica porta (`HTTP_PORT`, padrão 8080); Postgres e API ficam na rede interna.
 
-### 3. Criar o primeiro admin (só na primeira vez)
+### 4. Criar o primeiro admin (só na primeira vez)
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.prod exec api \
   node apps/api/dist/prisma/seed.js
 ```
 
-### 4. HTTP, por enquanto
+### 5. HTTP, por enquanto
 
 O sistema roda em **HTTP puro** — decisão consciente para uso interno, com acesso pela rede local ou VPN e um time pequeno e conhecido. Duas coisas garantem que isso funcione direito, já configuradas no compose:
 
@@ -154,7 +171,7 @@ O serviço `backup` roda todo dia e grava em `./backups/`:
 - `db-AAAAMMDD-HHMMSS.sql.gz` — dump do Postgres
 - `uploads-AAAAMMDD-HHMMSS.tar.gz` — PDFs, invoices, fotos e assinaturas
 
-Retenção padrão de 30 dias (`BACKUP_RETENTION_DAYS`). O expurgo só roda depois de um backup bem-sucedido, então uma falha não apaga os antigos.
+Guarda só os `BACKUP_KEEP_COUNT` mais recentes de cada tipo (padrão: **2**) — o mais antigo é apagado assim que um novo backup completa com sucesso. O expurgo só roda depois do backup do dia ter sido gravado inteiro, então uma falha não apaga os anteriores.
 
 > **Isso é backup local.** Se a máquina morrer, morre com ela. Configure uma cópia diária de `./backups/` para fora — `rclone`, `aws s3 sync` ou `rsync` para outro host. Sem isso, metade do problema continua de pé.
 

@@ -13,7 +13,9 @@ set -eu
 
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 UPLOADS_PATH="${UPLOADS_PATH:-/data/uploads}"
-RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
+# Retenção por contagem, não por idade: guarda só os KEEP_COUNT backups mais
+# recentes de cada tipo. O mais antigo é apagado assim que um novo chega.
+KEEP_COUNT="${BACKUP_KEEP_COUNT:-2}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "$BACKUP_DIR"
@@ -37,13 +39,18 @@ else
 fi
 
 # Expurgo só depois do sucesso: se o backup de hoje falhou, os antigos ficam.
-find "$BACKUP_DIR" -name 'db-*.sql.gz' -mtime "+$RETENTION_DAYS" -delete
-find "$BACKUP_DIR" -name 'uploads-*.tar.gz' -mtime "+$RETENTION_DAYS" -delete
+# Ordena por data (mais novo primeiro) e apaga tudo que passar de KEEP_COUNT —
+# com KEEP_COUNT=2, sobram só o de hoje e o de ontem.
+for pattern in 'db-*.sql.gz' 'uploads-*.tar.gz'; do
+  ls -1t "$BACKUP_DIR"/$pattern 2>/dev/null | tail -n "+$((KEEP_COUNT + 1))" | while IFS= read -r old; do
+    rm -f "$old"
+  done
+done
 find "$BACKUP_DIR" -name '*.partial' -mtime +1 -delete
 
 DB_SIZE="$(du -h "$DB_FILE" | cut -f1)"
 UP_SIZE="$([ -f "$UP_FILE" ] && du -h "$UP_FILE" | cut -f1 || echo '—')"
-echo "[backup $STAMP] pronto — banco $DB_SIZE, uploads $UP_SIZE (retenção ${RETENTION_DAYS}d)"
+echo "[backup $STAMP] pronto — banco $DB_SIZE, uploads $UP_SIZE (mantendo os últimos $KEEP_COUNT)"
 
 # ATENÇÃO: isto é backup LOCAL. Se a máquina morrer, morre com ela.
 # Mande $BACKUP_DIR para fora todo dia (rclone, aws s3 sync, rsync) — sem isso

@@ -73,7 +73,7 @@ services:
       PGDATABASE: ${POSTGRES_DB}
       PGHOST: postgres
       BACKUP_DIR: /backups
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_KEEP_COUNT: ${BACKUP_KEEP_COUNT:-2}
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
     volumes:
       - uploads_data:/data/uploads:ro
@@ -81,6 +81,21 @@ services:
       - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
     entrypoint: ["/bin/sh", "-c", "apk add --no-cache tar >/dev/null && while true; do /usr/local/bin/backup.sh || echo '[backup] FALHOU'; sleep \"$$BACKUP_INTERVAL_SECONDS\"; done"]
 
+# Os dois volumes vivem num diretório explícito no host (DATA_ROOT), não no
+# local padrão do Docker (/var/lib/docker) — é isso que evita que o banco e os
+# uploads acabem na mesma partição do sistema operacional. Ver README, seção
+# "Onde os dados ficam guardados": DATA_ROOT deve apontar para um disco/
+# partição separado, montado antes de rodar `docker compose up`.
 volumes:
   postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:-./data}/postgres
   uploads_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:-./data}/uploads
