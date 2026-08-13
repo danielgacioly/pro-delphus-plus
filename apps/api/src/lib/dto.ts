@@ -166,10 +166,13 @@ export function toPersonalTaskDTO(
   }
 }
 
-export function toPersonalBoardColumnDTO(column: PersonalBoardColumn) {
+// `isDone` ainda não está no client tipado (ver nota em tasks.routes.ts) — o
+// chamador sempre busca esse valor à parte e junta antes de passar pra cá.
+export function toPersonalBoardColumnDTO(column: PersonalBoardColumn & { isDone: boolean }) {
   return {
     id: column.id,
     name: column.name,
     position: column.position,
+    isDone: column.isDone,
   }
 }

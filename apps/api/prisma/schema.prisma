@@ -330,6 +330,8 @@ model PersonalBoardColumn {
   user      User     @relation("PersonalBoardColumnOwner", fields: [userId], references: [id], onDelete: Cascade)
   name      String
   position  Int      @default(0)
+  /** Tarefas neste quadro contam como concluídas — suprime o aviso de atraso. */
+  isDone    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   tasks PersonalTask[]

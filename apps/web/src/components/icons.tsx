@@ -272,3 +272,12 @@ export function IconHelp(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconCheckCircle(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.3 12.3 2.4 2.4 5-5.2" />
+    </Base>
+  )
+}

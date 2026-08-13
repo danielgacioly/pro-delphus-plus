@@ -23,7 +23,15 @@ import {
   Skeleton,
   Textarea,
 } from '../components/ui'
-import { IconAlert, IconBoard, IconChevronDown, IconPlus, IconQuote, IconTruck } from '../components/icons'
+import {
+  IconAlert,
+  IconBoard,
+  IconCheckCircle,
+  IconChevronDown,
+  IconPlus,
+  IconQuote,
+  IconTruck,
+} from '../components/icons'
 
 async function fetchColumns() {
   const { data } = await api.get<{ columns: PersonalBoardColumnDTO[] }>('/tasks/board-columns')
@@ -76,13 +84,34 @@ function saveCollapsed(value: Record<string, boolean>) {
   }
 }
 
-function isOverdue(dueDate: string | null) {
-  if (!dueDate) return false
+// Tarefa em um quadro marcado como "concluído" nunca aparece como atrasada,
+// não importa a data — já foi feita.
+function isOverdue(dueDate: string | null, isDone: boolean) {
+  if (!dueDate || isDone) return false
   return new Date(dueDate).getTime() < Date.now()
 }
 
 function formatDueDate(dueDate: string) {
-  return new Date(dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return new Date(dueDate).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// <input type="datetime-local"> troca dados em horário LOCAL, sem timezone —
+// convertendo pra/de ISO explicitamente aqui, o instante final nunca depende
+// de o navegador e o servidor compartilharem o mesmo fuso horário.
+function toDatetimeLocalValue(iso: string) {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function toIsoFromDatetimeLocal(value: string) {
+  return new Date(value).toISOString()
 }
 
 /** Duplo clique renomeia o quadro no lugar — sem abrir modal para algo tão pequeno. */
@@ -161,7 +190,7 @@ function EditTaskModal({
   const [title, setTitle] = useState(task.title)
   const [clientName, setClientName] = useState(task.clientName ?? '')
   const [notes, setNotes] = useState(task.notes ?? '')
-  const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.slice(0, 10) : '')
+  const [dueDate, setDueDate] = useState(task.dueDate ? toDatetimeLocalValue(task.dueDate) : '')
   const [columnId, setColumnId] = useState(task.columnId)
   const [quoteId, setQuoteId] = useState(task.quoteId ?? '')
   const [orderId, setOrderId] = useState(task.orderId ?? '')
@@ -174,7 +203,7 @@ function EditTaskModal({
         title,
         clientName: clientName || null,
         notes: notes || null,
-        dueDate: dueDate || null,
+        dueDate: dueDate ? toIsoFromDatetimeLocal(dueDate) : null,
         columnId,
         quoteId: quoteId || null,
         orderId: orderId || null,
@@ -244,8 +273,8 @@ function EditTaskModal({
             </Select>
           </Field>
 
-          <Field label="Prazo (opcional)">
-            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <Field label="Prazo (data e hora, opcional)">
+            <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </Field>
 
           <Field label="Tags (opcional)">
@@ -366,7 +395,7 @@ export function MyDesk() {
         clientName: draft.clientName || undefined,
         notes: draft.notes || undefined,
         tags: draftTags.length ? draftTags : undefined,
-        dueDate: draft.dueDate || undefined,
+        dueDate: draft.dueDate ? toIsoFromDatetimeLocal(draft.dueDate) : undefined,
         columnId: draft.columnId || undefined,
         quoteId: draft.quoteId || undefined,
         orderId: draft.orderId || undefined,
@@ -424,6 +453,11 @@ export function MyDesk() {
       setColumnError(message)
       setDeletingColumn(null)
     },
+  })
+
+  const toggleColumnDone = useMutation({
+    mutationFn: async ({ id, isDone }: { id: string; isDone: boolean }) => api.patch(`/tasks/board-columns/${id}`, { isDone }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['board-columns'] }),
   })
 
   const grouped = useMemo(() => {
@@ -600,9 +634,9 @@ export function MyDesk() {
               </Select>
             </Field>
 
-            <Field label="Prazo (opcional)">
+            <Field label="Prazo (data e hora, opcional)">
               <Input
-                type="date"
+                type="datetime-local"
                 value={draft.dueDate}
                 onChange={(e) => setDraft((s) => ({ ...s, dueDate: e.target.value }))}
               />
@@ -742,15 +776,33 @@ export function MyDesk() {
                 <div className="min-w-0 flex-1">
                   <ColumnTitle column={col} />
                 </div>
-                <span className="tabular shrink-0 rounded-full bg-neutral-500/10 px-1.5 text-[11px] font-medium text-neutral-500">
+                <button
+                  type="button"
+                  onClick={() => toggleColumnDone.mutate({ id: col.id, isDone: !col.isDone })}
+                  title={col.isDone ? 'Quadro marcado como concluído — clique para desmarcar' : 'Marcar quadro como concluído'}
+                  aria-label={col.isDone ? `Desmarcar quadro ${col.name} como concluído` : `Marcar quadro ${col.name} como concluído`}
+                  className={cn(
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
+                    col.isDone ? 'text-emerald-600 hover:bg-emerald-50' : 'text-neutral-300 hover:bg-neutral-500/10 hover:text-neutral-600',
+                  )}
+                >
+                  <IconCheckCircle className="h-3.5 w-3.5" />
+                </button>
+                <span
+                  className={cn(
+                    'tabular shrink-0 rounded-full px-1.5 text-[11px] font-medium',
+                    col.isDone ? 'bg-emerald-500/10 text-emerald-700' : 'bg-neutral-500/10 text-neutral-500',
+                  )}
+                >
                   {colTasks.length}
                 </span>
                 <button
                   type="button"
+                  disabled={col.isDone}
                   onClick={() => setDeletingColumn(col)}
-                  title="Excluir quadro"
+                  title={col.isDone ? 'Desmarque o quadro como concluído antes de excluí-lo' : 'Excluir quadro'}
                   aria-label={`Excluir quadro ${col.name}`}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-300 transition-[background-color,color] duration-150 hover:bg-brand-50 hover:text-brand-600"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-300 transition-[background-color,color] duration-150 hover:bg-brand-50 hover:text-brand-600 disabled:pointer-events-none disabled:opacity-30"
                 >
                   ×
                 </button>
@@ -759,7 +811,8 @@ export function MyDesk() {
               {!isCollapsed && (
                 <div className="mt-2.5 min-h-16 space-y-2">
                   {colTasks.map((task) => {
-                    const overdue = isOverdue(task.dueDate)
+                    const done = col.isDone
+                    const overdue = isOverdue(task.dueDate, done)
                     return (
                       <div
                         key={task.id}
@@ -774,14 +827,23 @@ export function MyDesk() {
                         }}
                         onClick={() => setEditingTaskId(task.id)}
                         className={cn(
-                          'group cursor-pointer rounded-xl border border-neutral-200/70 bg-white p-3 shadow-xs',
+                          'group cursor-pointer rounded-xl border border-neutral-200/70 p-3 shadow-xs',
                           'transition-[transform,box-shadow,border-color] duration-200 ease-out',
                           'hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md active:cursor-grabbing',
+                          done ? 'bg-neutral-50/70' : 'bg-white',
                           draggingId === task.id && 'opacity-40',
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13.5px] font-medium leading-snug text-ink-900">{task.title}</p>
+                          <p
+                            className={cn(
+                              'text-[13.5px] font-medium leading-snug',
+                              done ? 'text-neutral-400 line-through' : 'text-ink-900',
+                            )}
+                          >
+                            {done && <IconCheckCircle className="mr-1 -mt-0.5 inline h-3.5 w-3.5 text-emerald-500" />}
+                            {task.title}
+                          </p>
                           <button
                             type="button"
                             onClick={(e) => {

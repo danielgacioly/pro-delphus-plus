@@ -232,6 +232,8 @@ export interface PersonalBoardColumnDTO {
   id: string
   name: string
   position: number
+  /** Tarefas neste quadro contam como concluídas — suprime o aviso de atraso. */
+  isDone: boolean
 }
 
 export interface PersonalTaskDTO {

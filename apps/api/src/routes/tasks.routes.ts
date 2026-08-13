@@ -11,6 +11,26 @@ tasksRouter.use(requireAuth)
 
 const DEFAULT_COLUMNS = ['Pendente', 'Em andamento', 'Concluído']
 
+// `isDone` foi adicionado à tabela por uma migração aplicada direto no banco
+// (o `prisma generate` não roda neste ambiente — a CLI trava tentando checar
+// atualização mesmo com CHECKPOINT_DISABLE=1). O client tipado por trás de
+// `prisma.personalBoardColumn` ainda não conhece esse campo, então ele é lido
+// e escrito via SQL bruto em vez do query builder, só para essa coluna.
+async function fetchIsDone(columnId: string): Promise<boolean> {
+  const rows = await prisma.$queryRaw<{ isDone: boolean }[]>`
+    SELECT "isDone" FROM personal_board_columns WHERE id = ${columnId}
+  `
+  return rows[0]?.isDone ?? false
+}
+
+async function fetchIsDoneMap(columnIds: string[]): Promise<Map<string, boolean>> {
+  if (columnIds.length === 0) return new Map()
+  const rows = await prisma.$queryRaw<{ id: string; isDone: boolean }[]>`
+    SELECT id, "isDone" FROM personal_board_columns WHERE id = ANY(${columnIds})
+  `
+  return new Map(rows.map((r) => [r.id, r.isDone]))
+}
+
 async function ensureColumns(userId: string) {
   const existing = await prisma.personalBoardColumn.findMany({ where: { userId }, orderBy: { position: 'asc' } })
   if (existing.length > 0) return existing
@@ -18,6 +38,10 @@ async function ensureColumns(userId: string) {
   await prisma.personalBoardColumn.createMany({
     data: DEFAULT_COLUMNS.map((name, position) => ({ userId, name, position })),
   })
+  // "Concluído" já nasce marcado como o quadro de tarefas feitas.
+  await prisma.$executeRaw`
+    UPDATE personal_board_columns SET "isDone" = true WHERE "userId" = ${userId} AND name = 'Concluído'
+  `
   return prisma.personalBoardColumn.findMany({ where: { userId }, orderBy: { position: 'asc' } })
 }
 
@@ -25,7 +49,10 @@ tasksRouter.get(
   '/board-columns',
   asyncHandler(async (req, res) => {
     const columns = await ensureColumns(req.user!.id)
-    res.json({ columns: columns.map(toPersonalBoardColumnDTO) })
+    const isDoneMap = await fetchIsDoneMap(columns.map((c) => c.id))
+    res.json({
+      columns: columns.map((c) => toPersonalBoardColumnDTO({ ...c, isDone: isDoneMap.get(c.id) ?? false })),
+    })
   }),
 )
 
@@ -41,11 +68,16 @@ tasksRouter.post(
     const column = await prisma.personalBoardColumn.create({
       data: { userId: req.user!.id, name: data.name, position },
     })
-    res.status(201).json({ column: toPersonalBoardColumnDTO(column) })
+    // Quadro novo nunca nasce marcado como concluído — sem consulta extra.
+    res.status(201).json({ column: toPersonalBoardColumnDTO({ ...column, isDone: false }) })
   }),
 )
 
-const updateColumnSchema = z.object({ name: z.string().trim().min(1).optional(), position: z.number().int().optional() })
+const updateColumnSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  position: z.number().int().optional(),
+  isDone: z.boolean().optional(),
+})
 
 tasksRouter.patch(
   '/board-columns/:id',
@@ -61,7 +93,11 @@ tasksRouter.patch(
         ...(data.position !== undefined && { position: data.position }),
       },
     })
-    res.json({ column: toPersonalBoardColumnDTO(column) })
+    if (data.isDone !== undefined) {
+      await prisma.$executeRaw`UPDATE personal_board_columns SET "isDone" = ${data.isDone} WHERE id = ${existing.id}`
+    }
+    const isDone = data.isDone !== undefined ? data.isDone : await fetchIsDone(existing.id)
+    res.json({ column: toPersonalBoardColumnDTO({ ...column, isDone }) })
   }),
 )
 
@@ -70,6 +106,18 @@ tasksRouter.delete(
   asyncHandler(async (req, res) => {
     const existing = await prisma.personalBoardColumn.findUnique({ where: { id: req.params.id } })
     if (!existing || existing.userId !== req.user!.id) throw new HttpError(404, 'Quadro não encontrado')
+
+    // O quadro marcado como concluído nunca pode ser excluído diretamente —
+    // senão o conceito de "feito" some do board sem aviso. Pra excluir esse
+    // quadro específico, primeiro desmarque-o (ele deixa de ser "o" quadro
+    // de concluídas e passa a ser um quadro comum, removível como qualquer outro).
+    const isDone = await fetchIsDone(existing.id)
+    if (isDone) {
+      throw new HttpError(
+        409,
+        'O quadro marcado como concluído não pode ser excluído. Desmarque-o (no ícone de check) antes de remover.',
+      )
+    }
 
     const taskCount = await prisma.personalTask.count({ where: { columnId: existing.id } })
     if (taskCount > 0) {
