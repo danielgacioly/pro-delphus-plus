@@ -46,8 +46,12 @@ gunzip -c "$DB_DUMP" | $COMPOSE exec -T postgres psql -U "${POSTGRES_USER:-prode
 
 if [ -n "$UPLOADS_TAR" ]; then
   echo "→ restaurando os uploads"
+  # A extração roda como root dentro do container alpine — sem o chown, os
+  # arquivos ficam donos de root e a API (processo `node`, uid/gid 1000)
+  # não consegue nem escrever um PDF novo ali (EACCES na primeira geração
+  # de orçamento depois da restauração).
   docker run --rm -v "$UPLOADS_VOLUME":/target -v "$(cd "$(dirname "$UPLOADS_TAR")" && pwd)":/src alpine \
-    sh -c "rm -rf /target/* && tar -xzf /src/$(basename "$UPLOADS_TAR") -C /target"
+    sh -c "rm -rf /target/* && tar -xzf /src/$(basename "$UPLOADS_TAR") -C /target && chown -R 1000:1000 /target"
 fi
 
 echo "→ subindo api e web"
