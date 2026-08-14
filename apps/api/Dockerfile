@@ -46,6 +46,13 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+# npm aninha pacotes aqui quando duas dependências pedem versões incompatíveis
+# do mesmo módulo — é o caso do archiver: a API pede ^8 direto, mas o exceljs
+# (já existente) depende internamente de archiver ^5 pra escrever xlsx. Sem
+# copiar essa pasta, o node_modules raiz só tem a versão 5 (CommonJS) e o
+# import nomeado do archiver 8 (ESM) quebra em runtime mesmo com o build
+# passando limpo, porque a resolução de módulo nunca alcança essa versão.
+COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/generated ./apps/api/generated
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
