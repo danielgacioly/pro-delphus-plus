@@ -10,6 +10,7 @@ import type {
 } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/cn'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { Modal } from '../components/Modal'
@@ -187,6 +188,7 @@ function EditTaskModal({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [title, setTitle] = useState(task.title)
   const [clientName, setClientName] = useState(task.clientName ?? '')
   const [notes, setNotes] = useState(task.notes ?? '')
@@ -213,6 +215,7 @@ function EditTaskModal({
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       queryClient.invalidateQueries({ queryKey: ['task-clients'] })
       queryClient.invalidateQueries({ queryKey: ['task-tags'] })
+      toast.success('Tarefa atualizada.')
       onClose()
     },
   })
@@ -360,6 +363,7 @@ function EditTaskModal({
 export function MyDesk() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const toast = useToast()
 
   const { data: columns } = useQuery({ queryKey: ['board-columns'], queryFn: fetchColumns })
   const { data: tasks } = useQuery({ queryKey: ['tasks'], queryFn: fetchTasks })
@@ -409,6 +413,7 @@ export function MyDesk() {
       setDraft(emptyDraft)
       setDraftTags([])
       setShowForm(false)
+      toast.success('Tarefa criada.')
     },
   })
 
@@ -420,7 +425,10 @@ export function MyDesk() {
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => api.delete(`/tasks/${id}`),
-    onSuccess: invalidateTasks,
+    onSuccess: () => {
+      invalidateTasks()
+      toast.success('Tarefa excluída.')
+    },
   })
 
   const createColumn = useMutation({
@@ -445,6 +453,7 @@ export function MyDesk() {
       queryClient.invalidateQueries({ queryKey: ['board-columns'] })
       setColumnError(null)
       setDeletingColumn(null)
+      toast.success('Quadro excluído.')
     },
     onError: (err: unknown) => {
       const message =

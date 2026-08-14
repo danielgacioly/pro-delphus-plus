@@ -281,3 +281,13 @@ export function IconCheckCircle(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconInfo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5" />
+      <circle cx="12" cy="7.8" r="0.15" fill="currentColor" />
+    </Base>
+  )
+}

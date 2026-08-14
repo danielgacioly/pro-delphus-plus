@@ -4,6 +4,12 @@
 #
 # HTTP puro, sem certificado — sistema interno, acesso pela rede/VPN. Só o
 # nginx publica porta; Postgres e API ficam na rede interna do compose.
+#
+# Nome do projeto fixo: sem isso, o Compose deriva o prefixo dos volumes do
+# nome do diretório onde o clone mora, e scripts/restore.sh (que assume
+# "prodelphusplus_uploads_data") pode acabar restaurando no volume errado.
+name: prodelphusplus
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -60,7 +66,8 @@ services:
     ports:
       - "${HTTP_PORT:-8080}:80"
 
-  # Backup diário do banco e dos uploads, com expurgo por idade.
+  # Backup diário do banco e dos uploads, com expurgo por contagem (mantém só
+  # os BACKUP_KEEP_COUNT mais recentes — ver scripts/backup.sh).
   backup:
     image: postgres:16-alpine
     restart: unless-stopped

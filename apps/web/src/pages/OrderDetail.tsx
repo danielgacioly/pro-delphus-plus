@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { formatAmount, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { DropZone } from '../components/DropZone'
@@ -119,6 +120,7 @@ export function OrderDetail() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const toast = useToast()
 
   const {
     data: order,
@@ -187,6 +189,7 @@ export function OrderDetail() {
     onSuccess: () => {
       invalidate()
       setEditing(false)
+      toast.success('Pedido atualizado.')
     },
   })
 
@@ -198,7 +201,10 @@ export function OrderDetail() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate()
+      toast.success('AWB enviado.')
+    },
   })
 
   const uploadNf = useMutation({
@@ -209,13 +215,17 @@ export function OrderDetail() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate()
+      toast.success('Nota fiscal enviada.')
+    },
   })
 
   const deleteOrder = useMutation({
     mutationFn: async () => api.delete(`/orders/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Pedido excluído.')
       navigate('/pedidos')
     },
   })

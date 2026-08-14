@@ -19,7 +19,11 @@ ordersRouter.use(requireAuth)
 
 const FIRST_ORDER_NUMBER = 2800
 
-const quoteInclude = { items: { include: { product: true } }, createdBy: { select: { id: true, name: true } } } as const
+const quoteInclude = {
+  items: { include: { product: true } },
+  createdBy: { select: { id: true, name: true } },
+  client: { select: { country: true } },
+} as const
 const include = { createdBy: { select: { id: true, name: true } }, quote: { include: quoteInclude } } as const
 
 ordersRouter.get(

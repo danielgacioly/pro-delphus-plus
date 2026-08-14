@@ -1,0 +1,24 @@
+# Ambos os Dockerfiles (apps/api e apps/web) usam `context: .` — sem isto, o
+# repo inteiro (node_modules instalado localmente, .git, uploads dev) é
+# enviado ao daemon do Docker em todo build.
+node_modules
+**/node_modules
+.git
+
+dist
+**/dist
+build
+**/build
+
+apps/api/uploads
+apps/api/generated
+
+backups
+data
+
+.env
+.env.*
+!.env.*.example
+
+*.log
+.DS_Store

@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
+import { clientPrefixLabel } from '@prodelphusplus/shared'
 import { LABELS, formatMoney, type QuoteLanguage } from './quoteI18n.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -55,6 +56,8 @@ export interface QuotePdfData {
   language: QuoteLanguage
   clientPrefix: 'NONE' | 'MR' | 'MS'
   clientName: string
+  /** País do cliente vinculado — decide Sr./Sra. vs Mr./Ms., ver clientPrefixLabel. */
+  clientCountry: string | null
   notes: string | null
   items: QuotePdfItem[]
   freight: number | null
@@ -109,7 +112,7 @@ function renderHtml(data: QuotePdfData) {
     )
     .join('')
 
-  const prefix = t.prefix[data.clientPrefix]
+  const prefix = clientPrefixLabel(data.clientPrefix, data.clientCountry, data.language)
   const toLine = [prefix, data.clientName].filter(Boolean).join(' ')
 
   const freightDisplay = data.freight === null ? t.toBeDefined : money(data.freight)

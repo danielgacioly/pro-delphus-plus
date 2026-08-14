@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatAmount, type ClientDTO, type OrderStatus, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { CLIENT_KIND_LABEL, ClientForm, clientToForm, type ClientFormValues } from '../components/ClientForm'
@@ -80,6 +81,7 @@ export function ClientDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const { user } = useAuth()
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['client', id], queryFn: () => fetchClient(id) })
@@ -102,6 +104,7 @@ export function ClientDetail() {
       invalidate()
       setEditing(false)
       setFormError(null)
+      toast.success('Cliente atualizado.')
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
       setFormError(err.response?.data?.message ?? 'Não foi possível salvar as alterações.'),
@@ -115,6 +118,7 @@ export function ClientDetail() {
     onSuccess: (res) => {
       invalidate()
       setDeleting(false)
+      toast.success(res?.deactivated ? 'Cliente desativado.' : 'Cliente excluído.')
       // Com histórico, o servidor apenas desativa — o cliente continua existindo
       // e faz sentido permanecer na tela mostrando o estado novo.
       if (!res?.deactivated) navigate('/clientes')

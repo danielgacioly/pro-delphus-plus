@@ -19,6 +19,7 @@ quotesRouter.use(requireAuth)
 const include = {
   items: { include: { product: true } },
   createdBy: { select: { id: true, name: true } },
+  client: { select: { country: true } },
 } as const
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -109,9 +110,14 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
   }
   const tierLabel = priceTier === 'DISTRIBUTOR' ? `${currency} (distribuidor)` : currency
 
+  // País do cliente vinculado decide Sr./Sra. vs Mr./Ms. no documento — ver
+  // clientPrefixLabel em @prodelphusplus/shared. Sem cliente vinculado
+  // (nome digitado à mão) não há sinal de nacionalidade, então fica null.
+  let clientCountry: string | null = null
   if (data.clientId) {
-    const exists = await prisma.client.findUnique({ where: { id: data.clientId }, select: { id: true } })
-    if (!exists) throw new HttpError(400, 'Cliente não encontrado')
+    const client = await prisma.client.findUnique({ where: { id: data.clientId }, select: { country: true } })
+    if (!client) throw new HttpError(400, 'Cliente não encontrado')
+    clientCountry = client.country
   }
 
   const productIds = data.items.map((i) => i.productId)
@@ -177,17 +183,18 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
     signatureImageDataUri: await photoToDataUri(requester.signatureUrl ?? undefined),
   }
 
-  return { currency, priceTier, lineItems, subtotal, total, notes, signature }
+  return { currency, priceTier, lineItems, subtotal, total, notes, signature, clientCountry }
 }
 
 async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, resolved: Awaited<ReturnType<typeof resolveQuoteData>>) {
-  const { currency, lineItems, subtotal, total, notes, signature } = resolved
+  const { currency, lineItems, subtotal, total, notes, signature, clientCountry } = resolved
   const [pdfBuffer, xlsxBuffer] = await Promise.all([
     generateQuotePdf({
       quoteNumber,
       language: data.language,
       clientPrefix: data.clientPrefix,
       clientName: data.clientName,
+      clientCountry,
       notes,
       items: lineItems.map((i) => ({
         title: i.title,
@@ -210,6 +217,7 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
       language: data.language,
       clientPrefix: data.clientPrefix,
       clientName: data.clientName,
+      clientCountry,
       notes,
       items: lineItems.map((i) => ({
         title: i.title,
@@ -224,7 +232,6 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
       subtotal,
       total,
       currency,
-      signature,
     }),
   ])
 

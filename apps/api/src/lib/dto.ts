@@ -1,4 +1,5 @@
 import type {
+  Client,
   Order,
   PersonalBoardColumn,
   PersonalTask,
@@ -68,7 +69,11 @@ export function toProductDTO(
 }
 
 export function toQuoteDTO(
-  quote: Quote & { items: (QuoteItem & { product: Product })[]; createdBy: Pick<User, 'id' | 'name'> },
+  quote: Quote & {
+    items: (QuoteItem & { product: Product })[]
+    createdBy: Pick<User, 'id' | 'name'>
+    client: Pick<Client, 'country'> | null
+  },
 ) {
   return {
     id: quote.id,
@@ -79,6 +84,7 @@ export function toQuoteDTO(
     clientPrefix: quote.clientPrefix,
     clientName: quote.clientName,
     clientId: quote.clientId,
+    clientCountry: quote.client?.country ?? null,
     notes: quote.notes,
     freight: quote.freight?.toString() ?? null,
     discount: quote.discount.toString(),
@@ -104,7 +110,11 @@ export function toQuoteDTO(
 export function toOrderDTO(
   order: Order & {
     createdBy: Pick<User, 'id' | 'name'>
-    quote: Quote & { items: (QuoteItem & { product: Product })[]; createdBy: Pick<User, 'id' | 'name'> }
+    quote: Quote & {
+      items: (QuoteItem & { product: Product })[]
+      createdBy: Pick<User, 'id' | 'name'>
+      client: Pick<Client, 'country'> | null
+    }
   },
 ) {
   return {

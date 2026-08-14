@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { formatAmount, type ClientPrefix, type QuoteDTO, type QuoteLanguage } from '@prodelphusplus/shared'
+import { clientPrefixLabel, formatAmount, type QuoteDTO, type QuoteLanguage } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   Badge,
@@ -31,12 +32,6 @@ async function fetchQuotes() {
   return data.quotes
 }
 
-const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>> = {
-  PT: { NONE: '', MR: 'Sr.', MS: 'Sra.' },
-  EN: { NONE: '', MR: 'Mr.', MS: 'Ms.' },
-  ES: { NONE: '', MR: 'Sr.', MS: 'Sra.' },
-}
-
 const languageLabel: Record<QuoteLanguage, string> = { PT: 'PT', EN: 'EN', ES: 'ES' }
 
 const monthLabels = [
@@ -59,6 +54,7 @@ const COLUMNS = 7
 export function Quotes() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const { data: quotes, isLoading, isError } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
   const isAdmin = user?.role === 'ADMIN'
 
@@ -73,6 +69,7 @@ export function Quotes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
       setDeletingQuote(null)
+      toast.success('Orçamento excluído.')
     },
   })
 
@@ -177,7 +174,7 @@ export function Quotes() {
             {!isLoading &&
               !isError &&
               filteredQuotes.map((q) => {
-                const prefix = prefixLabelsByLanguage[q.language][q.clientPrefix]
+                const prefix = clientPrefixLabel(q.clientPrefix, q.clientCountry, q.language)
                 return (
                   <Tr key={q.id}>
                     <Td className="tabular whitespace-nowrap font-semibold text-ink-900">{q.quoteNumber}</Td>

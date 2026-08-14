@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import type { ClientPrefix, Currency, PriceTier, ProductDTO, QuoteDTO, QuoteLanguage } from '@prodelphusplus/shared'
+import {
+  clientPrefixLabel,
+  formatAmount,
+  type ClientPrefix,
+  type Currency,
+  type PriceTier,
+  type ProductDTO,
+  type QuoteDTO,
+  type QuoteLanguage,
+} from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { useToast } from '../context/ToastContext'
 import {
   BackLink,
   Button,
@@ -15,7 +25,24 @@ import {
   Textarea,
 } from '../components/ui'
 import { ClientPicker } from '../components/ClientPicker'
-import { IconPlus } from '../components/icons'
+import { IconInfo, IconPlus } from '../components/icons'
+
+const currencySymbol: Record<Currency, string> = { BRL: 'R$', USD: '$', EUR: '€' }
+
+// Mesma regra de apps/api/src/routes/quotes.routes.ts (resolveQuoteData/priceOf) —
+// duplicada aqui só para consulta no popup, o preço que de fato entra no
+// orçamento continua sendo calculado no servidor.
+function catalogPriceFor(product: ProductDTO, currency: Currency, priceTier: PriceTier): number | null {
+  const raw =
+    currency === 'BRL'
+      ? product.priceBRL
+      : currency === 'EUR'
+        ? product.priceEUR
+        : priceTier === 'DISTRIBUTOR'
+          ? product.priceUSDDistributor
+          : product.priceUSD
+  return raw === null ? null : Number(raw)
+}
 
 interface DraftItem {
   productId: string
@@ -35,10 +62,9 @@ async function fetchQuote(id: string) {
   return data.quote
 }
 
-const prefixLabelsByLanguage: Record<QuoteLanguage, Record<ClientPrefix, string>> = {
-  PT: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
-  EN: { NONE: '—', MR: 'Mr.', MS: 'Ms.' },
-  ES: { NONE: '—', MR: 'Sr.', MS: 'Sra.' },
+async function fetchProduct(id: string) {
+  const { data } = await api.get<{ product: ProductDTO }>(`/products/${id}`)
+  return data.product
 }
 
 const emptyItem: DraftItem = { productId: '', query: '', quantity: 1, description: '', unitPrice: '' }
@@ -57,6 +83,9 @@ export function NewQuote() {
   const [clientPrefix, setClientPrefix] = useState<ClientPrefix>('NONE')
   const [clientName, setClientName] = useState('')
   const [clientId, setClientId] = useState<string | null>(null)
+  // País do cliente vinculado — decide Sr./Sra. vs Mr./Ms. (ver clientPrefixLabel).
+  // Sem cliente vinculado (nome digitado à mão) fica null, sem sinal de nacionalidade.
+  const [clientCountry, setClientCountry] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<DraftItem[]>([{ ...emptyItem }])
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -64,6 +93,7 @@ export function NewQuote() {
   const [discount, setDiscount] = useState('0')
   const [error, setError] = useState<string | null>(null)
   const prefilled = useRef(false)
+  const toast = useToast()
 
   const { data: existingQuote, isLoading: loadingQuote } = useQuery({
     queryKey: ['quote', editId],
@@ -82,6 +112,7 @@ export function NewQuote() {
     setClientPrefix(existingQuote.clientPrefix)
     setClientName(existingQuote.clientName)
     setClientId(existingQuote.clientId)
+    setClientCountry(existingQuote.clientCountry)
     setNotes(existingQuote.notes ?? '')
     setFreight(existingQuote.freight ?? '')
     setDiscount(existingQuote.discount)
@@ -110,6 +141,19 @@ export function NewQuote() {
     queryFn: () => searchProducts(activeQuery),
     enabled: activeIndex !== null && activeQuery.length > 0,
   })
+
+  // Preço efetivo por moeda/tabela é sempre o que vale no orçamento — a
+  // tabela DISTRIBUTOR só existe em USD (mesma regra do backend).
+  const effectivePriceTier: PriceTier = currency === 'USD' ? priceTier : 'FINAL'
+
+  const [infoIndex, setInfoIndex] = useState<number | null>(null)
+  const infoProductId = infoIndex !== null ? items[infoIndex].productId : ''
+  const { data: infoProduct, isLoading: infoLoading } = useQuery({
+    queryKey: ['product-detail', infoProductId],
+    queryFn: () => fetchProduct(infoProductId),
+    enabled: infoIndex !== null && !!infoProductId,
+  })
+  const infoCatalogPrice = infoProduct ? catalogPriceFor(infoProduct, currency, effectivePriceTier) : null
 
   const createQuote = useMutation({
     mutationFn: async () => {
@@ -140,6 +184,7 @@ export function NewQuote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
       if (isEditing) queryClient.invalidateQueries({ queryKey: ['quote', editId] })
+      toast.success(isEditing ? 'Orçamento atualizado.' : 'Orçamento gerado.')
       navigate('/orcamentos')
     },
     onError: (err: unknown) => {
@@ -157,9 +202,8 @@ export function NewQuote() {
   function selectProduct(index: number, product: ProductDTO) {
     updateItem(index, { productId: product.id, query: `${product.name} (${product.sku})` })
     setActiveIndex(null)
+    setInfoIndex(null)
   }
-
-  const currentPrefixLabels = prefixLabelsByLanguage[language]
 
   if (isEditing && loadingQuote) {
     return (
@@ -230,9 +274,9 @@ export function NewQuote() {
             <div className="flex flex-wrap gap-4">
               <Field label="Prefixo" className="w-28">
                 <Select value={clientPrefix} onChange={(e) => setClientPrefix(e.target.value as ClientPrefix)}>
-                  <option value="NONE">{currentPrefixLabels.NONE}</option>
-                  <option value="MR">{currentPrefixLabels.MR}</option>
-                  <option value="MS">{currentPrefixLabels.MS}</option>
+                  <option value="NONE">—</option>
+                  <option value="MR">{clientPrefixLabel('MR', clientCountry, language)}</option>
+                  <option value="MS">{clientPrefixLabel('MS', clientCountry, language)}</option>
                 </Select>
               </Field>
               <Field
@@ -247,9 +291,16 @@ export function NewQuote() {
                   onChange={({ clientId: id, clientName: name, client }) => {
                     setClientId(id)
                     setClientName(name)
-                    // Um cliente do cadastro traz o próprio tratamento; digitação
-                    // livre não mexe no que o usuário já escolheu no seletor.
-                    if (client) setClientPrefix(client.prefix)
+                    // Um cliente do cadastro traz o próprio tratamento e país —
+                    // Sr./Sra. vs Mr./Ms. segue a nacionalidade do cliente, não
+                    // o idioma do orçamento. Digitação livre não mexe no que o
+                    // usuário já escolheu no seletor.
+                    if (client) {
+                      setClientPrefix(client.prefix)
+                      setClientCountry(client.country)
+                    } else {
+                      setClientCountry(null)
+                    }
                   }}
                 />
               </Field>
@@ -303,7 +354,10 @@ export function NewQuote() {
                     {items.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                        onClick={() => {
+                          setItems((prev) => prev.filter((_, i) => i !== index))
+                          setInfoIndex(null)
+                        }}
                         aria-label="Remover item"
                         className="mt-[26px] flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
                       >
@@ -311,6 +365,84 @@ export function NewQuote() {
                       </button>
                     )}
                   </div>
+
+                  {item.productId && (
+                    <div className="relative mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setInfoIndex((cur) => (cur === index ? null : index))}
+                        className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[12px] font-medium text-brand-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                      >
+                        <IconInfo className="h-3.5 w-3.5" />
+                        Ver preço e descrição do catálogo
+                      </button>
+
+                      {infoIndex === index && (
+                        <div className="animate-scale-in absolute z-30 mt-1.5 w-80 origin-top-left rounded-xl border border-neutral-200/70 bg-white p-3.5 shadow-lg">
+                          <div className="mb-2.5 flex items-start justify-between gap-2">
+                            <p className="text-[13px] font-medium text-ink-900">
+                              {infoLoading ? 'Carregando…' : (infoProduct?.name ?? item.query)}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setInfoIndex(null)}
+                              aria-label="Fechar"
+                              className="-mr-1 -mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-300 transition-colors hover:bg-neutral-500/10 hover:text-ink-900"
+                            >
+                              ×
+                            </button>
+                          </div>
+
+                          {infoProduct && (
+                            <div className="space-y-2.5">
+                              <div>
+                                <p className="text-eyebrow text-neutral-400">Descrição do catálogo</p>
+                                <p className="mt-1 max-h-32 overflow-y-auto text-[12.5px] leading-relaxed text-ink-700">
+                                  {infoProduct.description || 'Sem descrição cadastrada.'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-eyebrow text-neutral-400">
+                                  Preço de tabela · {currency}
+                                  {effectivePriceTier === 'DISTRIBUTOR' ? ' (distribuidor)' : ''}
+                                </p>
+                                <p className="tabular mt-1 text-[14px] font-semibold text-ink-900">
+                                  {infoCatalogPrice !== null
+                                    ? `${currencySymbol[currency]} ${formatAmount(infoCatalogPrice)}`
+                                    : 'Sem preço cadastrado nesta moeda/tabela'}
+                                </p>
+                              </div>
+                              <div className="flex gap-1.5 border-t border-neutral-200/70 pt-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateItem(index, { description: infoProduct.description ?? '' })
+                                    setInfoIndex(null)
+                                  }}
+                                  className="flex-1 rounded-lg bg-neutral-500/8 px-2 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:bg-neutral-500/14"
+                                >
+                                  Usar esta descrição
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={infoCatalogPrice === null}
+                                  onClick={() => {
+                                    if (infoCatalogPrice === null) return
+                                    updateItem(index, { unitPrice: String(infoCatalogPrice) })
+                                    setInfoIndex(null)
+                                  }}
+                                  className="flex-1 rounded-lg bg-neutral-500/8 px-2 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:bg-neutral-500/14 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  Usar este preço
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-2 flex gap-2">
                     <Field
                       label="Descrição customizada"

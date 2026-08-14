@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO, ClientKind } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { CLIENT_KIND_LABEL, ClientForm, type ClientFormValues } from '../components/ClientForm'
@@ -126,6 +127,7 @@ function ClientCard({
 
 export function Clients() {
   const queryClient = useQueryClient()
+  const toast = useToast()
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
   const { data: clients, isLoading, isError } = useQuery({ queryKey: ['clients'], queryFn: fetchClients })
@@ -145,6 +147,7 @@ export function Clients() {
       queryClient.invalidateQueries({ queryKey: ['clients'] })
       setCreating(false)
       setFormError(null)
+      toast.success('Cliente cadastrado.')
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
       setFormError(err.response?.data?.message ?? 'Não foi possível salvar o cliente.'),
@@ -155,6 +158,7 @@ export function Clients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] })
       setDeletingClient(null)
+      toast.success('Cliente excluído.')
     },
   })
 

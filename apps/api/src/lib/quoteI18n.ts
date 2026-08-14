@@ -19,7 +19,6 @@ export const LABELS: Record<QuoteLanguage, {
   shipping: string
   discount: string
   toBeDefined: string
-  prefix: { NONE: string; MR: string; MS: string }
 }> = {
   PT: {
     quote: 'Orçamento',
@@ -34,7 +33,6 @@ export const LABELS: Record<QuoteLanguage, {
     shipping: 'Frete',
     discount: 'Desconto',
     toBeDefined: 'A definir',
-    prefix: { NONE: '', MR: 'Sr.', MS: 'Sra.' },
   },
   EN: {
     quote: 'Quote',
@@ -49,7 +47,6 @@ export const LABELS: Record<QuoteLanguage, {
     shipping: 'Shipping',
     discount: 'Discount',
     toBeDefined: 'To be defined',
-    prefix: { NONE: '', MR: 'Mr.', MS: 'Ms.' },
   },
   ES: {
     quote: 'Presupuesto',
@@ -64,7 +61,6 @@ export const LABELS: Record<QuoteLanguage, {
     shipping: 'Envío',
     discount: 'Descuento',
     toBeDefined: 'Por definir',
-    prefix: { NONE: '', MR: 'Sr.', MS: 'Sra.' },
   },
 }
 

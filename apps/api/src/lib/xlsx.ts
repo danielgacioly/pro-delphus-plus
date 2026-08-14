@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ExcelJS from 'exceljs'
+import { clientPrefixLabel } from '@prodelphusplus/shared'
 import { LABELS, type QuoteLanguage } from './quoteI18n.js'
 import { COMPANY } from './pdf.js'
 
@@ -28,19 +29,13 @@ function hasSpecialPrice(item: QuoteXlsxItem) {
   return item.listPrice !== null && item.unitPrice < item.listPrice
 }
 
-export interface QuoteXlsxSignature {
-  name: string
-  jobTitle: string | null
-  phone: string | null
-  email: string
-  signatureImageDataUri: string | null
-}
-
 export interface QuoteXlsxData {
   quoteNumber: string
   language: QuoteLanguage
   clientPrefix: 'NONE' | 'MR' | 'MS'
   clientName: string
+  /** País do cliente vinculado — decide Sr./Sra. vs Mr./Ms., ver clientPrefixLabel. */
+  clientCountry: string | null
   notes: string | null
   items: QuoteXlsxItem[]
   freight: number | null
@@ -48,7 +43,6 @@ export interface QuoteXlsxData {
   subtotal: number
   total: number
   currency: string
-  signature: QuoteXlsxSignature
 }
 
 const RED = 'FFEF1818'
@@ -129,7 +123,7 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   numberCell.font = { bold: true, size: 12, color: { argb: INK } }
   numberCell.alignment = { horizontal: 'right' }
 
-  const prefix = t.prefix[data.clientPrefix]
+  const prefix = clientPrefixLabel(data.clientPrefix, data.clientCountry, data.language)
   sheet.mergeCells(`A6:${LAST}6`)
   const toCell = sheet.getCell('A6')
   toCell.value = `${t.to}: ${[prefix, data.clientName].filter(Boolean).join(' ')}`
@@ -286,38 +280,17 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   sheet.getCell(`${TOTAL}${row}`).font = { bold: true, size: 12, color: { argb: RED } }
   sheet.getCell(`${TOTAL}${row}`).border = thinBorder
 
-  const sigTop = Math.max(row + 3, notesBottom + 2)
-  // A plain top border (not a merge) draws the same divider line without
-  // clobbering the independent name/role/contact values written below —
-  // merging A:F across every row here previously made every write share
-  // one cell, so only the last line (the email) ever survived.
-  ;Array.from({ length: totalCol }, (_, i) => colLetter(i + 1)).forEach((col) => {
-    sheet.getCell(`${col}${sigTop}`).border = { top: { style: 'thin', color: { argb: BORDER_COLOR } } }
-  })
-
-  // Ao contrário do PDF, o Excel nunca embute a assinatura manual (a imagem
-  // enviada em Minha Conta) — sempre usa o logo + bloco de nome/cargo/contato,
-  // já que a planilha é editável e a assinatura manual perde sentido nela.
-  const sigLogoImageId = workbook.addImage({ buffer: logoBuffer as any, extension: 'png' })
-  // Column A is 75px wide and this logo is 50px, so — unlike before this
-  // column was widened — it no longer needs a row offset to avoid
-  // overlapping the bold name text next to it in column B.
-  sheet.addImage(sigLogoImageId, { tl: { col: 0.15, row: sigTop - 1 + 0.15 }, ext: { width: 50, height: 41 } })
-
-  const nameCell = sheet.getCell(`B${sigTop}`)
-  nameCell.value = data.signature.name
-  nameCell.font = { bold: true, size: 11, color: { argb: INK } }
-
-  const roleCell = sheet.getCell(`B${sigTop + 1}`)
-  roleCell.value = data.signature.jobTitle ?? 'Sales Assistant'
-  roleCell.font = { size: 9, color: { argb: 'FF6A6A6A' } }
-
-  const contactLines = [data.signature.phone, data.signature.email, COMPANY.website].filter(Boolean)
-  contactLines.forEach((line, i) => {
-    const cell = sheet.getCell(`B${sigTop + 2 + i}`)
-    cell.value = line ?? ''
-    cell.font = { size: 9, color: { argb: 'FF4A4A4A' } }
-  })
+  // Fecha visualmente a caixa Shipping/Discount/Total até a mesma altura do
+  // bloco de notas ao lado — sem isto, a caixa de notas (que cresce com o
+  // texto) deixa esta caixa visivelmente mais baixa e o par de blocos não
+  // fecha na mesma linha. Cada coluna vira uma única célula mesclada em vez
+  // de uma célula por linha, igual ao próprio bloco de notas ao lado.
+  if (notesBottom > row) {
+    sheet.mergeCells(`${LABEL}${row + 1}:${LABEL}${notesBottom}`)
+    sheet.getCell(`${LABEL}${row + 1}`).border = thinBorder
+    sheet.mergeCells(`${TOTAL}${row + 1}:${TOTAL}${notesBottom}`)
+    sheet.getCell(`${TOTAL}${row + 1}`).border = thinBorder
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)

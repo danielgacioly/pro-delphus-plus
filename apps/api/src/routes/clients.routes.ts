@@ -139,7 +139,11 @@ clientsRouter.get(
 
     const quotes = await prisma.quote.findMany({
       where: { clientId: client.id },
-      include: { items: { include: { product: true } }, createdBy: { select: { id: true, name: true } } },
+      include: {
+        items: { include: { product: true } },
+        createdBy: { select: { id: true, name: true } },
+        client: { select: { country: true } },
+      },
       orderBy: { createdAt: 'desc' },
     })
 

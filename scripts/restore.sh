@@ -17,6 +17,17 @@ if [ -z "$DB_DUMP" ]; then
 fi
 
 COMPOSE="${COMPOSE:-docker compose -f docker-compose.prod.yml --env-file .env.prod}"
+
+# Carrega .env.prod no shell também — sem isso, POSTGRES_USER/POSTGRES_DB só
+# chegam ao container via --env-file, e este script cairia nos defaults do
+# .env.prod.example mesmo que você tenha customizado esses valores.
+if [ -f .env.prod ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env.prod
+  set +a
+fi
+
 UPLOADS_VOLUME="${UPLOADS_VOLUME:-prodelphusplus_uploads_data}"
 
 printf 'Isto APAGA o banco e os arquivos atuais. Digite "restaurar" para seguir: '

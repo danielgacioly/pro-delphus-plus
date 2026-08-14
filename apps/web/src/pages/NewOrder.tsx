@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { formatAmount, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { BackLink, Button, Card, Field, FormSection, Input, Page, Select, Textarea } from '../components/ui'
@@ -44,6 +45,7 @@ const emptyForm = {
 export function NewOrder() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [searchParams] = useSearchParams()
   const duplicateFrom = searchParams.get('duplicateFrom')
   const [form, setForm] = useState(emptyForm)
@@ -137,6 +139,7 @@ export function NewOrder() {
     },
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Pedido criado.')
       navigate(`/pedidos/${order.id}`)
     },
     onError: (err: unknown) => {
