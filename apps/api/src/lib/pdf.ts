@@ -234,7 +234,12 @@ function renderHtml(data: QuotePdfData) {
 let browserPromise: ReturnType<typeof puppeteer.launch> | null = null
 
 async function getBrowser() {
-  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox'] })
+  // O Chromium do Debian (instalado via apt no Dockerfile) tenta subir o
+  // crash_reporter/crashpad_handler ao iniciar e falha em alguns hosts com
+  // "chrome_crashpad_handler: --database is required", derrubando o launch
+  // inteiro antes mesmo de renderizar qualquer página. Desabilitar o crash
+  // reporter evita que esse subprocesso seja disparado.
+  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-crash-reporter'] })
   return browserPromise
 }
 

@@ -387,7 +387,10 @@ ${pages}
 let browserPromise: ReturnType<typeof puppeteer.launch> | null = null
 
 async function getBrowser() {
-  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox'] })
+  // Mesma correção de pdf.ts — evita o crashpad_handler do Chromium do
+  // Debian derrubando o launch com "chrome_crashpad_handler: --database is
+  // required" em alguns hosts.
+  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-crash-reporter'] })
   return browserPromise
 }
 
