@@ -15,6 +15,7 @@ export interface ExportDocData {
   freight: number | null
   paypalFee: number | null
   discount: number | null
+  netWeightKg: number | null
   grossWeightKg: number | null
   packageCount: number
 }
@@ -178,11 +179,17 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   // per-item weights are entered in — stacked right under the totals row.
   const totalsRowIndex = lastItemRow + 1
 
-  // Net weight: a live formula reading the same SUBTOTAL already computed
-  // for the totals row's "KG x Qtd" column, so it stays in sync if a
-  // yellow-highlighted weight cell gets filled in later.
+  // Peso líquido vem direto do pedido, igual ao Peso Bruto logo abaixo — não
+  // é mais uma fórmula somando a coluna "KG x Qtd". Peso por item quase nunca
+  // está 100% preenchido (fica em branco/editável quando falta o peso do
+  // produto no catálogo), então essa soma dava um total bem menor que o peso
+  // líquido real já registrado no pedido — a mesma inconsistência que o
+  // Packing List evita usando o valor do pedido diretamente.
   const netWeightCell = sheet.getRow(totalsRowIndex + 1).getCell(7)
-  netWeightCell.value = { formula: `"Peso Líquido: "&TEXT(H${totalsRowIndex},"0.000")` }
+  netWeightCell.value =
+    data.netWeightKg !== null
+      ? `Peso Líquido: ${data.netWeightKg.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 })}`
+      : 'Peso Líquido: —'
   netWeightCell.font = { bold: true, size: 9, color: { argb: INK } }
 
   if (data.grossWeightKg !== null) {

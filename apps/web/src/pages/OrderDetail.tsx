@@ -45,9 +45,7 @@ function ReadField({ label, value }: { label: string; value: string | null | und
   )
 }
 
-async function downloadFile(url: string, filename: string) {
-  const response = await fetch(url, { credentials: 'include' })
-  const blob = await response.blob()
+function triggerBlobDownload(blob: Blob, filename: string) {
   const objectUrl = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = objectUrl
@@ -232,21 +230,16 @@ export function OrderDetail() {
 
   async function downloadAllDocuments() {
     if (!order) return
-    const docs = [
-      order.invoicePdfUrl && { url: order.invoicePdfUrl, filename: `Order-${order.orderNumber}-Invoice.pdf` },
-      order.packingListPdfUrl && { url: order.packingListPdfUrl, filename: `Order-${order.orderNumber}-PackingList.pdf` },
-      order.packingListBoxPdfUrl && {
-        url: order.packingListBoxPdfUrl,
-        filename: `Order-${order.orderNumber}-PackingListBox.pdf`,
-      },
-      order.exportDocXlsxUrl && { url: order.exportDocXlsxUrl, filename: `Order-${order.orderNumber}-Export.xlsx` },
-    ].filter((d): d is { url: string; filename: string } => Boolean(d))
-
     setDownloadingAll(true)
     try {
-      for (const doc of docs) {
-        await downloadFile(doc.url, doc.filename)
-      }
+      // Disparar um <a download> por arquivo em sequência esbarrava no
+      // bloqueio do navegador para downloads automáticos consecutivos sem
+      // gesto do usuário a cada um — só o primeiro saía, o resto sumia sem
+      // erro. O servidor agora empacota tudo num único .zip.
+      const { data } = await api.get<Blob>(`/orders/${order.id}/documents.zip`, { responseType: 'blob' })
+      triggerBlobDownload(data, `Order-${order.orderNumber}-Documents.zip`)
+    } catch {
+      toast.error('Não foi possível baixar os documentos.')
     } finally {
       setDownloadingAll(false)
     }

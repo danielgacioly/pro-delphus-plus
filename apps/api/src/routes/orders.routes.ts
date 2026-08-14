@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import fs from 'node:fs/promises'
+import fsSync from 'node:fs'
 import path from 'node:path'
+import { ZipArchive, type ArchiverError } from 'archiver'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
@@ -39,6 +41,54 @@ ordersRouter.get(
   asyncHandler(async (_req, res) => {
     const rate = await fetchUsdBrlRate()
     res.json({ rate })
+  }),
+)
+
+// Um `<a download>` por arquivo, disparado em sequência via JS, esbarra no
+// limite do navegador de bloquear downloads automáticos consecutivos sem
+// gesto do usuário a cada um (só o primeiro sai; o resto é silenciosamente
+// bloqueado) — por isso "Baixar tudo" empacota tudo num único .zip em vez de
+// disparar vários downloads.
+ordersRouter.get(
+  '/:id/documents.zip',
+  asyncHandler(async (req, res) => {
+    const order = await prisma.order.findUnique({ where: { id: req.params.id } })
+    if (!order) throw new HttpError(404, 'Pedido não encontrado')
+
+    const docs = [
+      order.invoicePdfUrl && { url: order.invoicePdfUrl, filename: `Order-${order.orderNumber}-Invoice.pdf` },
+      order.packingListPdfUrl && { url: order.packingListPdfUrl, filename: `Order-${order.orderNumber}-PackingList.pdf` },
+      order.packingListBoxPdfUrl && {
+        url: order.packingListBoxPdfUrl,
+        filename: `Order-${order.orderNumber}-PackingListBox.pdf`,
+      },
+      order.exportDocXlsxUrl && { url: order.exportDocXlsxUrl, filename: `Order-${order.orderNumber}-Export.xlsx` },
+      order.awbDocumentUrl && {
+        url: order.awbDocumentUrl,
+        filename: `Order-${order.orderNumber}-AWB${path.extname(order.awbDocumentUrl)}`,
+      },
+      order.nfDocumentUrl && {
+        url: order.nfDocumentUrl,
+        filename: `Order-${order.orderNumber}-NF${path.extname(order.nfDocumentUrl)}`,
+      },
+    ].filter((d): d is { url: string; filename: string } => Boolean(d))
+
+    if (docs.length === 0) throw new HttpError(404, 'Nenhum documento disponível para este pedido')
+
+    res.setHeader('Content-Type', 'application/zip')
+    res.setHeader('Content-Disposition', `attachment; filename="Order-${order.orderNumber}-Documents.zip"`)
+
+    const archive = new ZipArchive({ zlib: { level: 9 } })
+    archive.on('error', (err: ArchiverError) => res.destroy(err))
+    archive.pipe(res)
+
+    const uploadsDir = path.resolve(env.UPLOADS_DIR)
+    for (const doc of docs) {
+      const filePath = path.join(uploadsDir, path.basename(doc.url))
+      if (fsSync.existsSync(filePath)) archive.file(filePath, { name: doc.filename })
+    }
+
+    await archive.finalize()
   }),
 )
 
@@ -192,6 +242,7 @@ async function buildAndWriteDocuments(
     freight,
     paypalFee: order.prepaymentBy === 'PAYPAL' ? order.paypalFee : null,
     discount: discount > 0 ? discount : null,
+    netWeightKg: order.netWeightKg,
     grossWeightKg: order.grossWeightKg,
     packageCount: order.packageCount,
     items: quote.items.map((item, index) => {
