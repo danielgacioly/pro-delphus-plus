@@ -32,17 +32,27 @@ async function fetchIsDoneMap(columnIds: string[]): Promise<Map<string, boolean>
 }
 
 async function ensureColumns(userId: string) {
-  const existing = await prisma.personalBoardColumn.findMany({ where: { userId }, orderBy: { position: 'asc' } })
-  if (existing.length > 0) return existing
+  // A tela de Minha Pro Delphus dispara GET /tasks e GET /board-columns em
+  // paralelo, e as duas chamam esta função — sem essa trava, duas requisições
+  // concorrentes na primeira visita de um usuário novo podiam ver "zero
+  // colunas" ao mesmo tempo e cada uma criar seu próprio conjunto padrão,
+  // duplicando Pendente/Em andamento/Concluído. O lock é por usuário (via
+  // hash do userId) e libera sozinho ao fim da transação.
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`
 
-  await prisma.personalBoardColumn.createMany({
-    data: DEFAULT_COLUMNS.map((name, position) => ({ userId, name, position })),
+    const existing = await tx.personalBoardColumn.findMany({ where: { userId }, orderBy: { position: 'asc' } })
+    if (existing.length > 0) return existing
+
+    await tx.personalBoardColumn.createMany({
+      data: DEFAULT_COLUMNS.map((name, position) => ({ userId, name, position })),
+    })
+    // "Concluído" já nasce marcado como o quadro de tarefas feitas.
+    await tx.$executeRaw`
+      UPDATE personal_board_columns SET "isDone" = true WHERE "userId" = ${userId} AND name = 'Concluído'
+    `
+    return tx.personalBoardColumn.findMany({ where: { userId }, orderBy: { position: 'asc' } })
   })
-  // "Concluído" já nasce marcado como o quadro de tarefas feitas.
-  await prisma.$executeRaw`
-    UPDATE personal_board_columns SET "isDone" = true WHERE "userId" = ${userId} AND name = 'Concluído'
-  `
-  return prisma.personalBoardColumn.findMany({ where: { userId }, orderBy: { position: 'asc' } })
 }
 
 tasksRouter.get(
