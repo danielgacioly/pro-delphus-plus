@@ -26,11 +26,50 @@ const quoteInclude = {
 } as const
 const include = { createdBy: { select: { id: true, name: true } }, quote: { include: quoteInclude } } as const
 
+// `documentsGeneratedAt` (Order) e `updatedAt` (Quote) não estão no client
+// tipado (mesma limitação de `prisma generate` documentada em
+// tasks.routes.ts) — lidos via SQL bruto e juntados antes de montar o DTO,
+// só para calcular `documentsStale`.
+type RawOrder = Omit<Parameters<typeof toOrderDTO>[0], 'documentsGeneratedAt' | 'quote'> & {
+  quote: Omit<Parameters<typeof toOrderDTO>[0]['quote'], 'updatedAt'>
+}
+
+async function toOrderDTOFresh(order: RawOrder) {
+  const [docRows, quoteRows] = await Promise.all([
+    prisma.$queryRaw<{ documentsGeneratedAt: Date }[]>`SELECT "documentsGeneratedAt" FROM orders WHERE id = ${order.id}`,
+    prisma.$queryRaw<{ updatedAt: Date }[]>`SELECT "updatedAt" FROM quotes WHERE id = ${order.quoteId}`,
+  ])
+  return toOrderDTO({
+    ...order,
+    documentsGeneratedAt: docRows[0].documentsGeneratedAt,
+    quote: { ...order.quote, updatedAt: quoteRows[0].updatedAt },
+  })
+}
+
+async function toOrderDTOsFresh(orders: RawOrder[]) {
+  if (orders.length === 0) return []
+  const orderIds = orders.map((o) => o.id)
+  const quoteIds = orders.map((o) => o.quoteId)
+  const [docRows, quoteRows] = await Promise.all([
+    prisma.$queryRaw<{ id: string; documentsGeneratedAt: Date }[]>`SELECT id, "documentsGeneratedAt" FROM orders WHERE id = ANY(${orderIds})`,
+    prisma.$queryRaw<{ id: string; updatedAt: Date }[]>`SELECT id, "updatedAt" FROM quotes WHERE id = ANY(${quoteIds})`,
+  ])
+  const docMap = new Map(docRows.map((r) => [r.id, r.documentsGeneratedAt]))
+  const quoteMap = new Map(quoteRows.map((r) => [r.id, r.updatedAt]))
+  return orders.map((order) =>
+    toOrderDTO({
+      ...order,
+      documentsGeneratedAt: docMap.get(order.id)!,
+      quote: { ...order.quote, updatedAt: quoteMap.get(order.quoteId)! },
+    }),
+  )
+}
+
 ordersRouter.get(
   '/',
   asyncHandler(async (_req, res) => {
     const orders = await prisma.order.findMany({ include, orderBy: { orderNumber: 'desc' } })
-    res.json({ orders: orders.map(toOrderDTO) })
+    res.json({ orders: await toOrderDTOsFresh(orders) })
   }),
 )
 
@@ -96,7 +135,7 @@ ordersRouter.get(
   asyncHandler(async (req, res) => {
     const order = await prisma.order.findUnique({ where: { id: req.params.id }, include })
     if (!order) throw new HttpError(404, 'Pedido não encontrado')
-    res.json({ order: toOrderDTO(order) })
+    res.json({ order: await toOrderDTOFresh(order) })
   }),
 )
 
@@ -367,7 +406,7 @@ ordersRouter.post(
       include,
     })
 
-    res.status(201).json({ order: toOrderDTO(order) })
+    res.status(201).json({ order: await toOrderDTOFresh(order) })
   }),
 )
 
@@ -429,8 +468,12 @@ ordersRouter.patch(
       },
       include,
     })
+    // Documentos regenerados agora — marca o instante pra comparar com
+    // quote.updatedAt e detectar quando o orçamento vinculado mudar de novo
+    // depois disso (ver toOrderDTOFresh/documentsStale).
+    await prisma.$executeRaw`UPDATE orders SET "documentsGeneratedAt" = now() WHERE id = ${order.id}`
 
-    res.json({ order: toOrderDTO(order) })
+    res.json({ order: await toOrderDTOFresh(order) })
   }),
 )
 
@@ -446,7 +489,7 @@ ordersRouter.patch(
     if (!existing) throw new HttpError(404, 'Pedido não encontrado')
 
     const order = await prisma.order.update({ where: { id: existing.id }, data: { status }, include })
-    res.json({ order: toOrderDTO(order) })
+    res.json({ order: await toOrderDTOFresh(order) })
   }),
 )
 
@@ -487,7 +530,7 @@ ordersRouter.post(
       data: { awbDocumentUrl: publicUrlFor(req.file.filename) },
       include,
     })
-    res.status(201).json({ order: toOrderDTO(order) })
+    res.status(201).json({ order: await toOrderDTOFresh(order) })
   }),
 )
 
@@ -505,6 +548,6 @@ ordersRouter.post(
       data: { nfDocumentUrl: publicUrlFor(req.file.filename) },
       include,
     })
-    res.status(201).json({ order: toOrderDTO(order) })
+    res.status(201).json({ order: await toOrderDTOFresh(order) })
   }),
 )

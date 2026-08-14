@@ -312,7 +312,7 @@ quotesRouter.patch(
 
     const quote = await prisma.$transaction(async (tx) => {
       await tx.quoteItem.deleteMany({ where: { quoteId: existing.id } })
-      return tx.quote.update({
+      const updated = await tx.quote.update({
         where: { id: existing.id },
         data: {
           language: data.language,
@@ -342,6 +342,12 @@ quotesRouter.patch(
         },
         include,
       })
+      // `updatedAt` não está no client tipado (prisma generate não roda
+      // neste ambiente) — sem isto, um pedido já gerado a partir deste
+      // orçamento nunca saberia que ficou desatualizado (ver
+      // toOrderDTOFresh/documentsStale em orders.routes.ts).
+      await tx.$executeRaw`UPDATE quotes SET "updatedAt" = now() WHERE id = ${existing.id}`
+      return updated
     })
 
     res.json({ quote: toQuoteDTO(quote) })

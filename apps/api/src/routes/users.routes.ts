@@ -82,8 +82,19 @@ usersRouter.patch(
   asyncHandler(async (req, res) => {
     const data = updateUserSchema.parse(req.body)
 
-    if (req.params.id === req.user!.id && (data.active === false || data.role === 'USER')) {
-      throw new HttpError(400, 'Você não pode remover seu próprio acesso de administrador')
+    // Vale pra si mesmo ou pra qualquer outro admin: o sistema nunca pode
+    // ficar sem nenhum admin ativo, senão ninguém mais consegue aprovar
+    // conta, resetar senha ou promover alguém de volta.
+    if (data.active === false || data.role === 'USER') {
+      const target = await prisma.user.findUnique({ where: { id: req.params.id } })
+      if (target?.role === 'ADMIN') {
+        const otherActiveAdmins = await prisma.user.count({
+          where: { role: 'ADMIN', active: true, id: { not: target.id } },
+        })
+        if (otherActiveAdmins === 0) {
+          throw new HttpError(400, 'Não é possível remover o último administrador do sistema')
+        }
+      }
     }
 
     const user = await prisma.user.update({ where: { id: req.params.id }, data })

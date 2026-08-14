@@ -231,6 +231,7 @@ model Quote {
   pdfUrl       String?
   xlsxUrl      String?
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   createdById String
   createdBy   User   @relation("QuoteCreatedBy", fields: [createdById], references: [id])
@@ -313,6 +314,13 @@ model Order {
   packingListPdfUrl    String?
   packingListBoxPdfUrl String?
   exportDocXlsxUrl     String?
+  /// Quando os documentos acima foram gerados pela última vez — só muda na
+  /// criação e na edição-com-regeneração, nunca em updates leves (status,
+  /// upload de AWB/NF manual), que passam pelo `update()` normal e por isso
+  /// mexeriam em `updatedAt` sem tocar nos PDFs. Compara com `quote.updatedAt`
+  /// pra saber se os documentos ficaram desatualizados depois de uma edição
+  /// no orçamento vinculado.
+  documentsGeneratedAt DateTime @default(now())
 
   createdById String
   createdBy   User     @relation("OrderCreatedBy", fields: [createdById], references: [id])

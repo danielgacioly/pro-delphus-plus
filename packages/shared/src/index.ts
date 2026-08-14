@@ -260,6 +260,8 @@ export interface OrderDTO {
   createdAt: string
   createdBy: { id: string; name: string }
   quote: QuoteDTO
+  /** O orçamento vinculado foi editado depois da última geração dos documentos deste pedido. */
+  documentsStale: boolean
 }
 
 export interface PersonalBoardColumnDTO {

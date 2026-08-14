@@ -9,6 +9,7 @@ import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
+import { IconAlert } from '../components/icons'
 import {
   BackLink,
   Button,
@@ -320,6 +321,22 @@ export function OrderDetail() {
               </Button>
             )}
           </div>
+
+          {order.documentsStale && (
+            <div className="animate-fade-in mt-4 flex items-start gap-2.5 rounded-xl bg-brand-50 px-3.5 py-3 text-[13px] text-brand-700">
+              <IconAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                O orçamento vinculado foi editado depois da última geração destes documentos — os arquivos abaixo podem
+                estar desatualizados.{' '}
+                {!editing && (
+                  <button type="button" onClick={startEdit} className="font-medium underline underline-offset-2">
+                    Editar pedido para atualizar
+                  </button>
+                )}
+              </p>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-2">
             {order.invoicePdfUrl && <DocLink href={order.invoicePdfUrl}>Invoice</DocLink>}
             {order.packingListPdfUrl && <DocLink href={order.packingListPdfUrl}>Packing List</DocLink>}

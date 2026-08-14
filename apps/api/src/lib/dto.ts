@@ -110,7 +110,13 @@ export function toQuoteDTO(
 export function toOrderDTO(
   order: Order & {
     createdBy: Pick<User, 'id' | 'name'>
+    // `documentsGeneratedAt` não está no client tipado (ver nota em
+    // tasks.routes.ts sobre `prisma generate` não rodar neste ambiente) — o
+    // chamador busca esse valor à parte via SQL bruto e junta antes de
+    // passar pra cá. Mesma coisa para `quote.updatedAt`.
+    documentsGeneratedAt: Date
     quote: Quote & {
+      updatedAt: Date
       items: (QuoteItem & { product: Product })[]
       createdBy: Pick<User, 'id' | 'name'>
       client: Pick<Client, 'country'> | null
@@ -152,6 +158,11 @@ export function toOrderDTO(
     createdAt: order.createdAt.toISOString(),
     createdBy: { id: order.createdBy.id, name: order.createdBy.name },
     quote: toQuoteDTO(order.quote),
+    // O orçamento vinculado foi editado depois da última vez que os
+    // documentos (Invoice, Packing List, Doc. de Exportação) deste pedido
+    // foram gerados — os PDFs/xlsx já emitidos podem não refletir mais os
+    // valores atuais do orçamento.
+    documentsStale: order.quote.updatedAt > order.documentsGeneratedAt,
   }
 }
 
