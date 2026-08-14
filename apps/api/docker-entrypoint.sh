@@ -17,5 +17,13 @@ echo "→ aplicando migrações"
 echo "→ iniciando API como usuário node"
 # Para criar o primeiro admin depois da subida:
 #   docker compose ... exec api node apps/api/dist/prisma/seed.js
+#
+# `setpriv` troca uid/gid mas NÃO ajusta $HOME — sem o `env HOME=...` abaixo,
+# o processo continua com o HOME herdado do root (/root), que o usuário node
+# não tem permissão de escrever. Isso passa despercebido até o Chromium tentar
+# guardar o banco do crashpad ali e falhar com "chrome_crashpad_handler:
+# --database is required", derrubando a geração de PDF (confirmado em
+# produção: falha com HOME=/root, funciona com um HOME gravável).
 exec setpriv --reuid=node --regid=node --init-groups \
+  env HOME=/home/node \
   node apps/api/dist/src/index.js
