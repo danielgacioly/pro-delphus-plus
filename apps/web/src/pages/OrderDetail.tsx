@@ -296,6 +296,16 @@ export function OrderDetail() {
   }
 
   const currency = order.quote.currency
+  // Mesma conta do Invoice gerado (subtotal + frete - desconto + taxa do
+  // PayPal quando é a forma de pagamento) — "Total do orçamento" nunca inclui
+  // a taxa, porque ela é um dado do pedido, não do orçamento em si. Sem este
+  // campo, trocar pra PayPal e salvar parecia não fazer efeito nenhum na tela,
+  // já que o único total visível ficava igual — a taxa só aparecia no PDF.
+  const invoiceTotal =
+    Number(order.quote.subtotal) +
+    Number(order.quote.freight ?? 0) -
+    Number(order.quote.discount) +
+    (order.prepaymentBy === 'PAYPAL' ? Number(order.paypalFee ?? 0) : 0)
 
   return (
     <Page
@@ -555,6 +565,10 @@ export function OrderDetail() {
                 />
                 <ReadField label="Câmbio USD/BRL" value={order.exchangeRate} />
                 <ReadField label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
+                <ReadField
+                  label="Total do pedido (Invoice)"
+                  value={`${currency} ${formatAmount(invoiceTotal)}`}
+                />
               </dl>
 
               <div className="mt-5 space-y-4 border-t border-neutral-200/70 pt-4">
