@@ -117,16 +117,24 @@ tasksRouter.delete(
     const existing = await prisma.personalBoardColumn.findUnique({ where: { id: req.params.id } })
     if (!existing || existing.userId !== req.user!.id) throw new HttpError(404, 'Quadro não encontrado')
 
-    // O quadro marcado como concluído nunca pode ser excluído diretamente —
-    // senão o conceito de "feito" some do board sem aviso. Pra excluir esse
-    // quadro específico, primeiro desmarque-o (ele deixa de ser "o" quadro
-    // de concluídas e passa a ser um quadro comum, removível como qualquer outro).
+    // O ÚLTIMO quadro marcado como concluído não pode ser excluído diretamente
+    // — senão o conceito de "feito" some do board sem aviso. Se por algum
+    // motivo o usuário tiver mais de um quadro concluído (ex.: duplicata),
+    // apagar um deles é seguro — sempre sobra pelo menos um. Pra excluir o
+    // único que resta, primeiro desmarque-o (vira um quadro comum, removível
+    // como qualquer outro).
     const isDone = await fetchIsDone(existing.id)
     if (isDone) {
-      throw new HttpError(
-        409,
-        'O quadro marcado como concluído não pode ser excluído. Desmarque-o (no ícone de check) antes de remover.',
-      )
+      const doneCount = await prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT count(*)::bigint AS count FROM personal_board_columns
+        WHERE "userId" = ${req.user!.id} AND "isDone" = true
+      `
+      if ((doneCount[0]?.count ?? 0n) <= 1n) {
+        throw new HttpError(
+          409,
+          'O quadro marcado como concluído não pode ser excluído. Desmarque-o (no ícone de check) antes de remover.',
+        )
+      }
     }
 
     const taskCount = await prisma.personalTask.count({ where: { columnId: existing.id } })
