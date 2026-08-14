@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type {
-  CreatePersonalTaskInput,
-  OrderDTO,
-  PersonalBoardColumnDTO,
-  PersonalTaskDTO,
-  QuoteDTO,
+import {
+  formatOrderNumber,
+  type CreatePersonalTaskInput,
+  type OrderDTO,
+  type PersonalBoardColumnDTO,
+  type PersonalTaskDTO,
+  type QuoteDTO,
 } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -336,7 +337,7 @@ function EditTaskModal({
               <option value="">—</option>
               {myOrders.map((o) => (
                 <option key={o.id} value={o.id}>
-                  #{o.orderNumber} — {o.quote.clientName}
+                  #{formatOrderNumber(o.orderNumber)} — {o.quote.clientName}
                 </option>
               ))}
             </Select>
@@ -707,7 +708,7 @@ export function MyDesk() {
                 <option value="">—</option>
                 {myOrders.map((o) => (
                   <option key={o.id} value={o.id}>
-                    #{o.orderNumber} — {o.quote.clientName}
+                    #{formatOrderNumber(o.orderNumber)} — {o.quote.clientName}
                   </option>
                 ))}
               </Select>
@@ -899,7 +900,7 @@ export function MyDesk() {
                           </p>
                         )}
 
-                        {(task.quoteNumber || task.orderNumber) && (
+                        {(task.quoteNumber || task.orderNumber != null) && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {task.quoteNumber && (
                               <Link
@@ -910,13 +911,13 @@ export function MyDesk() {
                                 Orç. {task.quoteNumber}
                               </Link>
                             )}
-                            {task.orderNumber && (
+                            {task.orderNumber != null && (
                               <Link
                                 to={`/pedidos/${task.orderId}`}
                                 onClick={(e) => e.stopPropagation()}
                                 className="rounded-md bg-neutral-500/10 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600 transition-colors hover:bg-neutral-500/20"
                               >
-                                Pedido #{task.orderNumber}
+                                Pedido #{formatOrderNumber(task.orderNumber)}
                               </Link>
                             )}
                           </div>

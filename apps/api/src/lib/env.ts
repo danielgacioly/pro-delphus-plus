@@ -56,6 +56,9 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .optional(),
 
+  /** Número do primeiro pedido — só tem efeito enquanto a tabela `orders` está vazia (o próximo é sempre max+1). */
+  ORDER_NUMBER_START: z.coerce.number().int().min(0).default(0),
+
   ADMIN_SEED_NAME: z.string().default('Administrador'),
   ADMIN_SEED_EMAIL: z.string().email().default('admin@prodelphus.com'),
   // Sem default: o seed é o que cria a primeira conta de admin, e um default

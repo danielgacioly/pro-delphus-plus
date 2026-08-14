@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
+import { formatOrderNumber } from '@prodelphusplus/shared'
 import { COMPANY } from './pdf.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -228,7 +229,7 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
 
   <div class="title-row">
     <div class="doc-title">${title}</div>
-    <div class="doc-number">${data.orderNumber}</div>
+    <div class="doc-number">${formatOrderNumber(data.orderNumber)}</div>
   </div>
 
   <table class="items">
@@ -339,7 +340,7 @@ Phone: +55 (81) 3432.7702</p>
 
   <div class="block">
     <div class="pl-title">
-      Packing List (${data.orderNumber})
+      Packing List (${formatOrderNumber(data.orderNumber)})
       ${page.totalBoxes > 1 ? `<span class="box-label">Box ${page.boxNumber} of ${page.totalBoxes}</span>` : ''}
     </div>
     ${itemLines || '<div class="pl-item pl-empty">— no items assigned to this box —</div>'}

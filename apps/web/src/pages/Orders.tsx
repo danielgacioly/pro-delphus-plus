@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatAmount, type OrderDTO, type OrderStatus } from '@prodelphusplus/shared'
+import { formatAmount, formatOrderNumber, type OrderDTO, type OrderStatus } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
@@ -186,7 +186,7 @@ export function Orders() {
                       to={`/pedidos/${o.id}`}
                       className="tabular font-semibold text-ink-900 transition-colors hover:text-brand-600"
                     >
-                      #{o.orderNumber}
+                      #{formatOrderNumber(o.orderNumber)}
                     </Link>
                   </Td>
                   <Td className="max-w-88">

@@ -4,6 +4,7 @@ import type { Role, UserDTO } from '@prodelphusplus/shared'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { ResetPasswordModal } from '../../components/ResetPasswordModal'
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
 import {
   Badge,
   Button,
@@ -51,6 +52,8 @@ export function AdminUsers() {
   )
   const [resettingUser, setResettingUser] = useState<UserDTO | null>(null)
   const [resetPasswordError, setResetPasswordError] = useState<string | null>(null)
+  const [deletingUser, setDeletingUser] = useState<UserDTO | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] })
 
@@ -94,6 +97,21 @@ export function AdminUsers() {
       await api.patch(`/users/${id}`, { role })
     },
     onSuccess: invalidate,
+  })
+
+  const deleteUser = useMutation({
+    mutationFn: async (id: string) => api.delete(`/users/${id}`),
+    onSuccess: () => {
+      invalidate()
+      setDeletingUser(null)
+      setDeleteError(null)
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        'Não foi possível excluir a conta. Tente novamente.'
+      setDeleteError(message)
+    },
   })
 
   const resetPassword = useMutation({
@@ -298,6 +316,19 @@ export function AdminUsers() {
                       >
                         Redefinir senha
                       </Button>
+                      {u.role !== 'ADMIN' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setDeleteError(null)
+                            setDeletingUser(u)
+                          }}
+                          className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                        >
+                          Excluir
+                        </Button>
+                      )}
                     </div>
                   </Td>
                 </Tr>
@@ -314,6 +345,17 @@ export function AdminUsers() {
           error={resetPasswordError}
           onCancel={() => setResettingUser(null)}
           onConfirm={(newPassword) => resetPassword.mutate({ id: resettingUser.id, newPassword })}
+        />
+      )}
+
+      {deletingUser && (
+        <ConfirmDeleteModal
+          title={`Excluir conta de ${deletingUser.name}?`}
+          description="Orçamentos, pedidos e produtos atualizados por esta conta passam a ficar registrados no admin principal. Contas de administrador nunca podem ser excluídas."
+          isPending={deleteUser.isPending}
+          error={deleteError}
+          onConfirm={() => deleteUser.mutate(deletingUser.id)}
+          onCancel={() => setDeletingUser(null)}
         />
       )}
     </Page>

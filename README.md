@@ -164,6 +164,19 @@ O sistema roda em **HTTP puro** — decisão consciente para uso interno, com ac
 
 O que se abre mão: quem estiver no caminho da rede consegue ler senha e token de sessão, e o Chrome mostra "Não seguro" ao lado do campo de senha. Aceitável em rede fechada; se o acesso mudar (rede aberta, exposição externa), revisitar isso antes.
 
+### 6. Trocar o número inicial dos pedidos
+
+O número do primeiro pedido ("Pedido #0000", "Pedido #2801" etc.) vem da variável `ORDER_NUMBER_START` (padrão: `0`, exibido com 4 dígitos). A partir do primeiro pedido, o próximo número é sempre `último + 1` — a variável só é lida quando a tabela `orders` está **vazia**.
+
+Para mudar (ex.: quando você souber qual foi o último número de invoice emitido fora da plataforma):
+
+1. Edite `ORDER_NUMBER_START` em `.env.prod` (produção) ou `apps/api/.env` (local).
+2. Confirme que não existe nenhum pedido no banco ainda — se já existir algum, o valor novo não tem efeito até a tabela `orders` ser esvaziada.
+3. Reinicie a API:
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build api
+   ```
+
 ## Backup e restauração
 
 O serviço `backup` roda todo dia e grava em `./backups/`:

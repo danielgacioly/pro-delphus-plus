@@ -91,6 +91,41 @@ usersRouter.patch(
   }),
 )
 
+usersRouter.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    if (req.params.id === req.user!.id) {
+      throw new HttpError(400, 'Você não pode excluir a própria conta')
+    }
+
+    const target = await prisma.user.findUnique({ where: { id: req.params.id } })
+    if (!target) throw new HttpError(404, 'Conta não encontrada')
+    if (target.role === 'ADMIN') {
+      throw new HttpError(400, 'Contas de administrador não podem ser excluídas')
+    }
+
+    // Tudo que a conta criou (produtos atualizados, clientes, orçamentos,
+    // pedidos) precisa de um dono válido — Quote/Order exigem createdById não
+    // nulo. Em vez de bloquear a exclusão por causa disso, o histórico passa
+    // para o admin mais antigo (o "principal") antes de apagar a conta.
+    const mainAdmin = await prisma.user.findFirst({
+      where: { role: 'ADMIN' },
+      orderBy: { createdAt: 'asc' },
+    })
+    if (!mainAdmin) throw new HttpError(500, 'Nenhuma conta de administrador encontrada')
+
+    await prisma.$transaction([
+      prisma.product.updateMany({ where: { updatedById: target.id }, data: { updatedById: mainAdmin.id } }),
+      prisma.client.updateMany({ where: { createdById: target.id }, data: { createdById: mainAdmin.id } }),
+      prisma.quote.updateMany({ where: { createdById: target.id }, data: { createdById: mainAdmin.id } }),
+      prisma.order.updateMany({ where: { createdById: target.id }, data: { createdById: mainAdmin.id } }),
+      prisma.user.delete({ where: { id: target.id } }),
+    ])
+
+    res.status(204).send()
+  }),
+)
+
 const resetPasswordSchema = z.object({
   password: z.string().min(6),
 })

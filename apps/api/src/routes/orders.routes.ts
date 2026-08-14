@@ -13,13 +13,11 @@ import { generateExportDocXlsx } from '../lib/orderXlsx.js'
 import { fetchUsdBrlRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
 import { env } from '../lib/env.js'
-import type { BoxAssignments } from '@prodelphusplus/shared'
+import { formatOrderNumber, type BoxAssignments } from '@prodelphusplus/shared'
 
 export const ordersRouter = Router()
 
 ordersRouter.use(requireAuth)
-
-const FIRST_ORDER_NUMBER = 2800
 
 const quoteInclude = {
   items: { include: { product: true } },
@@ -55,28 +53,29 @@ ordersRouter.get(
     const order = await prisma.order.findUnique({ where: { id: req.params.id } })
     if (!order) throw new HttpError(404, 'Pedido não encontrado')
 
+    const orderNumber = formatOrderNumber(order.orderNumber)
     const docs = [
-      order.invoicePdfUrl && { url: order.invoicePdfUrl, filename: `Order-${order.orderNumber}-Invoice.pdf` },
-      order.packingListPdfUrl && { url: order.packingListPdfUrl, filename: `Order-${order.orderNumber}-PackingList.pdf` },
+      order.invoicePdfUrl && { url: order.invoicePdfUrl, filename: `Order-${orderNumber}-Invoice.pdf` },
+      order.packingListPdfUrl && { url: order.packingListPdfUrl, filename: `Order-${orderNumber}-PackingList.pdf` },
       order.packingListBoxPdfUrl && {
         url: order.packingListBoxPdfUrl,
-        filename: `Order-${order.orderNumber}-PackingListBox.pdf`,
+        filename: `Order-${orderNumber}-PackingListBox.pdf`,
       },
-      order.exportDocXlsxUrl && { url: order.exportDocXlsxUrl, filename: `Order-${order.orderNumber}-Export.xlsx` },
+      order.exportDocXlsxUrl && { url: order.exportDocXlsxUrl, filename: `Order-${orderNumber}-Export.xlsx` },
       order.awbDocumentUrl && {
         url: order.awbDocumentUrl,
-        filename: `Order-${order.orderNumber}-AWB${path.extname(order.awbDocumentUrl)}`,
+        filename: `Order-${orderNumber}-AWB${path.extname(order.awbDocumentUrl)}`,
       },
       order.nfDocumentUrl && {
         url: order.nfDocumentUrl,
-        filename: `Order-${order.orderNumber}-NF${path.extname(order.nfDocumentUrl)}`,
+        filename: `Order-${orderNumber}-NF${path.extname(order.nfDocumentUrl)}`,
       },
     ].filter((d): d is { url: string; filename: string } => Boolean(d))
 
     if (docs.length === 0) throw new HttpError(404, 'Nenhum documento disponível para este pedido')
 
     res.setHeader('Content-Type', 'application/zip')
-    res.setHeader('Content-Disposition', `attachment; filename="Order-${order.orderNumber}-Documents.zip"`)
+    res.setHeader('Content-Disposition', `attachment; filename="Order-${orderNumber}-Documents.zip"`)
 
     const archive = new ZipArchive({ zlib: { level: 9 } })
     archive.on('error', (err: ArchiverError) => res.destroy(err))
@@ -103,7 +102,7 @@ ordersRouter.get(
 
 async function nextOrderNumber() {
   const last = await prisma.order.findFirst({ orderBy: { orderNumber: 'desc' } })
-  return last ? last.orderNumber + 1 : FIRST_ORDER_NUMBER
+  return last ? last.orderNumber + 1 : env.ORDER_NUMBER_START
 }
 
 const orderFieldsSchema = z.object({
@@ -273,11 +272,12 @@ async function buildAndWriteDocuments(
 
   const uploadsDir = path.resolve(env.UPLOADS_DIR)
   await fs.mkdir(uploadsDir, { recursive: true })
+  const orderNumber = formatOrderNumber(order.orderNumber)
   const filenames = {
-    invoice: `Order-${order.orderNumber}-Invoice.pdf`,
-    packingList: `Order-${order.orderNumber}-PackingList.pdf`,
-    packingListBox: `Order-${order.orderNumber}-PackingListBox.pdf`,
-    exportDoc: `Order-${order.orderNumber}-Export.xlsx`,
+    invoice: `Order-${orderNumber}-Invoice.pdf`,
+    packingList: `Order-${orderNumber}-PackingList.pdf`,
+    packingListBox: `Order-${orderNumber}-PackingListBox.pdf`,
+    exportDoc: `Order-${orderNumber}-Export.xlsx`,
   }
   await Promise.all([
     fs.writeFile(path.join(uploadsDir, filenames.invoice), invoiceBuffer),

@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import { formatOrderNumber } from '@prodelphusplus/shared'
 
 export interface ExportDocItem {
   code: string
@@ -62,7 +63,7 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
 
   sheet.mergeCells('B1:E1')
   const titleCell = sheet.getCell('B1')
-  titleCell.value = `Documento de Exportação — Pedido ${data.orderNumber}`
+  titleCell.value = `Documento de Exportação — Pedido ${formatOrderNumber(data.orderNumber)}`
   titleCell.font = { bold: true, size: 14, color: { argb: INK } }
 
   // Label gets its own merged range (B:C) so its text never overflows into —

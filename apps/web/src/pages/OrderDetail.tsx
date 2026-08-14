@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { formatAmount, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
+import { formatAmount, formatOrderNumber, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -237,7 +237,7 @@ export function OrderDetail() {
       // gesto do usuário a cada um — só o primeiro saía, o resto sumia sem
       // erro. O servidor agora empacota tudo num único .zip.
       const { data } = await api.get<Blob>(`/orders/${order.id}/documents.zip`, { responseType: 'blob' })
-      triggerBlobDownload(data, `Order-${order.orderNumber}-Documents.zip`)
+      triggerBlobDownload(data, `Order-${formatOrderNumber(order.orderNumber)}-Documents.zip`)
     } catch {
       toast.error('Não foi possível baixar os documentos.')
     } finally {
@@ -298,7 +298,7 @@ export function OrderDetail() {
 
   return (
     <Page
-      title={`Pedido #${order.orderNumber}`}
+      title={`Pedido #${formatOrderNumber(order.orderNumber)}`}
       description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
       actions={
         <Button size="sm" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
@@ -602,7 +602,7 @@ export function OrderDetail() {
 
       {deleting && (
         <ConfirmDeleteModal
-          title={`Excluir pedido #${order.orderNumber}?`}
+          title={`Excluir pedido #${formatOrderNumber(order.orderNumber)}?`}
           description="O pedido e os documentos gerados (Invoice, Packing List, etc.) serão removidos definitivamente. O orçamento de origem não é afetado."
           isPending={deleteOrder.isPending}
           onConfirm={() => deleteOrder.mutate()}

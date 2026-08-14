@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { formatAmount, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
+import { formatAmount, formatOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
@@ -163,7 +163,7 @@ export function NewOrder() {
       {duplicateFrom && (
         <div className="animate-fade-in mb-4 rounded-xl bg-amber-500/12 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
           {sourceOrder
-            ? `Campos preenchidos a partir do pedido #${sourceOrder.orderNumber}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
+            ? `Campos preenchidos a partir do pedido #${formatOrderNumber(sourceOrder.orderNumber)}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
             : 'Carregando dados do pedido a duplicar…'}
         </div>
       )}

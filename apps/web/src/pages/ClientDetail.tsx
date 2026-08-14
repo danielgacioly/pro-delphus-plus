@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { formatAmount, type ClientDTO, type OrderStatus, type QuoteDTO } from '@prodelphusplus/shared'
+import { formatAmount, formatOrderNumber, type ClientDTO, type OrderStatus, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -304,7 +304,7 @@ export function ClientDetail() {
                     orders.map((order) => (
                       <Tr key={order.id} interactive onClick={() => navigate(`/pedidos/${order.id}`)}>
                         <Td>
-                          <span className="font-medium text-ink-900">#{order.orderNumber}</span>
+                          <span className="font-medium text-ink-900">#{formatOrderNumber(order.orderNumber)}</span>
                         </Td>
                         <Td className="text-neutral-500">{order.quoteNumber}</Td>
                         <Td className="text-neutral-500">{formatDate(order.createdAt)}</Td>
