@@ -5,6 +5,7 @@ import path from 'node:path'
 import { ZipArchive, type ArchiverError } from 'archiver'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
+import { Prisma } from '../../generated/prisma/client.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toOrderDTO } from '../lib/dto.js'
@@ -142,6 +143,14 @@ ordersRouter.get(
 async function nextOrderNumber() {
   const last = await prisma.order.findFirst({ orderBy: { orderNumber: 'desc' } })
   return last ? last.orderNumber + 1 : env.ORDER_NUMBER_START
+}
+
+// `orderNumber` is the only unique field on Order besides `id` (server-generated,
+// effectively never collides), so any P2002 here means an orderNumber race.
+// (Prisma 7's driver-adapter errors don't reliably populate `meta.target`
+// with the field name — checked against a live P2002 before relying on it.)
+function isOrderNumberConflict(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
 
 const orderFieldsSchema = z.object({
@@ -342,7 +351,6 @@ ordersRouter.post(
     if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
     if (quote.items.length === 0) throw new HttpError(400, 'Este orçamento não possui itens')
 
-    const orderNumber = await nextOrderNumber()
     // Nunca cair silenciosamente para um câmbio de 1 — isso corrompe o valor
     // total do Invoice/Export Doc sem aviso nenhum. Se não veio do form e a
     // busca automática falhar, é melhor recusar e pedir para digitar à mão.
@@ -354,11 +362,54 @@ ordersRouter.post(
     const packageCount = data.packageCount ?? 1
     const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
 
+    // O número é reservado com um INSERT (rápido, sem URLs de documento)
+    // ANTES de gerar o PDF/xlsx (lento — Puppeteer/ExcelJS levam segundos).
+    // Ver o mesmo padrão e a mesma justificativa em quotes.routes.ts POST /.
+    let order: Awaited<ReturnType<typeof prisma.order.create>> | undefined
+    let orderNumber = 0
+    for (let attempt = 0; attempt < 5; attempt++) {
+      orderNumber = await nextOrderNumber()
+      try {
+        order = await prisma.order.create({
+          data: {
+            orderNumber,
+            quoteId: data.quoteId,
+            purchaseOrder: data.purchaseOrder ?? null,
+            orderedByEmail: data.orderedByEmail,
+            shipDate: data.shipDate ?? null,
+            billToText: data.billToText,
+            shipToText: data.shipToText,
+            shipToNote: data.shipToNote ?? null,
+            numberOfPackages: formatPackageCountLabel(packageCount),
+            netWeightKg: data.netWeightKg ?? null,
+            grossWeightKg: data.grossWeightKg ?? null,
+            awbNumber: data.awbNumber ?? null,
+            incoterms: data.incoterms ?? null,
+            itemWeightsKg: data.itemWeightsKg,
+            packageCount,
+            boxAssignments: data.boxAssignments ?? undefined,
+            prepaymentBy,
+            paypalFee: data.paypalFee ?? null,
+            nfNumber: data.nfNumber ?? null,
+            nfDate: data.nfDate ?? null,
+            exchangeRate,
+            createdById: req.user!.id,
+          },
+          include,
+        })
+        break
+      } catch (err) {
+        if (isOrderNumberConflict(err)) continue
+        throw err
+      }
+    }
+    if (!order) throw new HttpError(409, 'Não foi possível reservar um número de pedido. Tente novamente.')
+
     const orderForDocs = {
       orderNumber,
       purchaseOrder: data.purchaseOrder ?? null,
       orderedByEmail: data.orderedByEmail,
-      invoiceDate: new Date(),
+      invoiceDate: order.invoiceDate,
       billToText: data.billToText,
       shipToText: data.shipToText,
       netWeightKg: data.netWeightKg ?? null,
@@ -377,36 +428,9 @@ ordersRouter.post(
 
     const docUrls = await buildAndWriteDocuments(orderForDocs, quote)
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        quoteId: data.quoteId,
-        purchaseOrder: data.purchaseOrder ?? null,
-        orderedByEmail: data.orderedByEmail,
-        shipDate: data.shipDate ?? null,
-        billToText: data.billToText,
-        shipToText: data.shipToText,
-        shipToNote: data.shipToNote ?? null,
-        numberOfPackages: formatPackageCountLabel(packageCount),
-        netWeightKg: data.netWeightKg ?? null,
-        grossWeightKg: data.grossWeightKg ?? null,
-        awbNumber: data.awbNumber ?? null,
-        incoterms: data.incoterms ?? null,
-        itemWeightsKg: data.itemWeightsKg,
-        packageCount,
-        boxAssignments: data.boxAssignments ?? undefined,
-        prepaymentBy,
-        paypalFee: data.paypalFee ?? null,
-        nfNumber: data.nfNumber ?? null,
-        nfDate: data.nfDate ?? null,
-        exchangeRate,
-        ...docUrls,
-        createdById: req.user!.id,
-      },
-      include,
-    })
+    const updated = await prisma.order.update({ where: { id: order.id }, data: docUrls, include })
 
-    res.status(201).json({ order: await toOrderDTOFresh(order) })
+    res.status(201).json({ order: await toOrderDTOFresh(updated) })
   }),
 )
 

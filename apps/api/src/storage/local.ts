@@ -25,5 +25,7 @@ export function publicUrlFor(filename: string) {
 export function deleteStoredFile(url: string) {
   const filename = path.basename(url)
   const filePath = path.join(uploadsDir, filename)
-  fs.rm(filePath, { force: true }, () => {})
+  fs.rm(filePath, { force: true }, (err) => {
+    if (err) console.error(`Falha ao excluir arquivo órfão ${filePath}:`, err)
+  })
 }

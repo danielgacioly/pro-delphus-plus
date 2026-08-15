@@ -3,6 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
+import { Prisma } from '../../generated/prisma/client.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toQuoteDTO } from '../lib/dto.js'
@@ -247,53 +248,79 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
   return { pdfUrl: `/uploads/${pdfFilename}`, xlsxUrl: `/uploads/${xlsxFilename}` }
 }
 
+// `quoteNumber` is the only unique field on Quote besides `id` (server-generated,
+// effectively never collides), so any P2002 here means a quoteNumber race.
+// (Prisma 7's driver-adapter errors don't reliably populate `meta.target`
+// with the field name — checked against a live P2002 before relying on it.)
+function isQuoteNumberConflict(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+}
+
 quotesRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const data = createQuoteSchema.parse(req.body)
     const resolved = await resolveQuoteData(data, req.user!.id)
-
-    const now = new Date()
-    const datePrefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-    const todayCount = await prisma.quote.count({ where: { quoteNumber: { startsWith: `${datePrefix}-` } } })
-    const quoteNumber = `${datePrefix}-${String(todayCount + 1).padStart(2, '0')}`
-
-    const { pdfUrl, xlsxUrl } = await generateQuoteFiles(quoteNumber, data, resolved)
     const { currency, priceTier, lineItems, subtotal, total, notes } = resolved
 
-    const quote = await prisma.quote.create({
-      data: {
-        quoteNumber,
-        language: data.language,
-        currency,
-        priceTier,
-        clientPrefix: data.clientPrefix,
-        clientName: data.clientName,
-        clientId: data.clientId ?? null,
-        notes,
-        freight: data.freight ?? null,
-        discount: data.discount,
-        subtotal,
-        total,
-        pdfUrl,
-        xlsxUrl,
-        createdById: req.user!.id,
-        items: {
-          create: lineItems.map((i) => ({
-            sku: i.sku,
-            productId: i.productId,
-            quantity: i.quantity,
-            listPrice: i.listPrice,
-            unitPrice: i.unitPrice,
-            lineTotal: i.lineTotal,
-            description: i.description,
-          })),
-        },
-      },
-      include,
-    })
+    // O número é reservado com um INSERT (rápido) ANTES de gerar o PDF/xlsx
+    // (lento — Puppeteer/ExcelJS levam segundos). Antes, o número era só
+    // calculado (contagem do dia) e o INSERT só acontecia depois de gerar os
+    // arquivos — nessa janela larga, dois orçamentos criados perto um do
+    // outro podiam calcular o MESMO número, e o segundo (perdedor da corrida
+    // no INSERT, bloqueado pela constraint única) já tinha sobrescrito o
+    // arquivo do primeiro no disco antes de falhar. Reservando primeiro, uma
+    // colisão falha na hora — antes de qualquer arquivo ser escrito — e a
+    // tentativa seguinte pega o próximo número livre.
+    let quote: Awaited<ReturnType<typeof prisma.quote.create>> | undefined
+    let quoteNumber = ''
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const now = new Date()
+      const datePrefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+      const todayCount = await prisma.quote.count({ where: { quoteNumber: { startsWith: `${datePrefix}-` } } })
+      quoteNumber = `${datePrefix}-${String(todayCount + 1).padStart(2, '0')}`
+      try {
+        quote = await prisma.quote.create({
+          data: {
+            quoteNumber,
+            language: data.language,
+            currency,
+            priceTier,
+            clientPrefix: data.clientPrefix,
+            clientName: data.clientName,
+            clientId: data.clientId ?? null,
+            notes,
+            freight: data.freight ?? null,
+            discount: data.discount,
+            subtotal,
+            total,
+            createdById: req.user!.id,
+            items: {
+              create: lineItems.map((i) => ({
+                sku: i.sku,
+                productId: i.productId,
+                quantity: i.quantity,
+                listPrice: i.listPrice,
+                unitPrice: i.unitPrice,
+                lineTotal: i.lineTotal,
+                description: i.description,
+              })),
+            },
+          },
+          include,
+        })
+        break
+      } catch (err) {
+        if (isQuoteNumberConflict(err)) continue
+        throw err
+      }
+    }
+    if (!quote) throw new HttpError(409, 'Não foi possível reservar um número de orçamento. Tente novamente.')
 
-    res.status(201).json({ quote: toQuoteDTO(quote) })
+    const { pdfUrl, xlsxUrl } = await generateQuoteFiles(quoteNumber, data, resolved)
+    const updated = await prisma.quote.update({ where: { id: quote.id }, data: { pdfUrl, xlsxUrl }, include })
+
+    res.status(201).json({ quote: toQuoteDTO(updated) })
   }),
 )
 
