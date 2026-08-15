@@ -82,6 +82,7 @@ const createQuoteSchema = z.object({
       z.object({
         productId: z.string().min(1),
         quantity: z.coerce.number().int().positive(),
+        title: z.string().optional(),
         description: z.string().optional(),
         unitPrice: z.coerce.number().positive().optional(),
       }),
@@ -151,8 +152,11 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
       const unitPrice = item.unitPrice ?? listPrice!
       const lineTotal = unitPrice * item.quantity
       // Title (product name/code) is rendered in bold; the descriptive text follows it.
-      // A per-item override replaces the descriptive text only, never the title.
-      const title = product.name
+      // Both accept a per-item override: o nome digitado no orçamento é
+      // guardado no item (`titleOverride`) para que o documento não mude se o
+      // produto for renomeado no catálogo depois.
+      const titleOverride = item.title?.trim() || null
+      const title = titleOverride ?? product.name
       const description = item.description || product.description || ''
       const primaryImage =
         product.media.find((m) => m.type === 'IMAGE' && m.isPrimary) ??
@@ -162,6 +166,7 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
         sku: product.sku,
         productId: product.id,
         title,
+        titleOverride,
         quantity: item.quantity,
         listPrice,
         unitPrice,
@@ -299,6 +304,7 @@ quotesRouter.post(
               create: lineItems.map((i) => ({
                 sku: i.sku,
                 productId: i.productId,
+                title: i.titleOverride,
                 quantity: i.quantity,
                 listPrice: i.listPrice,
                 unitPrice: i.unitPrice,
@@ -359,6 +365,7 @@ quotesRouter.patch(
             create: lineItems.map((i) => ({
               sku: i.sku,
               productId: i.productId,
+              title: i.titleOverride,
               quantity: i.quantity,
               listPrice: i.listPrice,
               unitPrice: i.unitPrice,

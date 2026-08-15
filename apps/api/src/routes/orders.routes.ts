@@ -231,7 +231,14 @@ async function buildAndWriteDocuments(
     currency: string
     freight: unknown
     discount: unknown
-    items: { quantity: number; unitPrice: unknown; lineTotal: unknown; description: string; product: { name: string; weightKg: unknown } }[]
+    items: {
+      quantity: number
+      unitPrice: unknown
+      lineTotal: unknown
+      title: string | null
+      description: string
+      product: { name: string; weightKg: unknown }
+    }[]
   },
 ) {
   const currency = quote.currency
@@ -239,7 +246,8 @@ async function buildAndWriteDocuments(
   const discount = Number(quote.discount)
 
   const docItems = quote.items.map((item) => ({
-    title: item.product.name,
+    // Nome editado no orçamento vence o do catálogo — ver QuoteItem.title.
+    title: item.title ?? item.product.name,
     description: item.description,
     quantity: item.quantity,
     unitPrice: Number(item.unitPrice),
@@ -303,7 +311,7 @@ async function buildAndWriteDocuments(
             ? Number(item.product.weightKg)
             : null
       return {
-        code: item.product.name,
+        code: item.title ?? item.product.name,
         quantity: item.quantity,
         unitPriceUsd: Number(item.unitPrice),
         weightKgUnit,

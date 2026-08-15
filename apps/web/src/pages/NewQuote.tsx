@@ -48,6 +48,10 @@ interface DraftItem {
   productId: string
   query: string
   quantity: number
+  // Nome impresso no documento. Vazio = usa o nome do catálogo; preenchido
+  // vira um override que sobrevive a renomeações do produto.
+  title: string
+  catalogName: string
   description: string
   unitPrice: string
 }
@@ -67,7 +71,15 @@ async function fetchProduct(id: string) {
   return data.product
 }
 
-const emptyItem: DraftItem = { productId: '', query: '', quantity: 1, description: '', unitPrice: '' }
+const emptyItem: DraftItem = {
+  productId: '',
+  query: '',
+  quantity: 1,
+  title: '',
+  catalogName: '',
+  description: '',
+  unitPrice: '',
+}
 
 export function NewQuote() {
   const navigate = useNavigate()
@@ -128,6 +140,8 @@ export function NewQuote() {
           productId: item.productId,
           query: `${item.productName} (${item.sku})`,
           quantity: item.quantity,
+          title: item.titleOverride ?? '',
+          catalogName: item.catalogName,
           description: item.description,
           unitPrice: isCustomPrice ? String(unitPrice) : '',
         }
@@ -170,6 +184,7 @@ export function NewQuote() {
           .map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
+            title: i.title.trim() || undefined,
             description: i.description || undefined,
             unitPrice: i.unitPrice ? Number(i.unitPrice) : undefined,
           })),
@@ -206,7 +221,15 @@ export function NewQuote() {
   }
 
   function selectProduct(index: number, product: ProductDTO) {
-    updateItem(index, { productId: product.id, query: `${product.name} (${product.sku})` })
+    // Trocar de produto limpa o nome customizado: manter o nome do produto
+    // anterior no item novo é justamente o tipo de documento errado que a
+    // edição deveria evitar.
+    updateItem(index, {
+      productId: product.id,
+      query: `${product.name} (${product.sku})`,
+      catalogName: product.name,
+      title: '',
+    })
     setActiveIndex(null)
     setInfoIndex(null)
   }
@@ -448,6 +471,21 @@ export function NewQuote() {
                       )}
                     </div>
                   )}
+
+                  <div className="mt-2 flex gap-2">
+                    <Field
+                      label="Nome customizado"
+                      hint="Opcional — substitui o nome do catálogo só neste orçamento"
+                      className="flex-1"
+                    >
+                      <Input
+                        value={item.title}
+                        placeholder={item.catalogName || 'Nome do catálogo'}
+                        onChange={(e) => updateItem(index, { title: e.target.value })}
+                        className="h-9 text-[13px]"
+                      />
+                    </Field>
+                  </div>
 
                   <div className="mt-2 flex gap-2">
                     <Field

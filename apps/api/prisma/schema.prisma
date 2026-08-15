@@ -250,6 +250,10 @@ model QuoteItem {
   productId   String
   product     Product @relation(fields: [productId], references: [id])
   sku         String
+  /// Nome impresso no documento. Null = usar o nome do produto no catálogo.
+  /// Preenchido quando o vendedor edita o nome dentro do orçamento — aí o
+  /// texto precisa sobreviver a renomeações posteriores do catálogo.
+  title       String?
   description String
   quantity    Int
   /// Preço de catálogo na moeda/tabela do orçamento, congelado na emissão.

@@ -180,7 +180,12 @@ export interface QuoteDTO {
     /** Preço cobrado. Diferente de `listPrice` = preço especial negociado. */
     unitPrice: string
     lineTotal: string
+    /** Nome impresso no documento: o customizado, se houver, senão o do catálogo. */
     productName: string
+    /** Nome customizado neste orçamento; null = segue o catálogo. */
+    titleOverride: string | null
+    /** Nome atual do produto no catálogo, para servir de placeholder. */
+    catalogName: string
     description: string
   }>
 }

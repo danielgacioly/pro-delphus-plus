@@ -101,7 +101,12 @@ export function toQuoteDTO(
       listPrice: item.listPrice?.toString() ?? null,
       unitPrice: item.unitPrice.toString(),
       lineTotal: item.lineTotal.toString(),
-      productName: item.product.name,
+      // `productName` é o que vai impresso (nome editado no orçamento vence o
+      // do catálogo); `titleOverride` diz se houve edição, para o formulário
+      // reabrir o campo do jeito que foi salvo.
+      productName: item.title ?? item.product.name,
+      titleOverride: item.title,
+      catalogName: item.product.name,
       description: item.description,
     })),
   }
