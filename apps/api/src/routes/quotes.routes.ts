@@ -11,7 +11,7 @@ import { generateQuotePdf } from '../lib/pdf.js'
 import { generateQuoteXlsx } from '../lib/xlsx.js'
 import { defaultQuoteNotes } from '../lib/quoteI18n.js'
 import { env } from '../lib/env.js'
-import { deleteStoredFile } from '../storage/local.js'
+import { deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 
 export const quotesRouter = Router()
 
@@ -35,7 +35,7 @@ const MIME_BY_EXT: Record<string, string> = {
 async function photoToDataUri(url: string | undefined): Promise<string | null> {
   if (!url) return null
   try {
-    const filePath = path.join(path.resolve(env.UPLOADS_DIR), path.basename(url))
+    const filePath = path.join(path.resolve(env.UPLOADS_DIR), storageFilename(url))
     const buffer = await fs.readFile(filePath)
     const mime = MIME_BY_EXT[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream'
     return `data:${mime};base64,${buffer.toString('base64')}`
@@ -245,7 +245,7 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
     fs.writeFile(path.join(uploadsDir, xlsxFilename), xlsxBuffer),
   ])
 
-  return { pdfUrl: `/uploads/${pdfFilename}`, xlsxUrl: `/uploads/${xlsxFilename}` }
+  return { pdfUrl: versionedUrlFor(pdfFilename), xlsxUrl: versionedUrlFor(xlsxFilename) }
 }
 
 // `quoteNumber` is the only unique field on Quote besides `id` (server-generated,

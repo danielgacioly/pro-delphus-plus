@@ -43,7 +43,16 @@ app.use('/uploads', (req, res, next) => {
     res.status(401).json({ error: 'Faça login para acessar este arquivo' })
   }
 })
-app.use('/uploads', express.static(path.resolve(env.UPLOADS_DIR)))
+// `no-cache` = pode guardar, mas revalida sempre (ETag) antes de servir. Os
+// documentos já saem com URL versionada (`?v=`), mas os que foram gerados
+// antes disso continuam no banco com a URL antiga — sem isso, o navegador
+// segue mostrando a cópia velha deles depois de uma regeneração.
+app.use(
+  '/uploads',
+  express.static(path.resolve(env.UPLOADS_DIR), {
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+  }),
+)
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 app.use('/api', apiLimiter)

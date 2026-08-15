@@ -12,7 +12,7 @@ import { toOrderDTO } from '../lib/dto.js'
 import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf, type PackingListBoxPage } from '../lib/orderPdf.js'
 import { generateExportDocXlsx } from '../lib/orderXlsx.js'
 import { fetchUsdBrlRate } from '../lib/exchangeRate.js'
-import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
+import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
 import { formatOrderNumber, type BoxAssignments } from '@prodelphusplus/shared'
 
@@ -104,11 +104,11 @@ ordersRouter.get(
       order.exportDocXlsxUrl && { url: order.exportDocXlsxUrl, filename: `Order-${orderNumber}-Export.xlsx` },
       order.awbDocumentUrl && {
         url: order.awbDocumentUrl,
-        filename: `Order-${orderNumber}-AWB${path.extname(order.awbDocumentUrl)}`,
+        filename: `Order-${orderNumber}-AWB${path.extname(storageFilename(order.awbDocumentUrl))}`,
       },
       order.nfDocumentUrl && {
         url: order.nfDocumentUrl,
-        filename: `Order-${orderNumber}-NF${path.extname(order.nfDocumentUrl)}`,
+        filename: `Order-${orderNumber}-NF${path.extname(storageFilename(order.nfDocumentUrl))}`,
       },
     ].filter((d): d is { url: string; filename: string } => Boolean(d))
 
@@ -123,7 +123,7 @@ ordersRouter.get(
 
     const uploadsDir = path.resolve(env.UPLOADS_DIR)
     for (const doc of docs) {
-      const filePath = path.join(uploadsDir, path.basename(doc.url))
+      const filePath = path.join(uploadsDir, storageFilename(doc.url))
       if (fsSync.existsSync(filePath)) archive.file(filePath, { name: doc.filename })
     }
 
@@ -335,10 +335,10 @@ async function buildAndWriteDocuments(
   ])
 
   return {
-    invoicePdfUrl: publicUrlFor(filenames.invoice),
-    packingListPdfUrl: publicUrlFor(filenames.packingList),
-    packingListBoxPdfUrl: publicUrlFor(filenames.packingListBox),
-    exportDocXlsxUrl: publicUrlFor(filenames.exportDoc),
+    invoicePdfUrl: versionedUrlFor(filenames.invoice),
+    packingListPdfUrl: versionedUrlFor(filenames.packingList),
+    packingListBoxPdfUrl: versionedUrlFor(filenames.packingListBox),
+    exportDocXlsxUrl: versionedUrlFor(filenames.exportDoc),
   }
 }
 
