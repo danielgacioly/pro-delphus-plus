@@ -184,6 +184,12 @@ export function NewQuote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
       if (isEditing) queryClient.invalidateQueries({ queryKey: ['quote', editId] })
+      // Editar o orçamento pode deixar os documentos de um pedido já criado
+      // a partir dele desatualizados (ver `documentsStale`) — sem isto, um
+      // Pedido já aberto em outra aba/navegação só saberia disso na próxima
+      // vez que o cache decidisse revalidar sozinho (troca de aba, etc.),
+      // não imediatamente.
+      queryClient.invalidateQueries({ queryKey: ['order'] })
       toast.success(isEditing ? 'Orçamento atualizado.' : 'Orçamento gerado.')
       navigate('/orcamentos')
     },
