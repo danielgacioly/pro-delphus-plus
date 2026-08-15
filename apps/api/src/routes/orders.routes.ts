@@ -153,11 +153,21 @@ function isOrderNumberConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
 
+// <input type="date"> manda "YYYY-MM-DD", sem hora. `z.coerce.date()` faz
+// `new Date("YYYY-MM-DD")`, que o JS interpreta como meia-noite UTC — em
+// fusos atrás de UTC (Brasil, UTC-3) isso cai no dia anterior assim que
+// alguma tela formata a data no fuso local (`toLocaleDateString`). Fixar em
+// meio-dia UTC mantém o mesmo dia-calendário em qualquer fuso real do mundo.
+const dateOnlySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida')
+  .transform((s) => new Date(`${s}T12:00:00Z`))
+
 const orderFieldsSchema = z.object({
   quoteId: z.string().min(1),
   purchaseOrder: z.string().optional(),
   orderedByEmail: z.string().email(),
-  shipDate: z.coerce.date().optional(),
+  shipDate: dateOnlySchema.optional(),
   billToText: z.string().min(1),
   shipToText: z.string().min(1),
   shipToNote: z.string().optional(),
@@ -168,7 +178,7 @@ const orderFieldsSchema = z.object({
   prepaymentBy: z.enum(['PAYPAL', 'WIRE_TRANSFER']).optional(),
   paypalFee: z.coerce.number().min(0).optional(),
   nfNumber: z.string().optional(),
-  nfDate: z.coerce.date().optional(),
+  nfDate: dateOnlySchema.optional(),
   exchangeRate: z.coerce.number().positive().optional(),
   itemWeightsKg: z.array(z.coerce.number().positive().nullable()).optional(),
   packageCount: z.coerce.number().int().positive().optional(),

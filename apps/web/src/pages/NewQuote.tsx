@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   clientPrefixLabel,
   formatAmount,
+  formatOrderNumber,
   type ClientPrefix,
   type Currency,
   type PriceTier,
@@ -25,6 +26,7 @@ import {
   Textarea,
 } from '../components/ui'
 import { ClientPicker } from '../components/ClientPicker'
+import { Modal } from '../components/Modal'
 import { IconInfo, IconPlus } from '../components/icons'
 
 const currencySymbol: Record<Currency, string> = { BRL: 'R$', USD: '$', EUR: '€' }
@@ -104,6 +106,11 @@ export function NewQuote() {
   const [freight, setFreight] = useState('')
   const [discount, setDiscount] = useState('0')
   const [error, setError] = useState<string | null>(null)
+  // Números dos pedidos concluídos vinculados a este orçamento, quando o
+  // backend recusa o PATCH por causa deles — abre o modal de confirmação em
+  // vez do erro genérico. `null` = modal fechado.
+  const [completedOrderWarning, setCompletedOrderWarning] = useState<number[] | null>(null)
+  const confirmCompletedOrders = useRef(false)
   const prefilled = useRef(false)
   const toast = useToast()
 
@@ -190,6 +197,7 @@ export function NewQuote() {
           })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
+        confirmCompletedOrders: confirmCompletedOrders.current || undefined,
       }
       const { data } = isEditing
         ? await api.patch<{ quote: QuoteDTO }>(`/quotes/${editId}`, payload)
@@ -197,6 +205,7 @@ export function NewQuote() {
       return data.quote
     },
     onSuccess: () => {
+      confirmCompletedOrders.current = false
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
       if (isEditing) queryClient.invalidateQueries({ queryKey: ['quote', editId] })
       // Editar o orçamento pode deixar os documentos de um pedido já criado
@@ -209,9 +218,14 @@ export function NewQuote() {
       navigate('/orcamentos')
     },
     onError: (err: unknown) => {
+      const response = (err as { response?: { data?: { error?: string; completedOrderNumbers?: number[] } } })
+        ?.response
+      if (response?.data?.completedOrderNumbers) {
+        setCompletedOrderWarning(response.data.completedOrderNumbers)
+        return
+      }
       const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        (isEditing ? 'Não foi possível salvar o orçamento.' : 'Não foi possível gerar o orçamento.')
+        response?.data?.error ?? (isEditing ? 'Não foi possível salvar o orçamento.' : 'Não foi possível gerar o orçamento.')
       setError(message)
     },
   })
@@ -580,6 +594,38 @@ export function NewQuote() {
           </Button>
         </div>
       </form>
+
+      {completedOrderWarning && (
+        <Modal onClose={() => setCompletedOrderWarning(null)} dismissOnBackdrop>
+          <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+            <h2 className="text-base font-semibold text-ink-900">Este orçamento já tem pedido concluído</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              {completedOrderWarning.length === 1
+                ? `O pedido #${formatOrderNumber(completedOrderWarning[0])} foi gerado a partir deste orçamento e está marcado como concluído.`
+                : `Os pedidos ${completedOrderWarning.map((n) => `#${formatOrderNumber(n)}`).join(', ')} foram gerados a partir deste orçamento e estão marcados como concluídos.`}{' '}
+              Salvar esta edição muda os valores desse(s) pedido(s) — inclusive o Invoice, na próxima vez que os
+              documentos forem regenerados.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" onClick={() => setCompletedOrderWarning(null)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={createQuote.isPending}
+                onClick={() => {
+                  confirmCompletedOrders.current = true
+                  setCompletedOrderWarning(null)
+                  createQuote.mutate()
+                }}
+              >
+                {createQuote.isPending ? 'Salvando…' : 'Editar mesmo assim'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Page>
   )
 }

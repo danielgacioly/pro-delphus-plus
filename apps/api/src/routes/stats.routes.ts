@@ -30,24 +30,39 @@ statsRouter.get(
     const sectorMap = new Map<string, number>()
 
     for (const order of orders) {
-      const currency: 'USD' | 'BRL' = order.quote.language === 'PT' ? 'BRL' : 'USD'
+      // Moeda em que a venda foi de fato fechada — `quote.currency`, não o
+      // idioma do documento (um orçamento em inglês pode ser cotado em BRL,
+      // e vice-versa; usar o idioma como proxy já causou "Vendido (BRL)"
+      // ficar zerado para uma empresa que só emite orçamento em EN/USD).
+      const isBRL = order.quote.currency === 'BRL'
       const total = Number(order.quote.total)
+      // "Vendido (BRL)" é o equivalente em reais de TODA a receita (útil pra
+      // contabilidade de uma empresa brasileira vendendo em dólar), não só
+      // das vendas nativamente cotadas em BRL — por isso converte pelo
+      // câmbio gravado no pedido em vez de só somar orçamentos em BRL.
+      // Pedidos antigos sem câmbio gravado ficam de fora dessa soma (não dá
+      // pra inventar uma taxa) mas continuam contando no total em USD.
+      const exchangeRate = order.exchangeRate !== null ? Number(order.exchangeRate) : null
+      const totalBRLEquivalent = isBRL ? total : exchangeRate !== null ? total * exchangeRate : null
       const date = order.createdAt
       const year = date.getFullYear()
       const month = date.getMonth() + 1
       const monthKey = `${year}-${MONTH_KEYS[month - 1]}`
 
-      totalByCurrency[currency] += total
+      totalByCurrency.USD += isBRL ? 0 : total
+      if (totalBRLEquivalent !== null) totalByCurrency.BRL += totalBRLEquivalent
       statusBreakdown[order.status] += 1
 
       const monthEntry = byMonthMap.get(monthKey) ?? { year, month, count: 0, totalUSD: 0, totalBRL: 0 }
       monthEntry.count += 1
-      monthEntry[currency === 'USD' ? 'totalUSD' : 'totalBRL'] += total
+      if (!isBRL) monthEntry.totalUSD += total
+      if (totalBRLEquivalent !== null) monthEntry.totalBRL += totalBRLEquivalent
       byMonthMap.set(monthKey, monthEntry)
 
       const yearEntry = byYearMap.get(year) ?? { year, count: 0, totalUSD: 0, totalBRL: 0 }
       yearEntry.count += 1
-      yearEntry[currency === 'USD' ? 'totalUSD' : 'totalBRL'] += total
+      if (!isBRL) yearEntry.totalUSD += total
+      if (totalBRLEquivalent !== null) yearEntry.totalBRL += totalBRLEquivalent
       byYearMap.set(year, yearEntry)
 
       for (const item of order.quote.items) {
@@ -58,7 +73,10 @@ statsRouter.get(
           revenueBRL: 0,
         }
         productEntry.quantity += item.quantity
-        productEntry[currency === 'USD' ? 'revenueUSD' : 'revenueBRL'] += Number(item.lineTotal)
+        const lineTotal = Number(item.lineTotal)
+        if (!isBRL) productEntry.revenueUSD += lineTotal
+        if (isBRL) productEntry.revenueBRL += lineTotal
+        else if (exchangeRate !== null) productEntry.revenueBRL += lineTotal * exchangeRate
         productMap.set(item.product.name, productEntry)
       }
 

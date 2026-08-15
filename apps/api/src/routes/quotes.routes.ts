@@ -90,6 +90,9 @@ const createQuoteSchema = z.object({
     .min(1),
   freight: z.coerce.number().min(0).optional(),
   discount: z.coerce.number().min(0).default(0),
+  // Ver o bloqueio de PATCH /:id abaixo — some no create, onde nunca existe
+  // um pedido concluído vinculado ainda.
+  confirmCompletedOrders: z.boolean().optional(),
 })
 
 type CreateQuoteInput = z.infer<typeof createQuoteSchema>
@@ -337,6 +340,28 @@ quotesRouter.patch(
     if (!existing) throw new HttpError(404, 'Orçamento não encontrado')
 
     const data = createQuoteSchema.parse(req.body)
+
+    // Um pedido "Concluído" já foi entregue/faturado — editar o orçamento de
+    // origem muda o total exibido e, na próxima regeneração de documentos,
+    // o Invoice também, sem deixar rastro nenhum de que algo mudou depois da
+    // conclusão. Em vez de bloquear, exige confirmação explícita informada
+    // do que está em jogo (`confirmCompletedOrders`), pedida pelo frontend
+    // assim que este erro chega.
+    if (!data.confirmCompletedOrders) {
+      const completedOrders = await prisma.order.findMany({
+        where: { quoteId: existing.id, status: 'COMPLETED' },
+        select: { orderNumber: true },
+        orderBy: { orderNumber: 'asc' },
+      })
+      if (completedOrders.length > 0) {
+        throw new HttpError(
+          409,
+          'Este orçamento já tem pedido concluído vinculado. Editar vai mudar os valores desse pedido.',
+          { completedOrderNumbers: completedOrders.map((o) => o.orderNumber) },
+        )
+      }
+    }
+
     const resolved = await resolveQuoteData(data, req.user!.id)
     // Número do orçamento nunca muda — os arquivos regenerados sobrescrevem
     // os antigos no mesmo caminho, então pdfUrl/xlsxUrl também ficam iguais.
