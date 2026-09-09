@@ -108,6 +108,10 @@ ordersRouter.get(
         url: order.awbDocumentUrl,
         filename: `Order-${orderNumber}-AWB${path.extname(storageFilename(order.awbDocumentUrl))}`,
       },
+      order.boletoDocumentUrl && {
+        url: order.boletoDocumentUrl,
+        filename: `Order-${orderNumber}-Boleto${path.extname(storageFilename(order.boletoDocumentUrl))}`,
+      },
       order.nfDocumentUrl && {
         url: order.nfDocumentUrl,
         filename: `Order-${orderNumber}-NF${path.extname(storageFilename(order.nfDocumentUrl))}`,
@@ -583,6 +587,7 @@ ordersRouter.delete(
       existing.packingListBoxPdfUrl,
       existing.exportDocXlsxUrl,
       existing.awbDocumentUrl,
+      existing.boletoDocumentUrl,
       existing.nfDocumentUrl,
     ]) {
       if (url) deleteStoredFile(url)
@@ -605,6 +610,24 @@ ordersRouter.post(
     const order = await prisma.order.update({
       where: { id: req.params.id },
       data: { awbDocumentUrl: publicUrlFor(req.file.filename) },
+      include,
+    })
+    res.status(201).json({ order: await toOrderDTOFresh(order) })
+  }),
+)
+
+ordersRouter.post(
+  '/:id/boleto-document',
+  upload.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new HttpError(400, 'Nenhum arquivo enviado')
+    const existing = await prisma.order.findUnique({ where: { id: req.params.id } })
+    if (!existing) throw new HttpError(404, 'Pedido não encontrado')
+    if (existing.boletoDocumentUrl) deleteStoredFile(existing.boletoDocumentUrl)
+
+    const order = await prisma.order.update({
+      where: { id: req.params.id },
+      data: { boletoDocumentUrl: publicUrlFor(req.file.filename) },
       include,
     })
     res.status(201).json({ order: await toOrderDTOFresh(order) })

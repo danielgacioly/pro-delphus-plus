@@ -208,6 +208,20 @@ export function OrderDetail() {
     },
   })
 
+  const uploadBoleto = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      await api.post(`/orders/${id}/boleto-document`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: () => {
+      invalidate()
+      toast.success('Boleto enviado.')
+    },
+  })
+
   const uploadNf = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData()
@@ -365,12 +379,21 @@ export function OrderDetail() {
           </div>
 
           <div className="mt-5 space-y-4">
-            <ManualUpload
-              title="AWB (manual)"
-              url={order.awbDocumentUrl}
-              isPending={uploadAwb.isPending}
-              onFile={(file) => uploadAwb.mutate(file)}
-            />
+            {isNational ? (
+              <ManualUpload
+                title="Boleto (manual)"
+                url={order.boletoDocumentUrl}
+                isPending={uploadBoleto.isPending}
+                onFile={(file) => uploadBoleto.mutate(file)}
+              />
+            ) : (
+              <ManualUpload
+                title="AWB (manual)"
+                url={order.awbDocumentUrl}
+                isPending={uploadAwb.isPending}
+                onFile={(file) => uploadAwb.mutate(file)}
+              />
+            )}
             <ManualUpload
               title="Nota Fiscal (manual)"
               url={order.nfDocumentUrl}

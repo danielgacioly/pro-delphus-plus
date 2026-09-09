@@ -154,6 +154,7 @@ export function toOrderDTO(
     nfDate: order.nfDate?.toISOString() ?? null,
     nfDocumentUrl: order.nfDocumentUrl,
     awbDocumentUrl: order.awbDocumentUrl,
+    boletoDocumentUrl: order.boletoDocumentUrl,
     exchangeRate: order.exchangeRate?.toString() ?? null,
     itemWeightsKg: (order.itemWeightsKg as (number | null)[] | null) ?? null,
     packageCount: order.packageCount,

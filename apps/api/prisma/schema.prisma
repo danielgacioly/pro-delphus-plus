@@ -330,6 +330,9 @@ model Order {
   nfDate         DateTime?
   nfDocumentUrl  String?
   awbDocumentUrl String?
+  /// Só pra pedido nacional — o upload manual aqui é o boleto de pagamento, no
+  /// lugar do AWB (que é coisa de exportação e não existe em venda nacional).
+  boletoDocumentUrl String?
 
   exchangeRate Decimal? @db.Decimal(10, 4)
   // Per unit weight (kg) for each quote item, aligned by array index — used to

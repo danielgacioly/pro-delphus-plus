@@ -264,6 +264,7 @@ export interface OrderDTO {
   nfDate: string | null
   nfDocumentUrl: string | null
   awbDocumentUrl: string | null
+  boletoDocumentUrl: string | null
   exchangeRate: string | null
   itemWeightsKg: (number | null)[] | null
   packageCount: number
