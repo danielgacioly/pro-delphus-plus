@@ -26,6 +26,7 @@ const clientBodySchema = z.object({
   sectors: z.array(z.string().min(1)).optional(),
   notes: z.string().optional(),
   active: z.boolean().optional(),
+  inService: z.boolean().optional(),
 })
 
 /** Campos de texto vazios viram null para não poluir o cadastro com strings em branco. */
@@ -98,6 +99,7 @@ function toClientDTO(client: ClientRow, agg?: ClientAggregate) {
     sectors: client.sectors,
     notes: client.notes,
     active: client.active,
+    inService: client.inService,
     createdAt: client.createdAt.toISOString(),
     stats: {
       quoteCount: agg?.quoteCount ?? 0,

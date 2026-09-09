@@ -47,9 +47,35 @@ export interface QuotePdfSignature {
   name: string
   jobTitle: string | null
   phone: string | null
+  whatsapp: string | null
   email: string
   signatureImageDataUri: string | null
 }
+
+// Ícones (glifo simplificado em traço, estilo Feather) na frente de cada
+// linha de contato da assinatura automática — cor herda do texto ao redor
+// via currentColor, pra acompanhar o `.sig-contact` claro sobre o fundo
+// escuro da assinatura.
+function contactIcon(innerSvg: string) {
+  return `<svg class="sig-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${innerSvg}</svg>`
+}
+
+const PHONE_ICON_SVG = contactIcon(
+  '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>',
+)
+const WHATSAPP_ICON_SVG = contactIcon(
+  '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>',
+)
+const MAIL_ICON_SVG = contactIcon(
+  '<path d="M4 4h16c1.1 0 2 .9 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>',
+)
+const GLOBE_ICON_SVG = contactIcon(
+  '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>',
+)
+const INSTAGRAM_ICON_SVG = contactIcon(
+  '<rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>',
+)
+const COMPANY_INSTAGRAM = '@prodelphus_simuladores'
 
 export interface QuotePdfData {
   quoteNumber: string
@@ -153,14 +179,15 @@ function renderHtml(data: QuotePdfData) {
   .totals-row span:first-child { color: #1a1a1a; }
   .totals-row.grand { font-size: 15px; border-bottom: none; }
   .signature { margin-top: 40px; display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid #e5e3da; }
-  .signature .sig-logo { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 18px; }
-  .signature .sig-logo img { width: 60px; height: auto; }
+  .signature .sig-logo { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 20px; }
+  .signature .sig-logo img { width: 104px; height: auto; }
   .signature .sig-signature { flex: 1; background: #ffffff; display: flex; align-items: center; padding: 10px 24px; }
   .signature .sig-signature img { max-width: 260px; max-height: 80px; }
   .signature .sig-bar { flex: 1; background: #1a1a1a; color: #ffffff; padding: 12px 20px 12px 24px; display: flex; flex-direction: column; justify-content: center; gap: 2px; border-left: 8px solid #ef1818; }
   .signature .sig-name { font-size: 14px; font-weight: 700; }
   .signature .sig-role { font-size: 10.5px; color: #c9c9c9; margin-bottom: 6px; }
-  .signature .sig-contact { font-size: 10.5px; color: #f2f2f2; }
+  .signature .sig-contact { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: #f2f2f2; }
+  .signature .sig-icon { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -220,10 +247,12 @@ function renderHtml(data: QuotePdfData) {
         : `<div class="sig-logo"><img src="${logoDataUri}" alt="Pro Delphus" /></div>
     <div class="sig-bar">
       <div class="sig-name">${escapeHtml(data.signature.name)}</div>
-      <div class="sig-role">${escapeHtml(data.signature.jobTitle ?? 'Sales Assistant')}</div>
-      ${data.signature.phone ? `<div class="sig-contact">${escapeHtml(data.signature.phone)}</div>` : ''}
-      <div class="sig-contact">${escapeHtml(data.signature.email)}</div>
-      <div class="sig-contact">${escapeHtml(COMPANY.website)}</div>
+      <div class="sig-role">${escapeHtml(data.signature.jobTitle ?? t.defaultJobTitle)}</div>
+      ${data.signature.phone ? `<div class="sig-contact">${PHONE_ICON_SVG}${escapeHtml(data.signature.phone)}</div>` : ''}
+      ${data.signature.whatsapp ? `<div class="sig-contact">${WHATSAPP_ICON_SVG}${escapeHtml(data.signature.whatsapp)}</div>` : ''}
+      <div class="sig-contact">${MAIL_ICON_SVG}${escapeHtml(data.signature.email)}</div>
+      <div class="sig-contact">${GLOBE_ICON_SVG}${escapeHtml(COMPANY.website)}</div>
+      <div class="sig-contact">${INSTAGRAM_ICON_SVG}${escapeHtml(COMPANY_INSTAGRAM)}</div>
     </div>`
     }
   </div>

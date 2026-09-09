@@ -38,6 +38,9 @@ export function clientPrefixLabel(
 
 export type QuoteLanguage = 'PT' | 'EN' | 'ES'
 
+/** Nacional = BRL, sempre em português, sem câmbio/packing list/documento de exportação. */
+export type ExportScope = 'NATIONAL' | 'INTERNATIONAL'
+
 export type PriceTier = 'FINAL' | 'DISTRIBUTOR'
 
 export type Currency = 'BRL' | 'USD' | 'EUR'
@@ -55,7 +58,9 @@ export interface UserDTO {
   role: Role
   status: AccountStatus
   active: boolean
+  /** Telefone fixo. */
   phone: string | null
+  whatsapp: string | null
   jobTitle: string | null
   signatureUrl: string | null
   catalogLanguage: CatalogLanguage
@@ -141,6 +146,8 @@ export interface ClientDTO {
   sectors: string[]
   notes: string | null
   active: boolean
+  /** Marcação manual de acompanhamento comercial — independente de `active`. */
+  inService: boolean
   createdAt: string
   /** Agregados calculados no servidor — evitam N+1 na listagem. */
   stats: {
@@ -156,6 +163,7 @@ export interface QuoteDTO {
   quoteNumber: string
   language: QuoteLanguage
   currency: Currency
+  exportScope: ExportScope
   priceTier: PriceTier
   clientPrefix: ClientPrefix
   clientName: string

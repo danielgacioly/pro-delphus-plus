@@ -1,4 +1,5 @@
 export type QuoteLanguage = 'PT' | 'EN' | 'ES'
+export type ExportScope = 'NATIONAL' | 'INTERNATIONAL'
 
 export const LOCALE_BY_LANGUAGE: Record<QuoteLanguage, string> = {
   PT: 'pt-BR',
@@ -19,6 +20,8 @@ export const LABELS: Record<QuoteLanguage, {
   shipping: string
   discount: string
   toBeDefined: string
+  /** Cargo padrão na assinatura automática, quando o usuário não tem um cadastrado. */
+  defaultJobTitle: string
 }> = {
   PT: {
     quote: 'Orçamento',
@@ -33,6 +36,7 @@ export const LABELS: Record<QuoteLanguage, {
     shipping: 'Frete',
     discount: 'Desconto',
     toBeDefined: 'A definir',
+    defaultJobTitle: 'Assistente de Vendas',
   },
   EN: {
     quote: 'Quote',
@@ -47,6 +51,7 @@ export const LABELS: Record<QuoteLanguage, {
     shipping: 'Shipping',
     discount: 'Discount',
     toBeDefined: 'To be defined',
+    defaultJobTitle: 'Sales Assistant',
   },
   ES: {
     quote: 'Presupuesto',
@@ -61,6 +66,7 @@ export const LABELS: Record<QuoteLanguage, {
     shipping: 'Envío',
     discount: 'Descuento',
     toBeDefined: 'Por definir',
+    defaultJobTitle: 'Asistente de Ventas',
   },
 }
 
@@ -97,10 +103,24 @@ const DEFAULT_NOTE_LINES: Record<QuoteLanguage, (currency: string) => string[]> 
   ],
 }
 
-export function defaultQuoteNotes(language: QuoteLanguage, currency: string): string {
-  return DEFAULT_NOTE_LINES[language](currency)
-    .map((line) => `* ${line}`)
-    .join('\n')
+// Nacional é sempre em português, e não tem os itens de exportação (câmbio,
+// packing list em inglês, documento de exportação) — em vez disso, o que
+// importa numa venda doméstica: ICMS, forma de pagamento local (pix/boleto/
+// cartão) e o código NCM (o mesmo usado no Packing List Box — ver
+// NCM_HS_CODE em orderPdf.ts). Texto exato pedido pelo Daniel.
+const NATIONAL_NOTE_LINES = () => [
+  'Dia da Postagem (verificar dependendo da transportadora)',
+  'IMPOSTOS: ICMS 12% incluso no valor do produto',
+  'PRAZO DE PRODUÇÃO: 2-3 semanas',
+  'PRAZO DE PGTO: Pagamento antecipado via pix, boleto ou cartão',
+  'CÓDIGO NCM: 90230000',
+  'VALIDADE DA COTAÇÃO: 30 dias',
+  'Estamos abertos a personalizar modelos existentes e desenvolver novas soluções de acordo com sua necessidade',
+]
+
+export function defaultQuoteNotes(language: QuoteLanguage, currency: string, exportScope: ExportScope): string {
+  const lines = exportScope === 'NATIONAL' ? NATIONAL_NOTE_LINES() : DEFAULT_NOTE_LINES[language](currency)
+  return lines.map((line) => `* ${line}`).join('\n')
 }
 
 export function formatMoney(value: number, currency: string, language: QuoteLanguage) {

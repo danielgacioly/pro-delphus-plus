@@ -17,6 +17,8 @@ export interface ClientFormValues {
   billToText: string
   shipToText: string
   notes: string
+  /** Marcação manual de acompanhamento comercial — independente de estar ativo/arquivado. */
+  inService: boolean
 }
 
 export const emptyClientForm: ClientFormValues = {
@@ -34,6 +36,7 @@ export const emptyClientForm: ClientFormValues = {
   billToText: '',
   shipToText: '',
   notes: '',
+  inService: false,
 }
 
 export function clientToForm(client: ClientDTO): ClientFormValues {
@@ -52,6 +55,7 @@ export function clientToForm(client: ClientDTO): ClientFormValues {
     billToText: client.billToText ?? '',
     shipToText: client.shipToText ?? '',
     notes: client.notes ?? '',
+    inService: client.inService,
   }
 }
 
@@ -146,6 +150,18 @@ export function ClientForm({
             />
           </Field>
         )}
+
+        <Field label="Status" className="sm:col-span-2">
+          <label className="flex w-fit cursor-pointer items-center gap-2.5 rounded-lg py-1 text-[13px] text-ink-700">
+            <input
+              type="checkbox"
+              checked={values.inService}
+              onChange={(e) => set('inService', e.target.checked)}
+              className="h-3.5 w-3.5 accent-brand-600"
+            />
+            Em atendimento
+          </label>
+        </Field>
 
         <Field label="E-mail">
           <Input type="email" value={values.email} onChange={(e) => set('email', e.target.value)} />

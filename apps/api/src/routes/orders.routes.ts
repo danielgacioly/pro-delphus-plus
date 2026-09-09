@@ -231,7 +231,7 @@ async function buildAndWriteDocuments(
     paypalFee: number | null
     nfNumber: string | null
     nfDate: Date | null
-    exchangeRate: number
+    exchangeRate: number | null
     itemWeightsKg: (number | null)[] | null
     packageCount: number
     boxAssignments: BoxAssignments | null
@@ -239,6 +239,7 @@ async function buildAndWriteDocuments(
   quote: {
     quoteNumber: string
     currency: string
+    exportScope: 'NATIONAL' | 'INTERNATIONAL'
     freight: unknown
     discount: unknown
     items: {
@@ -252,6 +253,14 @@ async function buildAndWriteDocuments(
   },
 ) {
   const currency = quote.currency
+  // Venda nacional não sai do Brasil — sem câmbio, sem declaração de
+  // exportação, sem Packing List (o modelo em inglês/estilo invoice). O
+  // Invoice e a Packing List Box continuam, mas essa última sai num modelo
+  // diferente pra nacional: em português e com o código NCM por item — ver
+  // PackingListBoxData.isNational em orderPdf.ts. Escolhido explicitamente
+  // no orçamento (Quote.exportScope), não mais inferido da moeda — ver
+  // NewQuote.tsx.
+  const isNational = quote.exportScope === 'NATIONAL'
   const freight = quote.freight !== null ? Number(quote.freight) : null
   const discount = Number(quote.discount)
 
@@ -298,11 +307,14 @@ async function buildAndWriteDocuments(
     orderNumber: order.orderNumber,
     shipToText: order.shipToText,
     pages: buildBoxPages(order.packageCount, order.boxAssignments, docItems),
+    isNational,
   }
 
   const exportData = {
     orderNumber: order.orderNumber,
-    exchangeRate: order.exchangeRate,
+    // Só é montado quando !isNational (ver a chamada condicional abaixo), e
+    // nesse caso exchangeRate sempre veio preenchido — nunca null.
+    exchangeRate: order.exchangeRate ?? 1,
     currency,
     freight,
     paypalFee: order.prepaymentBy === 'PAYPAL' ? order.paypalFee : null,
@@ -331,9 +343,9 @@ async function buildAndWriteDocuments(
 
   const [invoiceBuffer, packingListBuffer, packingListBoxBuffer, exportDocBuffer] = await Promise.all([
     generateInvoicePdf(docData),
-    generatePackingListPdf(docData),
+    isNational ? null : generatePackingListPdf(docData),
     generatePackingListBoxPdf(boxData),
-    generateExportDocXlsx(exportData),
+    isNational ? null : generateExportDocXlsx(exportData),
   ])
 
   const uploadsDir = path.resolve(env.UPLOADS_DIR)
@@ -347,16 +359,16 @@ async function buildAndWriteDocuments(
   }
   await Promise.all([
     fs.writeFile(path.join(uploadsDir, filenames.invoice), invoiceBuffer),
-    fs.writeFile(path.join(uploadsDir, filenames.packingList), packingListBuffer),
-    fs.writeFile(path.join(uploadsDir, filenames.packingListBox), packingListBoxBuffer),
-    fs.writeFile(path.join(uploadsDir, filenames.exportDoc), exportDocBuffer),
+    packingListBuffer && fs.writeFile(path.join(uploadsDir, filenames.packingList), packingListBuffer),
+    packingListBoxBuffer && fs.writeFile(path.join(uploadsDir, filenames.packingListBox), packingListBoxBuffer),
+    exportDocBuffer && fs.writeFile(path.join(uploadsDir, filenames.exportDoc), exportDocBuffer),
   ])
 
   return {
     invoicePdfUrl: versionedUrlFor(filenames.invoice),
-    packingListPdfUrl: versionedUrlFor(filenames.packingList),
+    packingListPdfUrl: packingListBuffer ? versionedUrlFor(filenames.packingList) : null,
     packingListBoxPdfUrl: versionedUrlFor(filenames.packingListBox),
-    exportDocXlsxUrl: versionedUrlFor(filenames.exportDoc),
+    exportDocXlsxUrl: exportDocBuffer ? versionedUrlFor(filenames.exportDoc) : null,
   }
 }
 
@@ -369,14 +381,19 @@ ordersRouter.post(
     if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
     if (quote.items.length === 0) throw new HttpError(400, 'Este orçamento não possui itens')
 
+    // Venda nacional não tem câmbio nenhum — é só a mesma moeda, sem
+    // conversão nem Documento de Exportação (ver buildAndWriteDocuments).
+    const isNational = quote.exportScope === 'NATIONAL'
+
     // Nunca cair silenciosamente para um câmbio de 1 — isso corrompe o valor
     // total do Invoice/Export Doc sem aviso nenhum. Se não veio do form e a
     // busca automática falhar, é melhor recusar e pedir para digitar à mão.
-    const exchangeRate =
-      data.exchangeRate ??
-      (await fetchUsdBrlRate().catch(() => {
-        throw new HttpError(400, 'Não foi possível obter o câmbio automaticamente. Informe o valor manualmente.')
-      }))
+    const exchangeRate = isNational
+      ? null
+      : (data.exchangeRate ??
+        (await fetchUsdBrlRate().catch(() => {
+          throw new HttpError(400, 'Não foi possível obter o câmbio automaticamente. Informe o valor manualmente.')
+        })))
     const packageCount = data.packageCount ?? 1
     const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
 
@@ -476,7 +493,10 @@ ordersRouter.patch(
       paypalFee: data.paypalFee !== undefined ? data.paypalFee : existing.paypalFee !== null ? Number(existing.paypalFee) : null,
       nfNumber: data.nfNumber !== undefined ? data.nfNumber || null : existing.nfNumber,
       nfDate: data.nfDate !== undefined ? data.nfDate ?? null : existing.nfDate,
-      exchangeRate: data.exchangeRate ?? (existing.exchangeRate !== null ? Number(existing.exchangeRate) : 1),
+      exchangeRate:
+        existing.quote.exportScope === 'NATIONAL'
+          ? null
+          : (data.exchangeRate ?? (existing.exchangeRate !== null ? Number(existing.exchangeRate) : 1)),
       itemWeightsKg: data.itemWeightsKg ?? ((existing.itemWeightsKg as (number | null)[] | null) ?? null),
       packageCount: data.packageCount ?? existing.packageCount,
       boxAssignments: data.boxAssignments ?? ((existing.boxAssignments as BoxAssignments | null) ?? null),

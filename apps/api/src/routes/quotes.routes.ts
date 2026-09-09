@@ -66,6 +66,7 @@ quotesRouter.get(
 )
 
 const createQuoteSchema = z.object({
+  exportScope: z.enum(['NATIONAL', 'INTERNATIONAL']).default('INTERNATIONAL'),
   language: z.enum(['PT', 'EN', 'ES']).default('PT'),
   // Optional for backward compatibility — older clients that don't send it
   // fall back to the historical language-implies-currency behavior.
@@ -104,7 +105,12 @@ type CreateQuoteInput = z.infer<typeof createQuoteSchema>
  * se é um create ou update no banco.
  */
 async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
-  const currency = data.currency ?? (data.language === 'PT' ? 'BRL' : 'USD')
+  // Nacional é sempre BRL/português — não é mais o idioma que decide a
+  // moeda, é o tipo (Nacional/Internacional) escolhido explicitamente no
+  // formulário. Ver NewQuote.tsx.
+  const isNational = data.exportScope === 'NATIONAL'
+  const language = isNational ? 'PT' : data.language
+  const currency = isNational ? 'BRL' : (data.currency ?? 'USD')
   // Distributor pricing only exists in USD, so BRL/EUR quotes always use the final price
   const priceTier = currency === 'USD' ? data.priceTier : 'FINAL'
 
@@ -160,7 +166,11 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
       // produto for renomeado no catálogo depois.
       const titleOverride = item.title?.trim() || null
       const title = titleOverride ?? product.name
-      const description = item.description || product.description || ''
+      // Catálogo tem descrição em PT para a maioria dos produtos — orçamento
+      // em português deve puxar dela antes de cair para o inglês, senão o
+      // documento sai com texto em inglês mesmo com "Idioma: Português".
+      const catalogDescription = language === 'PT' ? product.descriptionPt || product.description : product.description
+      const description = item.description || catalogDescription || ''
       const primaryImage =
         product.media.find((m) => m.type === 'IMAGE' && m.isPrimary) ??
         product.media.filter((m) => m.type === 'IMAGE').sort((a, b) => a.order - b.order)[0]
@@ -182,25 +192,26 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
 
   const subtotal = lineItems.reduce((sum, i) => sum + i.lineTotal, 0)
   const total = subtotal + (data.freight ?? 0) - data.discount
-  const notes = data.notes ?? defaultQuoteNotes(data.language, currency)
+  const notes = data.notes ?? defaultQuoteNotes(language, currency, data.exportScope)
 
   const signature = {
     name: requester.name,
     jobTitle: requester.jobTitle,
     phone: requester.phone,
+    whatsapp: requester.whatsapp,
     email: requester.email,
     signatureImageDataUri: await photoToDataUri(requester.signatureUrl ?? undefined),
   }
 
-  return { currency, priceTier, lineItems, subtotal, total, notes, signature, clientCountry }
+  return { language, currency, priceTier, lineItems, subtotal, total, notes, signature, clientCountry }
 }
 
 async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, resolved: Awaited<ReturnType<typeof resolveQuoteData>>) {
-  const { currency, lineItems, subtotal, total, notes, signature, clientCountry } = resolved
+  const { language, currency, lineItems, subtotal, total, notes, signature, clientCountry } = resolved
   const [pdfBuffer, xlsxBuffer] = await Promise.all([
     generateQuotePdf({
       quoteNumber,
-      language: data.language,
+      language,
       clientPrefix: data.clientPrefix,
       clientName: data.clientName,
       clientCountry,
@@ -223,7 +234,7 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
     }),
     generateQuoteXlsx({
       quoteNumber,
-      language: data.language,
+      language,
       clientPrefix: data.clientPrefix,
       clientName: data.clientName,
       clientCountry,
@@ -269,7 +280,7 @@ quotesRouter.post(
   asyncHandler(async (req, res) => {
     const data = createQuoteSchema.parse(req.body)
     const resolved = await resolveQuoteData(data, req.user!.id)
-    const { currency, priceTier, lineItems, subtotal, total, notes } = resolved
+    const { language, currency, priceTier, lineItems, subtotal, total, notes } = resolved
 
     // O número é reservado com um INSERT (rápido) ANTES de gerar o PDF/xlsx
     // (lento — Puppeteer/ExcelJS levam segundos). Antes, o número era só
@@ -291,8 +302,9 @@ quotesRouter.post(
         quote = await prisma.quote.create({
           data: {
             quoteNumber,
-            language: data.language,
+            language,
             currency,
+            exportScope: data.exportScope,
             priceTier,
             clientPrefix: data.clientPrefix,
             clientName: data.clientName,
@@ -366,15 +378,16 @@ quotesRouter.patch(
     // Número do orçamento nunca muda — os arquivos regenerados sobrescrevem
     // os antigos no mesmo caminho, então pdfUrl/xlsxUrl também ficam iguais.
     const { pdfUrl, xlsxUrl } = await generateQuoteFiles(existing.quoteNumber, data, resolved)
-    const { currency, priceTier, lineItems, subtotal, total, notes } = resolved
+    const { language, currency, priceTier, lineItems, subtotal, total, notes } = resolved
 
     const quote = await prisma.$transaction(async (tx) => {
       await tx.quoteItem.deleteMany({ where: { quoteId: existing.id } })
       const updated = await tx.quote.update({
         where: { id: existing.id },
         data: {
-          language: data.language,
+          language,
           currency,
+          exportScope: data.exportScope,
           priceTier,
           clientPrefix: data.clientPrefix,
           clientName: data.clientName,

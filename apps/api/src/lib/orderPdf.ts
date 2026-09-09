@@ -70,6 +70,8 @@ export interface PackingListBoxData {
   orderNumber: number
   shipToText: string
   pages: PackingListBoxPage[]
+  /** Nacional = documento em português, com o código NCM por item (exigido em documentos de venda doméstica). */
+  isNational: boolean
 }
 
 function escapeHtml(value: string) {
@@ -317,12 +319,55 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
 </html>`
 }
 
+// Nacional sai num modelo próprio (português + NCM por item), diferente do
+// internacional — ver PackingListBoxData.isNational e o pedido original.
 function renderPackingListBoxPage(data: PackingListBoxData, page: PackingListBoxPage, isLast: boolean) {
+  const pageStyle = isLast ? '' : ' style="page-break-after: always;"'
+
+  if (data.isNational) {
+    const itemLines = page.items
+      .map(
+        (item) =>
+          `<div class="pl-item">${String(item.quantity).padStart(2, '0')} PC| ${escapeHtml(item.title)}<br />(NCM: ${NCM_HS_CODE})</div>`,
+      )
+      .join('')
+
+    return `<div class="box-page"${pageStyle}>
+  <div class="warning-box">NÃO ACEITAR SE A EMBALAGEM ESTIVER<br />VIOLADA OU AMASSADA</div>
+
+  <div class="block">
+    <h3>Destinatário</h3>
+    <p>${nl2br(data.shipToText)}</p>
+  </div>
+
+  <div class="block">
+    <h3>Remetente</h3>
+    <p>Pro Delphus Simuladores Cirúrgicos
+Rua Professor Alfeu Rabelo, 169 - Casa Caiada
+Olinda/PE - Brasil - CEP 53130-420
+Fone: (81) 3432.7702</p>
+  </div>
+
+  <div class="block">
+    <div class="pl-title">
+      Packing List (${formatOrderNumber(data.orderNumber)})
+      ${page.totalBoxes > 1 ? `<span class="box-label">Caixa ${page.boxNumber} de ${page.totalBoxes}</span>` : ''}
+    </div>
+    ${itemLines || '<div class="pl-item pl-empty">— nenhum item atribuído a esta caixa —</div>'}
+  </div>
+
+  <div class="disclaimer">
+    Material Exclusivo Para Fins Educacionais
+    <div class="tags">Não Perecível &nbsp;·&nbsp; Não Perigoso &nbsp;·&nbsp; Não Radioativo &nbsp;·&nbsp; Atóxico &nbsp;·&nbsp; Seguro Para Abrir &nbsp;·&nbsp; Não Contém Bateria</div>
+  </div>
+</div>`
+  }
+
   const itemLines = page.items
     .map((item) => `<div class="pl-item">${String(item.quantity).padStart(2, '0')} pc | ${escapeHtml(item.title)}</div>`)
     .join('')
 
-  return `<div class="box-page"${isLast ? '' : ' style="page-break-after: always;"'}>
+  return `<div class="box-page"${pageStyle}>
   <div class="warning-box">DO NOT ACCEPT DELIVERY IF THE BOX<br />IS OPENED OR DAMAGED</div>
 
   <div class="block">

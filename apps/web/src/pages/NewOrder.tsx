@@ -99,6 +99,10 @@ export function NewOrder() {
 
   const selectedQuote = quotes?.find((q) => q.id === form.quoteId)
   const currency = selectedQuote?.currency ?? null
+  // Venda nacional não sai do Brasil — sem câmbio, Incoterms, AWB, Packing
+  // List/Packing List Box nem Documento de Exportação (só o Invoice se
+  // aplica). Ver a mesma regra em apps/api/src/routes/orders.routes.ts.
+  const isNational = selectedQuote?.exportScope === 'NATIONAL'
 
   function update(patch: Partial<typeof form>) {
     setForm((s) => ({ ...s, ...patch }))
@@ -153,7 +157,11 @@ export function NewOrder() {
   return (
     <Page
       title="Novo pedido"
-      description="Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de Exportação."
+      description={
+        isNational
+          ? 'Selecione um orçamento já gerado para criar o Invoice.'
+          : 'Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de Exportação.'
+      }
       width="narrow"
     >
       <div className="-mt-4 mb-5">
@@ -194,10 +202,10 @@ export function NewOrder() {
 
           <FormSection title="Comprador">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Purchase Order (opcional)" hint="Se vazio, usa o número do orçamento.">
+              <Field label="Pedido de compra (opcional)" hint="Se vazio, usa o número do orçamento.">
                 <Input value={form.purchaseOrder} onChange={(e) => update({ purchaseOrder: e.target.value })} />
               </Field>
-              <Field label="E-mail do comprador (Ordered By)">
+              <Field label="E-mail do comprador">
                 <Input
                   type="email"
                   required
@@ -213,7 +221,7 @@ export function NewOrder() {
 
           <FormSection title="Endereços">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Bill To">
+              <Field label="Faturamento (Bill To)">
                 <Textarea
                   required
                   rows={5}
@@ -222,7 +230,7 @@ export function NewOrder() {
                   onChange={(e) => update({ billToText: e.target.value })}
                 />
               </Field>
-              <Field label="Ship To">
+              <Field label="Entrega (Ship To)">
                 <Textarea
                   required
                   rows={5}
@@ -242,7 +250,7 @@ export function NewOrder() {
           </FormSection>
 
           <FormSection title="Embalagem e pesos">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className={`grid grid-cols-1 gap-4 ${isNational ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
               <Field label="Peso líquido (kg)">
                 <Input
                   type="number"
@@ -261,29 +269,34 @@ export function NewOrder() {
                   onChange={(e) => update({ grossWeightKg: e.target.value })}
                 />
               </Field>
-              <Field label="Incoterms">
-                <Input
-                  placeholder="ex: DAP MONTERREY"
-                  value={form.incoterms}
-                  onChange={(e) => update({ incoterms: e.target.value })}
-                />
-              </Field>
+              {!isNational && (
+                <Field label="Incoterms">
+                  <Input
+                    placeholder="ex: DAP MONTERREY"
+                    value={form.incoterms}
+                    onChange={(e) => update({ incoterms: e.target.value })}
+                  />
+                </Field>
+              )}
             </div>
 
-            <BoxAssignmentFields editor={boxEditor} items={selectedQuote?.items ?? []} />
+            {/* Sem Packing List Box em venda nacional — não há o que dividir em caixas. */}
+            {!isNational && <BoxAssignmentFields editor={boxEditor} items={selectedQuote?.items ?? []} />}
           </FormSection>
 
           <FormSection title="Pagamento e transporte">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="AWB #">
-                <Input value={form.awbNumber} onChange={(e) => update({ awbNumber: e.target.value })} />
-              </Field>
-              <Field label="Prepayment by">
+            <div className={`grid grid-cols-1 gap-4 ${isNational ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+              {!isNational && (
+                <Field label="AWB #">
+                  <Input value={form.awbNumber} onChange={(e) => update({ awbNumber: e.target.value })} />
+                </Field>
+              )}
+              <Field label="Forma de pagamento">
                 <Select
                   value={form.prepaymentBy}
                   onChange={(e) => update({ prepaymentBy: e.target.value as PrepaymentMethod })}
                 >
-                  <option value="WIRE_TRANSFER">Wire Transfer</option>
+                  <option value="WIRE_TRANSFER">Transferência bancária</option>
                   <option value="PAYPAL">PayPal</option>
                 </Select>
               </Field>
@@ -298,16 +311,18 @@ export function NewOrder() {
                   />
                 </Field>
               )}
-              <Field label="Câmbio USD/BRL" hint={liveRate ? `Hoje: ${liveRate}` : undefined}>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  required
-                  className="tabular"
-                  value={form.exchangeRate}
-                  onChange={(e) => update({ exchangeRate: e.target.value })}
-                />
-              </Field>
+              {!isNational && (
+                <Field label="Câmbio USD/BRL" hint={liveRate ? `Hoje: ${liveRate}` : undefined}>
+                  <Input
+                    type="number"
+                    step="0.0001"
+                    required
+                    className="tabular"
+                    value={form.exchangeRate}
+                    onChange={(e) => update({ exchangeRate: e.target.value })}
+                  />
+                </Field>
+              )}
             </div>
           </FormSection>
 

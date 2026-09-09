@@ -7,6 +7,7 @@ import {
   formatOrderNumber,
   type ClientPrefix,
   type Currency,
+  type ExportScope,
   type PriceTier,
   type ProductDTO,
   type QuoteDTO,
@@ -91,6 +92,11 @@ export function NewQuote() {
   const [searchParams] = useSearchParams()
   const preselectId = searchParams.get('clientId')
 
+  // Nacional/Internacional é a escolha primária — decide moeda e idioma do
+  // documento, e se o pedido gerado a partir daqui vai ter câmbio, packing
+  // list e documento de exportação (ver orders.routes.ts). Antes disso era o
+  // idioma que implicitamente decidia tudo isso; agora é explícito.
+  const [exportScope, setExportScope] = useState<ExportScope>('INTERNATIONAL')
   const [language, setLanguage] = useState<QuoteLanguage>('EN')
   const [currency, setCurrency] = useState<Currency>('USD')
   const [priceTier, setPriceTier] = useState<PriceTier>('FINAL')
@@ -125,6 +131,7 @@ export function NewQuote() {
   useEffect(() => {
     if (!existingQuote || prefilled.current) return
     prefilled.current = true
+    setExportScope(existingQuote.exportScope)
     setLanguage(existingQuote.language)
     setCurrency(existingQuote.currency)
     setPriceTier(existingQuote.priceTier)
@@ -175,10 +182,15 @@ export function NewQuote() {
     enabled: infoIndex !== null && !!infoProductId,
   })
   const infoCatalogPrice = infoProduct ? catalogPriceFor(infoProduct, currency, effectivePriceTier) : null
+  // Catálogo tem descrição em PT pra maioria dos produtos — orçamento em
+  // português deve oferecer essa versão, não a em inglês (mesma regra do
+  // backend em resolveQuoteData).
+  const infoDescription = infoProduct ? (language === 'PT' ? infoProduct.descriptionPt || infoProduct.description : infoProduct.description) : null
 
   const createQuote = useMutation({
     mutationFn: async () => {
       const payload = {
+        exportScope,
         language,
         currency,
         priceTier: currency === 'USD' ? priceTier : 'FINAL',
@@ -288,27 +300,53 @@ export function NewQuote() {
         <Card className="space-y-7 p-6">
           <FormSection title="Documento">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Field label="Idioma">
-                <Select value={language} onChange={(e) => setLanguage(e.target.value as QuoteLanguage)}>
-                  <option value="PT">Português</option>
-                  <option value="EN">English</option>
-                  <option value="ES">Español</option>
+              <Field label="Tipo" hint={exportScope === 'NATIONAL' ? 'Português, valores em Reais' : undefined}>
+                <Select
+                  value={exportScope}
+                  onChange={(e) => {
+                    const value = e.target.value as ExportScope
+                    setExportScope(value)
+                    // Nacional é sempre BRL/português — sem essas duas
+                    // escolhas soltas, o vendedor não consegue combinar
+                    // "Nacional" com "Inglês" ou "Nacional" com "Dólar" por
+                    // engano. Internacional volta pros valores mais comuns.
+                    if (value === 'NATIONAL') {
+                      setLanguage('PT')
+                      setCurrency('BRL')
+                    } else {
+                      setLanguage('EN')
+                      setCurrency('USD')
+                    }
+                  }}
+                >
+                  <option value="NATIONAL">Nacional</option>
+                  <option value="INTERNATIONAL">Internacional</option>
                 </Select>
               </Field>
-              <Field label="Moeda">
-                <Select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
-                  <option value="BRL">Real (BRL)</option>
-                  <option value="USD">Dólar (USD)</option>
-                  <option value="EUR">Euro (EUR)</option>
-                </Select>
-              </Field>
-              {currency === 'USD' && (
-                <Field label="Tabela">
-                  <Select value={priceTier} onChange={(e) => setPriceTier(e.target.value as PriceTier)}>
-                    <option value="FINAL">Final</option>
-                    <option value="DISTRIBUTOR">Distribuidor</option>
-                  </Select>
-                </Field>
+              {exportScope === 'INTERNATIONAL' && (
+                <>
+                  <Field label="Idioma">
+                    <Select value={language} onChange={(e) => setLanguage(e.target.value as QuoteLanguage)}>
+                      <option value="PT">Português</option>
+                      <option value="EN">English</option>
+                      <option value="ES">Español</option>
+                    </Select>
+                  </Field>
+                  <Field label="Moeda">
+                    <Select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+                      <option value="USD">Dólar (USD)</option>
+                      <option value="EUR">Euro (EUR)</option>
+                    </Select>
+                  </Field>
+                  {currency === 'USD' && (
+                    <Field label="Tabela">
+                      <Select value={priceTier} onChange={(e) => setPriceTier(e.target.value as PriceTier)}>
+                        <option value="FINAL">Final</option>
+                        <option value="DISTRIBUTOR">Distribuidor</option>
+                      </Select>
+                    </Field>
+                  )}
+                </>
               )}
             </div>
           </FormSection>
@@ -441,7 +479,7 @@ export function NewQuote() {
                               <div>
                                 <p className="text-eyebrow text-neutral-400">Descrição do catálogo</p>
                                 <p className="mt-1 max-h-32 overflow-y-auto text-[12.5px] leading-relaxed text-ink-700">
-                                  {infoProduct.description || 'Sem descrição cadastrada.'}
+                                  {infoDescription || 'Sem descrição cadastrada.'}
                                 </p>
                               </div>
                               <div>
@@ -459,7 +497,7 @@ export function NewQuote() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    updateItem(index, { description: infoProduct.description ?? '' })
+                                    updateItem(index, { description: infoDescription ?? '' })
                                     setInfoIndex(null)
                                   }}
                                   className="flex-1 rounded-lg bg-neutral-500/8 px-2 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:bg-neutral-500/14"

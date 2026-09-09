@@ -386,7 +386,7 @@ export function OrderDetail() {
 
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Purchase Order">
+                  <Field label="Pedido de compra">
                     <Input
                       value={editForm.purchaseOrder}
                       onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
@@ -409,14 +409,14 @@ export function OrderDetail() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Bill To">
+                  <Field label="Faturamento (Bill To)">
                     <Textarea
                       rows={5}
                       value={editForm.billToText}
                       onChange={(e) => setEditForm((s) => ({ ...s, billToText: e.target.value }))}
                     />
                   </Field>
-                  <Field label="Ship To">
+                  <Field label="Entrega (Ship To)">
                     <Textarea
                       rows={5}
                       value={editForm.shipToText}
@@ -470,12 +470,12 @@ export function OrderDetail() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Prepayment by">
+                  <Field label="Forma de pagamento">
                     <Select
                       value={editForm.prepaymentBy}
                       onChange={(e) => setEditForm((s) => ({ ...s, prepaymentBy: e.target.value as PrepaymentMethod }))}
                     >
-                      <option value="WIRE_TRANSFER">Wire Transfer</option>
+                      <option value="WIRE_TRANSFER">Transferência bancária</option>
                       <option value="PAYPAL">PayPal</option>
                     </Select>
                   </Field>
@@ -538,8 +538,8 @@ export function OrderDetail() {
             <>
               <h2 className="text-heading text-ink-900">Dados do pedido</h2>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-                <ReadField label="Purchase Order" value={order.purchaseOrder ?? order.quoteNumber} />
-                <ReadField label="Ordered By" value={order.orderedByEmail} />
+                <ReadField label="Pedido de compra" value={order.purchaseOrder ?? order.quoteNumber} />
+                <ReadField label="E-mail do comprador" value={order.orderedByEmail} />
                 <ReadField
                   label="Data de expedição"
                   value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null}
@@ -551,11 +551,11 @@ export function OrderDetail() {
                 <ReadField label="Incoterms" value={order.incoterms} />
                 <ReadField label="AWB #" value={order.awbNumber} />
                 <ReadField
-                  label="Prepayment"
+                  label="Forma de pagamento"
                   value={
                     order.prepaymentBy === 'PAYPAL'
                       ? `PayPal (taxa ${currency} ${formatAmount(order.paypalFee ?? 0)})`
-                      : 'Wire Transfer'
+                      : 'Transferência bancária'
                   }
                 />
                 <ReadField label="Número da NF" value={order.nfNumber} />
@@ -572,8 +572,8 @@ export function OrderDetail() {
               </dl>
 
               <div className="mt-5 space-y-4 border-t border-neutral-200/70 pt-4">
-                <ReadField label="Bill To" value={order.billToText} />
-                <ReadField label="Ship To" value={order.shipToText} />
+                <ReadField label="Faturamento (Bill To)" value={order.billToText} />
+                <ReadField label="Entrega (Ship To)" value={order.shipToText} />
                 {order.shipToNote && <ReadField label="Observação de entrega" value={order.shipToNote} />}
               </div>
             </>

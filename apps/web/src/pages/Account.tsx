@@ -46,6 +46,7 @@ export function Account() {
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
+  const [whatsapp, setWhatsapp] = useState(user?.whatsapp ?? '')
   const [jobTitle, setJobTitle] = useState(user?.jobTitle ?? '')
   const [profileError, setProfileError] = useState<string | null>(null)
   const [profileSuccess, setProfileSuccess] = useState(false)
@@ -69,6 +70,7 @@ export function Account() {
         name,
         email,
         phone: phone || null,
+        whatsapp: whatsapp || null,
         jobTitle: jobTitle || null,
       })
       setUser(data.user)
@@ -167,8 +169,15 @@ export function Account() {
                   onChange={(e) => setJobTitle(e.target.value)}
                 />
               </Field>
-              <Field label="Telefone">
-                <Input placeholder="+55 (81) 90000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Field label="Telefone fixo">
+                <Input placeholder="+55 (81) 3432.7702" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </Field>
+              <Field label="WhatsApp">
+                <Input
+                  placeholder="+55 (81) 90000-0000"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                />
               </Field>
             </div>
 

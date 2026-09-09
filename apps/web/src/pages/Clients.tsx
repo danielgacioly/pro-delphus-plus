@@ -49,10 +49,12 @@ function ClientCard({
   client,
   isAdmin,
   onDelete,
+  onToggleService,
 }: {
   client: ClientDTO
   isAdmin: boolean
   onDelete: (client: ClientDTO) => void
+  onToggleService: (client: ClientDTO) => void
 }) {
   const Icon = KIND_ICON[client.kind]
   const place = [client.city, client.state, client.country].filter(Boolean).join(', ')
@@ -70,6 +72,19 @@ function ClientCard({
               {client.institution || CLIENT_KIND_LABEL[client.kind]}
             </p>
           </div>
+          <button
+            type="button"
+            title={client.inService ? 'Marcar como não em atendimento' : 'Marcar como em atendimento'}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onToggleService(client)
+            }}
+          >
+            <Badge tone={client.inService ? 'success' : 'neutral'} dot>
+              {client.inService ? 'Em atendimento' : 'Sem atendimento'}
+            </Badge>
+          </button>
           {!client.active && <Badge tone="warning">Inativo</Badge>}
           {isAdmin && (
             <button
@@ -160,6 +175,13 @@ export function Clients() {
       setDeletingClient(null)
       toast.success('Cliente excluído.')
     },
+  })
+
+  const toggleServiceMutation = useMutation({
+    mutationFn: async ({ id, inService }: { id: string; inService: boolean }) => {
+      await api.patch(`/clients/${id}`, { inService })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] }),
   })
 
   const filtered = useMemo(() => {
@@ -270,7 +292,12 @@ export function Clients() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((client, i) => (
               <div key={client.id} style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }} className="animate-fade-in-up">
-                <ClientCard client={client} isAdmin={isAdmin} onDelete={setDeletingClient} />
+                <ClientCard
+                  client={client}
+                  isAdmin={isAdmin}
+                  onDelete={setDeletingClient}
+                  onToggleService={(c) => toggleServiceMutation.mutate({ id: c.id, inService: !c.inService })}
+                />
               </div>
             ))}
           </div>

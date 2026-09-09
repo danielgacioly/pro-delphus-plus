@@ -38,6 +38,15 @@ enum QuoteLanguage {
   ES
 }
 
+/// Nacional (BRL, sempre em português, sem documentação de exportação) vs.
+/// Internacional (USD/EUR, com câmbio, packing list e documento de
+/// exportação). Antes disso era inferido do idioma do orçamento, o que
+/// misturava dois eixos diferentes — ver quoteI18n.ts e orders.routes.ts.
+enum ExportScope {
+  NATIONAL
+  INTERNATIONAL
+}
+
 enum ProductKind {
   COMPLETE_MODEL
   COMPONENT
@@ -87,7 +96,10 @@ model User {
   role         Role          @default(USER)
   status       AccountStatus @default(PENDING)
   active       Boolean       @default(true)
+  /// Telefone fixo — ver `whatsapp` para o número de WhatsApp, exibido
+  /// separadamente na assinatura automática dos documentos.
   phone        String?
+  whatsapp     String?
   jobTitle     String?
   signatureUrl String?
   catalogLanguage String     @default("EN")
@@ -199,6 +211,9 @@ model Client {
   notes   String?
 
   active    Boolean  @default(true)
+  /// Marcação manual de acompanhamento comercial — independente de `active`
+  /// (que é sobre o cadastro existir/estar arquivado).
+  inService Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -216,6 +231,9 @@ model Quote {
   quoteNumber  String        @unique
   language     QuoteLanguage @default(PT)
   currency     Currency      @default(USD)
+  /// Nacional força language=PT e currency=BRL, e o pedido gerado a partir
+  /// daqui pula câmbio/packing list/packing list box/documento de exportação.
+  exportScope  ExportScope   @default(INTERNATIONAL)
   priceTier    PriceTier     @default(FINAL)
   clientPrefix ClientPrefix  @default(NONE)
   /// Snapshot do nome no momento da emissão: o documento já enviado não pode
