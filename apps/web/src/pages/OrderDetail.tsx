@@ -546,7 +546,7 @@ export function OrderDetail() {
 
               <p className="mt-4 text-[12px] leading-relaxed text-neutral-400">
                 {isNational
-                  ? 'Salvar regenera automaticamente o Invoice e a Packing List Box.'
+                  ? 'Salvar regenera automaticamente a Packing List Box.'
                   : 'Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.'}
               </p>
 

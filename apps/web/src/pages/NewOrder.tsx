@@ -79,8 +79,13 @@ export function NewOrder() {
     if (liveRate && !form.exchangeRate) {
       setForm((s) => ({ ...s, exchangeRate: String(liveRate) }))
     }
+    // Depende também de quoteId: selectQuote sempre zera exchangeRate ao
+    // trocar de orçamento, mas quando a moeda do novo orçamento é a mesma do
+    // anterior (ex: USD → USD) a query de câmbio não recarrega — sem essa
+    // dependência o campo ficava vazio pra sempre nesse caso, já que só
+    // reagia a mudanças em `liveRate`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveRate])
+  }, [liveRate, form.quoteId])
 
   // Pre-fill the form from a previous order once both it and the quotes list
   // have loaded — guarded so it only runs once, and never overwrites fields
@@ -177,7 +182,7 @@ export function NewOrder() {
       title="Novo pedido"
       description={
         isNational
-          ? 'Selecione um orçamento já gerado para criar o Invoice e a Packing List Box.'
+          ? 'Selecione um orçamento já gerado para criar a Packing List Box.'
           : 'Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de Exportação.'
       }
       width="narrow"

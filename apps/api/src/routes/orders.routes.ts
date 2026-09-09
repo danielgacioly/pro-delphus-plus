@@ -264,6 +264,10 @@ async function buildAndWriteDocuments(
   // PackingListBoxData.isNational em orderPdf.ts. Escolhido explicitamente
   // no orçamento (Quote.exportScope), não mais inferido da moeda — ver
   // NewQuote.tsx.
+  // Venda nacional só gera a Packing List Box — nem Invoice, nem Packing
+  // List (inglês), nem Documento de Exportação. Pedido explícito do Daniel:
+  // o Invoice nacional (que a gente chegou a traduzir pra PT/BRL) saiu de
+  // circulação de novo.
   const isNational = quote.exportScope === 'NATIONAL'
   const freight = quote.freight !== null ? Number(quote.freight) : null
   const discount = Number(quote.discount)
@@ -349,7 +353,7 @@ async function buildAndWriteDocuments(
   }
 
   const [invoiceBuffer, packingListBuffer, packingListBoxBuffer, exportDocBuffer] = await Promise.all([
-    generateInvoicePdf(docData),
+    isNational ? null : generateInvoicePdf(docData),
     isNational ? null : generatePackingListPdf(docData),
     generatePackingListBoxPdf(boxData),
     isNational ? null : generateExportDocXlsx(exportData),
@@ -365,14 +369,14 @@ async function buildAndWriteDocuments(
     exportDoc: `Order-${orderNumber}-Export.xlsx`,
   }
   await Promise.all([
-    fs.writeFile(path.join(uploadsDir, filenames.invoice), invoiceBuffer),
+    invoiceBuffer && fs.writeFile(path.join(uploadsDir, filenames.invoice), invoiceBuffer),
     packingListBuffer && fs.writeFile(path.join(uploadsDir, filenames.packingList), packingListBuffer),
     packingListBoxBuffer && fs.writeFile(path.join(uploadsDir, filenames.packingListBox), packingListBoxBuffer),
     exportDocBuffer && fs.writeFile(path.join(uploadsDir, filenames.exportDoc), exportDocBuffer),
   ])
 
   return {
-    invoicePdfUrl: versionedUrlFor(filenames.invoice),
+    invoicePdfUrl: invoiceBuffer ? versionedUrlFor(filenames.invoice) : null,
     packingListPdfUrl: packingListBuffer ? versionedUrlFor(filenames.packingList) : null,
     packingListBoxPdfUrl: versionedUrlFor(filenames.packingListBox),
     exportDocXlsxUrl: exportDocBuffer ? versionedUrlFor(filenames.exportDoc) : null,
