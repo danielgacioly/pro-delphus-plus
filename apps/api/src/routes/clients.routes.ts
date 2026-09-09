@@ -9,9 +9,16 @@ export const clientsRouter = Router()
 
 clientsRouter.use(requireAuth)
 
+// `kind`/`prefix` NÃO usam `.default(...)` aqui de propósito: esse schema
+// também vira `.partial()` pro PATCH (edição parcial, ex. o toggle de "em
+// atendimento", que manda só `{ inService }`), e o `.default()` do Zod é
+// aplicado mesmo quando o campo não veio no partial — na prática, qualquer
+// PATCH que não mandasse `kind`/`prefix` resetava silenciosamente o cliente
+// pra "Pessoa"/"Sem tratamento". O valor padrão do create fica explícito no
+// POST, abaixo.
 const clientBodySchema = z.object({
-  kind: z.enum(['INDIVIDUAL', 'INSTITUTION', 'DISTRIBUTOR']).default('INDIVIDUAL'),
-  prefix: z.enum(['NONE', 'MR', 'MS']).default('NONE'),
+  kind: z.enum(['INDIVIDUAL', 'INSTITUTION', 'DISTRIBUTOR']).optional(),
+  prefix: z.enum(['NONE', 'MR', 'MS']).optional(),
   name: z.string().min(1, 'Informe o nome do cliente'),
   institution: z.string().optional(),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
@@ -183,7 +190,7 @@ clientsRouter.post(
   asyncHandler(async (req, res) => {
     const data = normalize(clientBodySchema.parse(req.body))
     const client = await prisma.client.create({
-      data: { ...data, createdById: req.user!.id },
+      data: { ...data, kind: data.kind ?? 'INDIVIDUAL', prefix: data.prefix ?? 'NONE', createdById: req.user!.id },
     })
     res.status(201).json({ client: toClientDTO(client) })
   }),
