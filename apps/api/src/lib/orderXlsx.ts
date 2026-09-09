@@ -69,7 +69,7 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   // Label gets its own merged range (B:C) so its text never overflows into —
   // and gets visually clipped by — the rate cell's fill right next to it.
   sheet.mergeCells('B3:C3')
-  sheet.getCell('B3').value = 'Câmbio USD/BRL'
+  sheet.getCell('B3').value = `Câmbio ${data.currency}/BRL`
   sheet.getCell('B3').font = { bold: true, size: 10, color: { argb: INK } }
   const rateCell = sheet.getCell('D3')
   rateCell.value = data.exchangeRate

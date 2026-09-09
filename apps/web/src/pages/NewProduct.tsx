@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { DropZone } from '../components/DropZone'
 import { BackLink, Button, Card, Page } from '../components/ui'
 import {
@@ -88,10 +88,7 @@ export function NewProduct() {
       navigate('/produtos')
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível criar o produto.'
-      setError(message)
+      setError(getErrorMessage(err, 'Não foi possível criar o produto.'))
     },
   })
 

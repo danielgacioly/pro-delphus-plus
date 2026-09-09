@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
 import { Modal } from './Modal'
 import { CLIENT_KIND_LABEL, ClientForm, emptyClientForm, type ClientFormValues } from './ClientForm'
@@ -86,8 +86,7 @@ export function ClientPicker({
       setFormError(null)
       pick(client)
     },
-    onError: (err: { response?: { data?: { message?: string } } }) =>
-      setFormError(err.response?.data?.message ?? 'Não foi possível salvar o cliente.'),
+    onError: (err: unknown) => setFormError(getErrorMessage(err, 'Não foi possível salvar o cliente.')),
   })
 
   if (selected) {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { clientPrefixLabel, formatAmount, type QuoteDTO, type QuoteLanguage } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
@@ -251,12 +251,7 @@ export function Quotes() {
           title={`Excluir orçamento ${deletingQuote.quoteNumber}?`}
           description="O orçamento e os arquivos PDF/Excel gerados serão removidos definitivamente."
           isPending={deleteQuote.isPending}
-          error={
-            deleteQuote.isError
-              ? ((deleteQuote.error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-                'Não foi possível excluir este orçamento.')
-              : null
-          }
+          error={deleteQuote.isError ? getErrorMessage(deleteQuote.error, 'Não foi possível excluir este orçamento.') : null}
           onConfirm={() => deleteQuote.mutate(deletingQuote.id)}
           onCancel={() => {
             setDeletingQuote(null)

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../lib/api'
+import { api, getErrorMessage } from '../../lib/api'
 import { BackLink, Button, Card, Field, Input, Page } from '../../components/ui'
 
 export function NewSector() {
@@ -19,10 +19,7 @@ export function NewSector() {
       navigate('/admin/setores')
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível criar o setor.'
-      setError(message)
+      setError(getErrorMessage(err, 'Não foi possível criar o setor.'))
     },
   })
 

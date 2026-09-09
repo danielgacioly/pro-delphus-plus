@@ -66,6 +66,8 @@ enum Currency {
 enum PrepaymentMethod {
   PAYPAL
   WIRE_TRANSFER
+  /// Só disponível pra pedido nacional — sem taxa extra, diferente do PayPal.
+  PIX
 }
 
 enum ClientKind {
@@ -306,6 +308,10 @@ model Order {
   grossWeightKg    Decimal? @db.Decimal(10, 3)
   awbNumber        String?
   incoterms        String?
+  /// Só pra pedido nacional — texto livre tipo "PAC", "SEDEX", "Transportadora
+  /// XPTO", impresso na Packing List Box no lugar do Incoterms (que é coisa
+  /// de exportação).
+  shippingMethod   String?
 
   // Number of physical boxes/cartons shipped — drives how many pages the
   // Packing List Box document gets (one per box).

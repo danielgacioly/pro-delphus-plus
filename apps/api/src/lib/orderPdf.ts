@@ -50,9 +50,13 @@ export interface OrderDocData {
   grossWeightKg: string | null
   awbNumber: string | null
   incoterms: string | null
-  prepaymentBy: 'PAYPAL' | 'WIRE_TRANSFER'
+  /** Só pra nacional — mostrado no lugar de Incoterms/AWB, que são coisa de exportação. */
+  shippingMethod: string | null
+  prepaymentBy: 'PAYPAL' | 'WIRE_TRANSFER' | 'PIX'
   nfDate: Date | null
   nfNumber: string | null
+  /** Nacional = documento em português, moeda sempre BRL. */
+  isNational: boolean
 }
 
 export interface PackingListBoxItem {
@@ -72,6 +76,8 @@ export interface PackingListBoxData {
   pages: PackingListBoxPage[]
   /** Nacional = documento em português, com o código NCM por item (exigido em documentos de venda doméstica). */
   isNational: boolean
+  /** "PAC", "SEDEX", "Transportadora XPTO"... impresso como "VIA ___" no topo, só quando preenchido. */
+  shippingMethod: string | null
 }
 
 function escapeHtml(value: string) {
@@ -86,24 +92,23 @@ function nl2br(value: string) {
   return escapeHtml(value).replace(/\n/g, '<br />')
 }
 
-function fmtPlain(value: number) {
+// Símbolo de cada moeda do catálogo — sem isto, todo valor saía com "$" na
+// frente mesmo em pedido nacional em Reais ou internacional em Euro.
+const CURRENCY_SYMBOL: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
+
+function fmtMoney(value: number, currency: string) {
+  const symbol = CURRENCY_SYMBOL[currency] ?? currency
   const formatted = value.toLocaleString('en-US', {
     minimumFractionDigits: value % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   })
-  return `$ ${formatted}`
+  return `${symbol} ${formatted}`
 }
 
-function fmtWithCurrency(value: number, currency: string) {
-  const formatted = value.toLocaleString('en-US', {
-    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  })
-  return `${currency}$ ${formatted}`
-}
-
-function fmtDate(date: Date) {
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+function fmtDate(date: Date, isNational: boolean) {
+  return isNational
+    ? date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function fmtDateShort(date: Date) {
@@ -116,6 +121,119 @@ function renderItemDescription(item: OrderDocItem) {
   if (!description) return title
   return `${title}<br /><span class="item-desc">${nl2br(description)}</span>`
 }
+
+// Invoice/Packing List (o modelo "estilo invoice", não a Packing List Box)
+// saíam sempre em inglês, mesmo em pedido nacional — ver o pedido original.
+// Internacional continua em inglês (o idioma do orçamento internacional é
+// sempre EN/ES, nunca vira este documento); nacional é sempre PT.
+const INVOICE_LABELS = {
+  EN: {
+    invoiceTitle: 'INVOICE',
+    packingListTitle: 'PACKING LIST',
+    date: 'Date',
+    po: 'Purchase Order #',
+    orderedBy: 'Ordered By',
+    itemDescription: 'ITEM DESCRIPTION',
+    qty: 'QTY.',
+    price: 'PRICE',
+    totalPrice: 'TOTAL PRICE',
+    shipping: 'Shipping',
+    paypalFee: 'PayPal fee',
+    discount: 'Discount',
+    total: 'TOTAL',
+    billTo: 'BILL TO',
+    shipTo: 'SHIP TO',
+    numberOfPackages: 'Number of Packages',
+    netWeight: 'Net Weight',
+    grossWeight: 'Gross Weight',
+    awb: 'AWB #',
+    incoterms: 'Incoterms',
+    shippingMethod: 'Shipping Method',
+    paymentDetails: 'PAYMENT DETAILS',
+    paymentTerms: 'Payment Terms',
+    prepaymentBy: 'Prepayment by',
+    currency: 'Currency',
+    wireTransfer: 'Wire Transfer',
+    paypal: 'PayPal',
+    pix: 'Pix',
+    bankName: 'Bank Name',
+    bankNumber: 'Bank Number',
+    branch: 'Branch',
+    accountNumber: 'Account Number',
+    swiftCode: 'Swift Code',
+    ibanCode: 'IBAN Code',
+    beneficiaryName: 'Beneficiary Name',
+    beneficiaryCode: 'Beneficiary Code',
+    additionalInfo: 'ADDITIONAL INFORMATION',
+    nfDate: 'Date',
+    nfNumber: 'Sales Receipt Number',
+    ncm: 'NCM/HS',
+    disclaimer1: 'Made of Fiberglass and Thermos-retractile Rubber • All products are manufactured in Brazil',
+    disclaimer2: 'MATERIAL FOR EDUCATIONAL PURPOSES ONLY',
+    disclaimer3: 'All products are manufactured by the sender: Pro Delphus Simuladores Cirúrgicos.',
+    disclaimer4: 'All items are dolls made of rubber and/ or fiberglass in the shape of human organs.',
+  },
+  PT: {
+    invoiceTitle: 'FATURA',
+    packingListTitle: 'PACKING LIST',
+    date: 'Data',
+    po: 'Pedido de Compra #',
+    orderedBy: 'E-mail do Comprador',
+    itemDescription: 'DESCRIÇÃO DO ITEM',
+    qty: 'QTD.',
+    price: 'PREÇO',
+    totalPrice: 'PREÇO TOTAL',
+    shipping: 'Frete',
+    paypalFee: 'Taxa do PayPal',
+    discount: 'Desconto',
+    total: 'TOTAL',
+    billTo: 'FATURAMENTO',
+    shipTo: 'ENTREGA',
+    numberOfPackages: 'Nº de Volumes',
+    netWeight: 'Peso Líquido',
+    grossWeight: 'Peso Bruto',
+    awb: 'AWB #',
+    incoterms: 'Incoterms',
+    shippingMethod: 'Via de Envio',
+    paymentDetails: 'DADOS DE PAGAMENTO',
+    paymentTerms: 'Forma de Pagamento',
+    prepaymentBy: 'Pagamento antecipado via',
+    currency: 'Moeda',
+    wireTransfer: 'Transferência Bancária',
+    paypal: 'PayPal',
+    pix: 'Pix',
+    bankName: 'Banco',
+    bankNumber: 'Código do Banco',
+    branch: 'Agência',
+    accountNumber: 'Conta',
+    swiftCode: 'Swift Code',
+    ibanCode: 'IBAN Code',
+    beneficiaryName: 'Nome do Beneficiário',
+    beneficiaryCode: 'CNPJ do Beneficiário',
+    additionalInfo: 'INFORMAÇÕES ADICIONAIS',
+    nfDate: 'Data',
+    nfNumber: 'Número da Nota Fiscal',
+    ncm: 'NCM',
+    disclaimer1: 'Fabricado em Fibra de Vidro e Borracha Termo-retrátil • Todos os produtos são fabricados no Brasil',
+    disclaimer2: 'MATERIAL EXCLUSIVO PARA FINS EDUCACIONAIS',
+    disclaimer3: 'Todos os produtos são fabricados pelo remetente: Pro Delphus Simuladores Cirúrgicos.',
+    disclaimer4: 'Todos os itens são bonecos feitos de borracha e/ou fibra de vidro em formato de órgãos humanos.',
+  },
+} as const
+
+// Aplicado só na Packing List (não no Invoice) — pedido explícito de deixar
+// a fonte bem maior pra facilitar a leitura de quem confere a carga.
+const PACKING_LIST_FONT_BOOST = `
+  body { font-size: 14px; }
+  .doc-title { font-size: 28px; }
+  .doc-number { font-size: 17px; }
+  .doc-meta .row-value { font-size: 13px; }
+  table.items thead th { font-size: 13px; }
+  table.items td { font-size: 14px; }
+  .item-desc { font-size: 12.5px; }
+  .info-col h3, .info-side .cell b { font-size: 10.5px; }
+  .info-col .body, .info-side .cell { font-size: 13px; }
+`
 
 const RED = '#ef1818'
 const INK = '#1a1a1a'
@@ -174,9 +292,21 @@ const SHARED_STYLE = `
   footer { margin-top: 5px; text-align: center; font-size: 8px; color: ${MUTED}; }
 `
 
+function prepaymentLabel(t: (typeof INVOICE_LABELS)[keyof typeof INVOICE_LABELS], method: OrderDocData['prepaymentBy']) {
+  if (method === 'PAYPAL') return t.paypal
+  if (method === 'PIX') return t.pix
+  return t.wireTransfer
+}
+
 function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-list') {
   const isInvoice = mode === 'invoice'
-  const title = isInvoice ? 'INVOICE' : 'PACKING LIST'
+  const t = INVOICE_LABELS[data.isNational ? 'PT' : 'EN']
+  const title = isInvoice ? t.invoiceTitle : t.packingListTitle
+  // Pix não tem taxa nem dado bancário (usa chave, que não é um campo do
+  // sistema) — some a seção bancária inteira. Swift/IBAN são só pra
+  // transferência internacional, então nem aparecem em pedido nacional.
+  const showBankBlock = data.prepaymentBy !== 'PIX'
+  const showSwiftIban = showBankBlock && !data.isNational
 
   const rows = data.items
     .map(
@@ -184,7 +314,7 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
         <tr>
           <td>${renderItemDescription(item)}</td>
           <td class="num">${item.quantity}</td>
-          ${isInvoice ? `<td class="num">${fmtPlain(item.unitPrice)}</td><td class="num">${fmtPlain(item.lineTotal)}</td>` : ''}
+          ${isInvoice ? `<td class="num">${fmtMoney(item.unitPrice, data.currency)}</td><td class="num">${fmtMoney(item.lineTotal, data.currency)}</td>` : ''}
         </tr>`,
     )
     .join('')
@@ -193,22 +323,22 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
   const extraRows = isInvoice
     ? [
         data.freight !== null
-          ? `<tr class="extra-row"><td colspan="${extraRowCols}">Shipping</td><td class="num">${fmtPlain(data.freight)}</td></tr>`
+          ? `<tr class="extra-row"><td colspan="${extraRowCols}">${t.shipping}</td><td class="num">${fmtMoney(data.freight, data.currency)}</td></tr>`
           : '',
         data.paypalFee !== null
-          ? `<tr class="extra-row"><td colspan="${extraRowCols}">PayPal fee</td><td class="num">${fmtPlain(data.paypalFee)}</td></tr>`
+          ? `<tr class="extra-row"><td colspan="${extraRowCols}">${t.paypalFee}</td><td class="num">${fmtMoney(data.paypalFee, data.currency)}</td></tr>`
           : '',
         data.discount !== null && data.discount > 0
-          ? `<tr class="extra-row discount-row"><td colspan="${extraRowCols}">Discount</td><td class="num">-${fmtPlain(data.discount)}</td></tr>`
+          ? `<tr class="extra-row discount-row"><td colspan="${extraRowCols}">${t.discount}</td><td class="num">-${fmtMoney(data.discount, data.currency)}</td></tr>`
           : '',
       ].join('')
     : ''
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${data.isNational ? 'pt' : 'en'}">
 <head>
 <meta charset="utf-8" />
-<style>${SHARED_STYLE}</style>
+<style>${SHARED_STYLE}${isInvoice ? '' : PACKING_LIST_FONT_BOOST}</style>
 </head>
 <body>
   <header>
@@ -223,9 +353,9 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
       </div>
     </div>
     <div class="doc-meta">
-      <div class="row"><span class="row-label">Date</span><span class="row-value">${escapeHtml(fmtDate(data.invoiceDate))}</span></div>
-      <div class="row"><span class="row-label">Purchase Order #</span><span class="row-value">${escapeHtml(data.purchaseOrder)}</span></div>
-      <div class="row"><span class="row-label">Ordered By</span><span class="row-value">${escapeHtml(data.orderedByEmail)}</span></div>
+      <div class="row"><span class="row-label">${t.date}</span><span class="row-value">${escapeHtml(fmtDate(data.invoiceDate, data.isNational))}</span></div>
+      <div class="row"><span class="row-label">${t.po}</span><span class="row-value">${escapeHtml(data.purchaseOrder)}</span></div>
+      <div class="row"><span class="row-label">${t.orderedBy}</span><span class="row-value">${escapeHtml(data.orderedByEmail)}</span></div>
     </div>
   </header>
 
@@ -237,9 +367,9 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
   <table class="items">
     <thead>
       <tr>
-        <th class="desc-head">ITEM DESCRIPTION</th>
-        <th class="num-head">QTY.</th>
-        ${isInvoice ? '<th class="num-head">PRICE</th><th class="num-head">TOTAL PRICE</th>' : ''}
+        <th class="desc-head">${t.itemDescription}</th>
+        <th class="num-head">${t.qty}</th>
+        ${isInvoice ? `<th class="num-head">${t.price}</th><th class="num-head">${t.totalPrice}</th>` : ''}
       </tr>
     </thead>
     <tbody>
@@ -250,64 +380,76 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
   ${
     isInvoice
       ? `<div class="total-bar">
-    <span class="label">TOTAL</span>
-    <span class="value">${fmtWithCurrency(data.total, data.currency)}</span>
+    <span class="label">${t.total}</span>
+    <span class="value">${fmtMoney(data.total, data.currency)}</span>
   </div>`
       : ''
   }
 
   <div class="info-grid">
     <div class="info-col">
-      <h3>BILL TO</h3>
+      <h3>${t.billTo}</h3>
       <div class="body">${nl2br(data.billToText)}</div>
     </div>
     <div class="info-col">
-      <h3>SHIP TO</h3>
+      <h3>${t.shipTo}</h3>
       <div class="body">${nl2br(data.shipToText)}</div>
     </div>
     <div class="info-side">
-      <div class="cell"><b>Number of Packages</b>${escapeHtml(data.numberOfPackages ?? '—')}</div>
-      <div class="cell"><b>Net Weight</b>${escapeHtml(data.netWeightKg ? `${data.netWeightKg} KG` : '—')}</div>
-      <div class="cell"><b>Gross Weight</b>${escapeHtml(data.grossWeightKg ? `${data.grossWeightKg} KG` : '—')}</div>
-      <div class="cell"><b>AWB #</b>${escapeHtml(data.awbNumber ?? '—')}</div>
-      <div class="cell"><b>Incoterms</b>${escapeHtml(data.incoterms ?? '—')}</div>
+      <div class="cell"><b>${t.numberOfPackages}</b>${escapeHtml(data.numberOfPackages ?? '—')}</div>
+      <div class="cell"><b>${t.netWeight}</b>${escapeHtml(data.netWeightKg ? `${data.netWeightKg} KG` : '—')}</div>
+      <div class="cell"><b>${t.grossWeight}</b>${escapeHtml(data.grossWeightKg ? `${data.grossWeightKg} KG` : '—')}</div>
+      ${
+        data.isNational
+          ? `<div class="cell"><b>${t.shippingMethod}</b>${escapeHtml(data.shippingMethod ?? '—')}</div>`
+          : `<div class="cell"><b>${t.awb}</b>${escapeHtml(data.awbNumber ?? '—')}</div>
+      <div class="cell"><b>${t.incoterms}</b>${escapeHtml(data.incoterms ?? '—')}</div>`
+      }
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">PAYMENT DETAILS</div>
+    <div class="section-title">${t.paymentDetails}</div>
     <div class="payment-grid">
-      <div class="cell"><b>Payment Terms</b>Prepayment by ${data.prepaymentBy === 'PAYPAL' ? 'PayPal' : 'Wire Transfer'}</div>
-      <div class="cell"><b>Currency</b>${escapeHtml(data.currency)}$</div>
+      <div class="cell"><b>${t.paymentTerms}</b>${t.prepaymentBy} ${prepaymentLabel(t, data.prepaymentBy)}</div>
+      <div class="cell"><b>${t.currency}</b>${escapeHtml(data.currency)}</div>
     </div>
+    ${
+      showBankBlock
+        ? `<div class="payment-grid">
+      <div class="cell"><b>${t.bankName}</b>${escapeHtml(BANK.name)}</div>
+      <div class="cell"><b>${t.bankNumber}</b>${escapeHtml(BANK.number)}</div>
+      <div class="cell"><b>${t.branch}</b>${escapeHtml(BANK.branch)}</div>
+      <div class="cell"><b>${t.accountNumber}</b>${escapeHtml(BANK.account)}</div>
+    </div>
+    ${
+      showSwiftIban
+        ? `<div class="payment-grid">
+      <div class="cell"><b>${t.swiftCode}</b>${escapeHtml(BANK.swift)}</div>
+      <div class="cell"><b>${t.ibanCode}</b>${escapeHtml(BANK.iban)}</div>
+    </div>`
+        : ''
+    }
     <div class="payment-grid">
-      <div class="cell"><b>Bank Name</b>${escapeHtml(BANK.name)}</div>
-      <div class="cell"><b>Bank Number</b>${escapeHtml(BANK.number)}</div>
-      <div class="cell"><b>Branch</b>${escapeHtml(BANK.branch)}</div>
-      <div class="cell"><b>Account Number</b>${escapeHtml(BANK.account)}</div>
-    </div>
-    <div class="payment-grid">
-      <div class="cell"><b>Swift Code</b>${escapeHtml(BANK.swift)}</div>
-      <div class="cell"><b>IBAN Code</b>${escapeHtml(BANK.iban)}</div>
-    </div>
-    <div class="payment-grid">
-      <div class="cell"><b>Beneficiary Name</b>${escapeHtml(BANK.beneficiaryName)}</div>
-      <div class="cell"><b>Beneficiary Code</b>${escapeHtml(BANK.beneficiaryCode)}</div>
-    </div>
+      <div class="cell"><b>${t.beneficiaryName}</b>${escapeHtml(BANK.beneficiaryName)}</div>
+      <div class="cell"><b>${t.beneficiaryCode}</b>${escapeHtml(BANK.beneficiaryCode)}</div>
+    </div>`
+        : ''
+    }
   </div>
 
   <div class="section">
-    <div class="section-title">ADDITIONAL INFORMATION</div>
+    <div class="section-title">${t.additionalInfo}</div>
     <div class="additional-grid">
-      <div class="cell"><b>Date</b>${data.nfDate ? escapeHtml(fmtDateShort(data.nfDate)) : '—'}</div>
-      <div class="cell"><b>Sales Receipt Number</b>${escapeHtml(data.nfNumber ?? '—')}</div>
-      <div class="cell"><b>NCM/HS</b>${NCM_HS_CODE}</div>
+      <div class="cell"><b>${t.nfDate}</b>${data.nfDate ? escapeHtml(fmtDateShort(data.nfDate)) : '—'}</div>
+      <div class="cell"><b>${t.nfNumber}</b>${escapeHtml(data.nfNumber ?? '—')}</div>
+      <div class="cell"><b>${t.ncm}</b>${NCM_HS_CODE}</div>
     </div>
     <div class="additional">
-      Made of Fiberglass and Thermos-retractile Rubber • All products are manufactured in Brazil<br />
-      MATERIAL FOR EDUCATIONAL PURPOSES ONLY<br /><br />
-      All products are manufactured by the sender: Pro Delphus Simuladores Cirúrgicos.<br />
-      All items are dolls made of rubber and/ or fiberglass in the shape of human organs.
+      ${escapeHtml(t.disclaimer1)}<br />
+      ${escapeHtml(t.disclaimer2)}<br /><br />
+      ${escapeHtml(t.disclaimer3)}<br />
+      ${escapeHtml(t.disclaimer4)}
     </div>
   </div>
 
@@ -333,6 +475,7 @@ function renderPackingListBoxPage(data: PackingListBoxData, page: PackingListBox
       .join('')
 
     return `<div class="box-page"${pageStyle}>
+  ${data.shippingMethod ? `<div class="via-line">VIA ${escapeHtml(data.shippingMethod.toUpperCase())}</div>` : ''}
   <div class="warning-box">NÃO ACEITAR SE A EMBALAGEM ESTIVER<br />VIOLADA OU AMASSADA</div>
 
   <div class="block">
@@ -409,17 +552,20 @@ function renderPackingListBoxHtml(data: PackingListBoxData) {
 <meta charset="utf-8" />
 <style>
   * { box-sizing: border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; margin: 0; font-size: 13px; }
+  /* Fonte bem maior que o padrão do resto dos documentos — pedido explícito
+     pra facilitar a leitura de quem confere a caixa no galpão/transportadora. */
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; margin: 0; font-size: 17px; }
   .box-page { padding: 48px; }
-  .warning-box { border: 3px solid #1a1a1a; padding: 18px; text-align: center; font-size: 20px; font-weight: 800; line-height: 1.4; margin-bottom: 28px; }
-  .block { margin-bottom: 22px; }
-  .block h3 { font-size: 12px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px; border-bottom: 2px solid #1a1a1a; padding-bottom: 3px; }
-  .block p { margin: 0; line-height: 1.6; font-size: 12.5px; white-space: pre-line; }
-  .pl-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
-  .box-label { font-size: 11px; font-weight: 700; color: #ef1818; border: 1.5px solid #ef1818; border-radius: 5px; padding: 2px 8px; }
-  .pl-item { font-size: 12.5px; padding: 2px 0; }
+  .via-line { text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 1px; margin-bottom: 14px; }
+  .warning-box { border: 3px solid #1a1a1a; padding: 20px; text-align: center; font-size: 25px; font-weight: 800; line-height: 1.4; margin-bottom: 30px; }
+  .block { margin-bottom: 24px; }
+  .block h3 { font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 0 8px; border-bottom: 2px solid #1a1a1a; padding-bottom: 4px; }
+  .block p { margin: 0; line-height: 1.6; font-size: 17px; white-space: pre-line; }
+  .pl-title { font-size: 19px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .box-label { font-size: 14px; font-weight: 700; color: #ef1818; border: 1.5px solid #ef1818; border-radius: 5px; padding: 2px 10px; }
+  .pl-item { font-size: 17px; padding: 3px 0; }
   .pl-empty { color: #888; font-style: italic; }
-  .disclaimer { margin-top: 28px; text-align: center; font-size: 10.5px; line-height: 1.8; color: #ef1818; font-weight: 600; }
+  .disclaimer { margin-top: 30px; text-align: center; font-size: 13.5px; line-height: 1.8; color: #ef1818; font-weight: 600; }
   .disclaimer .tags { margin-top: 8px; font-weight: 800; letter-spacing: 0.5px; }
 </style>
 </head>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { getErrorMessage } from '../lib/api'
 import { AuthLayout, AuthNotice } from '../components/AuthLayout'
 import { Button, Field, Input } from '../components/ui'
 
@@ -20,9 +21,7 @@ export function Login() {
       await login(email, password)
       navigate('/')
     } catch (err) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'E-mail ou senha inválidos.'
-      setError(message)
+      setError(getErrorMessage(err, 'E-mail ou senha inválidos.'))
     } finally {
       setSubmitting(false)
     }

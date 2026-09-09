@@ -147,6 +147,7 @@ export function OrderDetail() {
       grossWeightKg: string
       awbNumber: string
       incoterms: string
+      shippingMethod: string
       prepaymentBy: PrepaymentMethod
       paypalFee: string
       nfNumber: string
@@ -174,6 +175,7 @@ export function OrderDetail() {
         grossWeightKg: editForm.grossWeightKg ? Number(editForm.grossWeightKg) : undefined,
         awbNumber: editForm.awbNumber || undefined,
         incoterms: editForm.incoterms || undefined,
+        shippingMethod: editForm.shippingMethod || undefined,
         prepaymentBy: editForm.prepaymentBy,
         paypalFee: editForm.paypalFee ? Number(editForm.paypalFee) : undefined,
         nfNumber: editForm.nfNumber || undefined,
@@ -259,6 +261,7 @@ export function OrderDetail() {
       grossWeightKg: order.grossWeightKg ?? '',
       awbNumber: order.awbNumber ?? '',
       incoterms: order.incoterms ?? '',
+      shippingMethod: order.shippingMethod ?? '',
       prepaymentBy: order.prepaymentBy,
       paypalFee: order.paypalFee ?? '',
       nfNumber: order.nfNumber ?? '',
@@ -296,6 +299,9 @@ export function OrderDetail() {
   }
 
   const currency = order.quote.currency
+  // Venda nacional não sai do Brasil — sem câmbio, Incoterms nem AWB (via de
+  // envio entra no lugar). Ver a mesma regra em apps/api/src/routes/orders.routes.ts.
+  const isNational = order.quote.exportScope === 'NATIONAL'
   // Mesma conta do Invoice gerado (subtotal + frete - desconto + taxa do
   // PayPal quando é a forma de pagamento) — "Total do orçamento" nunca inclui
   // a taxa, porque ela é um dado do pedido, não do orçamento em si. Sem este
@@ -455,18 +461,30 @@ export function OrderDetail() {
                 <BoxAssignmentFields editor={boxEditor} items={order.quote.items} />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="AWB #">
-                    <Input
-                      value={editForm.awbNumber}
-                      onChange={(e) => setEditForm((s) => ({ ...s, awbNumber: e.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Incoterms">
-                    <Input
-                      value={editForm.incoterms}
-                      onChange={(e) => setEditForm((s) => ({ ...s, incoterms: e.target.value }))}
-                    />
-                  </Field>
+                  {isNational ? (
+                    <Field label="Via de envio" hint='ex: "PAC", "SEDEX", "Transportadora XPTO"'>
+                      <Input
+                        placeholder="ex: SEDEX"
+                        value={editForm.shippingMethod}
+                        onChange={(e) => setEditForm((s) => ({ ...s, shippingMethod: e.target.value }))}
+                      />
+                    </Field>
+                  ) : (
+                    <>
+                      <Field label="AWB #">
+                        <Input
+                          value={editForm.awbNumber}
+                          onChange={(e) => setEditForm((s) => ({ ...s, awbNumber: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Incoterms">
+                        <Input
+                          value={editForm.incoterms}
+                          onChange={(e) => setEditForm((s) => ({ ...s, incoterms: e.target.value }))}
+                        />
+                      </Field>
+                    </>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -476,7 +494,11 @@ export function OrderDetail() {
                       onChange={(e) => setEditForm((s) => ({ ...s, prepaymentBy: e.target.value as PrepaymentMethod }))}
                     >
                       <option value="WIRE_TRANSFER">Transferência bancária</option>
-                      <option value="PAYPAL">PayPal</option>
+                      {isNational ? (
+                        <option value="PIX">Pix</option>
+                      ) : (
+                        <option value="PAYPAL">PayPal</option>
+                      )}
                     </Select>
                   </Field>
                   {editForm.prepaymentBy === 'PAYPAL' && (
@@ -508,20 +530,24 @@ export function OrderDetail() {
                   </Field>
                 </div>
 
-                <Field label="Câmbio USD/BRL">
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    required
-                    className="tabular"
-                    value={editForm.exchangeRate}
-                    onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
-                  />
-                </Field>
+                {!isNational && (
+                  <Field label={`Câmbio ${currency}/BRL`}>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      required
+                      className="tabular"
+                      value={editForm.exchangeRate}
+                      onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
+                    />
+                  </Field>
+                )}
               </div>
 
               <p className="mt-4 text-[12px] leading-relaxed text-neutral-400">
-                Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.
+                {isNational
+                  ? 'Salvar regenera automaticamente o Invoice e a Packing List Box.'
+                  : 'Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.'}
               </p>
 
               <Button
@@ -548,14 +574,22 @@ export function OrderDetail() {
                 <ReadField label="Nº de pacotes" value={order.numberOfPackages} />
                 <ReadField label="Peso líquido" value={order.netWeightKg ? `${order.netWeightKg} KG` : null} />
                 <ReadField label="Peso bruto" value={order.grossWeightKg ? `${order.grossWeightKg} KG` : null} />
-                <ReadField label="Incoterms" value={order.incoterms} />
-                <ReadField label="AWB #" value={order.awbNumber} />
+                {isNational ? (
+                  <ReadField label="Via de envio" value={order.shippingMethod} />
+                ) : (
+                  <>
+                    <ReadField label="Incoterms" value={order.incoterms} />
+                    <ReadField label="AWB #" value={order.awbNumber} />
+                  </>
+                )}
                 <ReadField
                   label="Forma de pagamento"
                   value={
                     order.prepaymentBy === 'PAYPAL'
                       ? `PayPal (taxa ${currency} ${formatAmount(order.paypalFee ?? 0)})`
-                      : 'Transferência bancária'
+                      : order.prepaymentBy === 'PIX'
+                        ? 'Pix'
+                        : 'Transferência bancária'
                   }
                 />
                 <ReadField label="Número da NF" value={order.nfNumber} />
@@ -563,7 +597,7 @@ export function OrderDetail() {
                   label="Emissão da NF"
                   value={order.nfDate ? new Date(order.nfDate).toLocaleDateString('pt-BR') : null}
                 />
-                <ReadField label="Câmbio USD/BRL" value={order.exchangeRate} />
+                {!isNational && <ReadField label={`Câmbio ${currency}/BRL`} value={order.exchangeRate} />}
                 <ReadField label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
                 <ReadField
                   label="Total do pedido (Invoice)"

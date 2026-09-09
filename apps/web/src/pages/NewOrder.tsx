@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { formatAmount, formatOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
@@ -13,8 +13,8 @@ async function fetchQuotes() {
   return data.quotes
 }
 
-async function fetchExchangeRate() {
-  const { data } = await api.get<{ rate: number }>('/orders/exchange-rate')
+async function fetchExchangeRate(currency: 'USD' | 'EUR') {
+  const { data } = await api.get<{ rate: number }>('/orders/exchange-rate', { params: { currency } })
   return data.rate
 }
 
@@ -35,6 +35,7 @@ const emptyForm = {
   grossWeightKg: '',
   awbNumber: '',
   incoterms: '',
+  shippingMethod: '',
   prepaymentBy: 'WIRE_TRANSFER' as PrepaymentMethod,
   paypalFee: '',
   nfNumber: '',
@@ -54,11 +55,24 @@ export function NewOrder() {
   const prefilled = useRef(false)
 
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
-  const { data: liveRate } = useQuery({ queryKey: ['exchange-rate'], queryFn: fetchExchangeRate })
   const { data: sourceOrder } = useQuery({
     queryKey: ['orders', duplicateFrom],
     queryFn: () => fetchOrder(duplicateFrom as string),
     enabled: !!duplicateFrom,
+  })
+
+  const selectedQuote = quotes?.find((q) => q.id === form.quoteId)
+  const currency = selectedQuote?.currency ?? null
+  // Venda nacional não sai do Brasil — sem câmbio, Incoterms, AWB nem
+  // Documento de Exportação (Invoice e Packing List Box continuam saindo).
+  // Ver a mesma regra em apps/api/src/routes/orders.routes.ts.
+  const isNational = selectedQuote?.exportScope === 'NATIONAL'
+  const rateCurrency = currency === 'EUR' ? 'EUR' : 'USD'
+
+  const { data: liveRate } = useQuery({
+    queryKey: ['exchange-rate', rateCurrency],
+    queryFn: () => fetchExchangeRate(rateCurrency),
+    enabled: !isNational,
   })
 
   useEffect(() => {
@@ -85,6 +99,7 @@ export function NewOrder() {
       netWeightKg: sourceOrder.netWeightKg ?? '',
       grossWeightKg: sourceOrder.grossWeightKg ?? '',
       incoterms: sourceOrder.incoterms ?? '',
+      shippingMethod: sourceOrder.shippingMethod ?? '',
       prepaymentBy: sourceOrder.prepaymentBy,
       paypalFee: sourceOrder.paypalFee ?? '',
     }))
@@ -97,20 +112,25 @@ export function NewOrder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceOrder, quotes])
 
-  const selectedQuote = quotes?.find((q) => q.id === form.quoteId)
-  const currency = selectedQuote?.currency ?? null
-  // Venda nacional não sai do Brasil — sem câmbio, Incoterms, AWB, Packing
-  // List/Packing List Box nem Documento de Exportação (só o Invoice se
-  // aplica). Ver a mesma regra em apps/api/src/routes/orders.routes.ts.
-  const isNational = selectedQuote?.exportScope === 'NATIONAL'
-
   function update(patch: Partial<typeof form>) {
     setForm((s) => ({ ...s, ...patch }))
   }
 
   function selectQuote(quoteId: string) {
     const quote = quotes?.find((q) => q.id === quoteId)
-    update({ quoteId })
+    const national = quote?.exportScope === 'NATIONAL'
+    // PayPal só existe pra internacional, Pix só pra nacional — trocar de
+    // orçamento pode deixar a forma de pagamento já escolhida inválida.
+    const invalidPrepayment = (national && form.prepaymentBy === 'PAYPAL') || (!national && form.prepaymentBy === 'PIX')
+    // Limpa o câmbio ao trocar de orçamento — o valor buscado automaticamente
+    // é sempre da moeda do orçamento anterior; sem isso, trocar de USD pra
+    // EUR (ou vice-versa) deixava o câmbio errado preenchido sem aviso, já
+    // que o efeito abaixo só preenche quando o campo está vazio.
+    update({
+      quoteId,
+      exchangeRate: '',
+      ...(invalidPrepayment ? { prepaymentBy: 'WIRE_TRANSFER' as PrepaymentMethod } : {}),
+    })
     boxEditor.resetFromItems(quote?.items)
   }
 
@@ -129,6 +149,7 @@ export function NewOrder() {
         grossWeightKg: form.grossWeightKg ? Number(form.grossWeightKg) : undefined,
         awbNumber: form.awbNumber || undefined,
         incoterms: form.incoterms || undefined,
+        shippingMethod: form.shippingMethod || undefined,
         prepaymentBy: form.prepaymentBy,
         paypalFee: form.prepaymentBy === 'PAYPAL' && form.paypalFee ? Number(form.paypalFee) : undefined,
         nfNumber: form.nfNumber || undefined,
@@ -147,10 +168,7 @@ export function NewOrder() {
       navigate(`/pedidos/${order.id}`)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível criar o pedido.'
-      setError(message)
+      setError(getErrorMessage(err, 'Não foi possível criar o pedido.'))
     },
   })
 
@@ -159,7 +177,7 @@ export function NewOrder() {
       title="Novo pedido"
       description={
         isNational
-          ? 'Selecione um orçamento já gerado para criar o Invoice.'
+          ? 'Selecione um orçamento já gerado para criar o Invoice e a Packing List Box.'
           : 'Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de Exportação.'
       }
       width="narrow"
@@ -250,7 +268,7 @@ export function NewOrder() {
           </FormSection>
 
           <FormSection title="Embalagem e pesos">
-            <div className={`grid grid-cols-1 gap-4 ${isNational ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label="Peso líquido (kg)">
                 <Input
                   type="number"
@@ -269,7 +287,15 @@ export function NewOrder() {
                   onChange={(e) => update({ grossWeightKg: e.target.value })}
                 />
               </Field>
-              {!isNational && (
+              {isNational ? (
+                <Field label="Via de envio" hint='ex: "PAC", "SEDEX", "Transportadora XPTO"'>
+                  <Input
+                    placeholder="ex: SEDEX"
+                    value={form.shippingMethod}
+                    onChange={(e) => update({ shippingMethod: e.target.value })}
+                  />
+                </Field>
+              ) : (
                 <Field label="Incoterms">
                   <Input
                     placeholder="ex: DAP MONTERREY"
@@ -280,8 +306,7 @@ export function NewOrder() {
               )}
             </div>
 
-            {/* Sem Packing List Box em venda nacional — não há o que dividir em caixas. */}
-            {!isNational && <BoxAssignmentFields editor={boxEditor} items={selectedQuote?.items ?? []} />}
+            <BoxAssignmentFields editor={boxEditor} items={selectedQuote?.items ?? []} />
           </FormSection>
 
           <FormSection title="Pagamento e transporte">
@@ -297,7 +322,11 @@ export function NewOrder() {
                   onChange={(e) => update({ prepaymentBy: e.target.value as PrepaymentMethod })}
                 >
                   <option value="WIRE_TRANSFER">Transferência bancária</option>
-                  <option value="PAYPAL">PayPal</option>
+                  {isNational ? (
+                    <option value="PIX">Pix</option>
+                  ) : (
+                    <option value="PAYPAL">PayPal</option>
+                  )}
                 </Select>
               </Field>
               {form.prepaymentBy === 'PAYPAL' && (
@@ -312,7 +341,7 @@ export function NewOrder() {
                 </Field>
               )}
               {!isNational && (
-                <Field label="Câmbio USD/BRL" hint={liveRate ? `Hoje: ${liveRate}` : undefined}>
+                <Field label={`Câmbio ${rateCurrency}/BRL`} hint={liveRate ? `Hoje: ${liveRate}` : undefined}>
                   <Input
                     type="number"
                     step="0.0001"

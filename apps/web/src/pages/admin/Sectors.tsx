@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SectorDTO } from '@prodelphusplus/shared'
-import { api } from '../../lib/api'
+import { api, getErrorMessage as extractError } from '../../lib/api'
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
 import {
   Button,
@@ -59,10 +59,6 @@ export function AdminSectors() {
     queryClient.invalidateQueries({ queryKey: ['product-sectors'] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['products-price-table'] })
-  }
-
-  function extractError(err: unknown, fallback: string) {
-    return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
   }
 
   const updateSector = useMutation({

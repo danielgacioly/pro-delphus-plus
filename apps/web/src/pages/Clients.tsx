@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO, ClientKind } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
@@ -164,8 +164,7 @@ export function Clients() {
       setFormError(null)
       toast.success('Cliente cadastrado.')
     },
-    onError: (err: { response?: { data?: { message?: string } } }) =>
-      setFormError(err.response?.data?.message ?? 'Não foi possível salvar o cliente.'),
+    onError: (err: unknown) => setFormError(getErrorMessage(err, 'Não foi possível salvar o cliente.')),
   })
 
   const deleteMutation = useMutation({

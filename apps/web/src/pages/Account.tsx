@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import type { UserDTO } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage as errorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { DropZone } from '../components/DropZone'
 import { BackLink, Button, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
-
-function errorMessage(err: unknown, fallback: string) {
-  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
-}
 
 function SettingsCard({
   title,

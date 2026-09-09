@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { AuthLayout, AuthNotice } from '../components/AuthLayout'
 import { Button, ButtonLink, Field, Input } from '../components/ui'
 
@@ -28,10 +28,7 @@ export function Register() {
       })
       setDone(true)
     } catch (err) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível criar a conta.'
-      setError(message)
+      setError(getErrorMessage(err, 'Não foi possível criar a conta.'))
     } finally {
       setSubmitting(false)
     }

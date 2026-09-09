@@ -13,7 +13,7 @@ import {
   type QuoteDTO,
   type QuoteLanguage,
 } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import {
   BackLink,
@@ -230,15 +230,13 @@ export function NewQuote() {
       navigate('/orcamentos')
     },
     onError: (err: unknown) => {
-      const response = (err as { response?: { data?: { error?: string; completedOrderNumbers?: number[] } } })
-        ?.response
-      if (response?.data?.completedOrderNumbers) {
-        setCompletedOrderWarning(response.data.completedOrderNumbers)
+      const completedOrderNumbers = (err as { response?: { data?: { completedOrderNumbers?: number[] } } })?.response
+        ?.data?.completedOrderNumbers
+      if (completedOrderNumbers) {
+        setCompletedOrderWarning(completedOrderNumbers)
         return
       }
-      const message =
-        response?.data?.error ?? (isEditing ? 'Não foi possível salvar o orçamento.' : 'Não foi possível gerar o orçamento.')
-      setError(message)
+      setError(getErrorMessage(err, isEditing ? 'Não foi possível salvar o orçamento.' : 'Não foi possível gerar o orçamento.'))
     },
   })
 

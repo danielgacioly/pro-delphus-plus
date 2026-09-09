@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatAmount, formatOrderNumber, type ClientDTO, type OrderStatus, type QuoteDTO } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
@@ -106,8 +106,7 @@ export function ClientDetail() {
       setFormError(null)
       toast.success('Cliente atualizado.')
     },
-    onError: (err: { response?: { data?: { message?: string } } }) =>
-      setFormError(err.response?.data?.message ?? 'Não foi possível salvar as alterações.'),
+    onError: (err: unknown) => setFormError(getErrorMessage(err, 'Não foi possível salvar as alterações.')),
   })
 
   const deleteMutation = useMutation({

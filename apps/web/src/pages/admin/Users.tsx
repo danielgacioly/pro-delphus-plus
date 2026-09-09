@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Role, UserDTO } from '@prodelphusplus/shared'
-import { api } from '../../lib/api'
+import { api, getErrorMessage } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { ResetPasswordModal } from '../../components/ResetPasswordModal'
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
@@ -107,10 +107,7 @@ export function AdminUsers() {
       setDeleteError(null)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível excluir a conta. Tente novamente.'
-      setDeleteError(message)
+      setDeleteError(getErrorMessage(err, 'Não foi possível excluir a conta. Tente novamente.'))
     },
   })
 
@@ -124,10 +121,7 @@ export function AdminUsers() {
       setResetPasswordMessage({ type: 'success', text: 'Senha redefinida com sucesso.' })
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível redefinir a senha. Tente novamente.'
-      setResetPasswordError(message)
+      setResetPasswordError(getErrorMessage(err, 'Não foi possível redefinir a senha. Tente novamente.'))
     },
   })
 

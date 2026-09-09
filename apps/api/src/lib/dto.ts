@@ -147,6 +147,7 @@ export function toOrderDTO(
     grossWeightKg: order.grossWeightKg?.toString() ?? null,
     awbNumber: order.awbNumber,
     incoterms: order.incoterms,
+    shippingMethod: order.shippingMethod,
     prepaymentBy: order.prepaymentBy,
     paypalFee: order.paypalFee?.toString() ?? null,
     nfNumber: order.nfNumber,

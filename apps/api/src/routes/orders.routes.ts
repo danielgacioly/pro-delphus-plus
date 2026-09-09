@@ -11,7 +11,7 @@ import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toOrderDTO } from '../lib/dto.js'
 import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf, type PackingListBoxPage } from '../lib/orderPdf.js'
 import { generateExportDocXlsx } from '../lib/orderXlsx.js'
-import { fetchUsdBrlRate } from '../lib/exchangeRate.js'
+import { fetchExchangeRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
 import { formatOrderNumber, type BoxAssignments } from '@prodelphusplus/shared'
@@ -76,8 +76,10 @@ ordersRouter.get(
 
 ordersRouter.get(
   '/exchange-rate',
-  asyncHandler(async (_req, res) => {
-    const rate = await fetchUsdBrlRate()
+  asyncHandler(async (req, res) => {
+    // Pedido em EUR precisa do câmbio EUR/BRL, não USD/BRL — ver Quote.currency.
+    const currency = req.query.currency === 'EUR' ? 'EUR' : 'USD'
+    const rate = await fetchExchangeRate(currency)
     res.json({ rate })
   }),
 )
@@ -175,7 +177,8 @@ const orderFieldsSchema = z.object({
   grossWeightKg: z.coerce.number().positive().optional(),
   awbNumber: z.string().optional(),
   incoterms: z.string().optional(),
-  prepaymentBy: z.enum(['PAYPAL', 'WIRE_TRANSFER']).optional(),
+  shippingMethod: z.string().optional(),
+  prepaymentBy: z.enum(['PAYPAL', 'WIRE_TRANSFER', 'PIX']).optional(),
   paypalFee: z.coerce.number().min(0).optional(),
   nfNumber: z.string().optional(),
   nfDate: dateOnlySchema.optional(),
@@ -227,7 +230,8 @@ async function buildAndWriteDocuments(
     grossWeightKg: number | null
     awbNumber: string | null
     incoterms: string | null
-    prepaymentBy: 'PAYPAL' | 'WIRE_TRANSFER'
+    shippingMethod: string | null
+    prepaymentBy: 'PAYPAL' | 'WIRE_TRANSFER' | 'PIX'
     paypalFee: number | null
     nfNumber: string | null
     nfDate: Date | null
@@ -298,9 +302,11 @@ async function buildAndWriteDocuments(
     grossWeightKg: order.grossWeightKg !== null ? String(order.grossWeightKg) : null,
     awbNumber: order.awbNumber,
     incoterms: order.incoterms,
+    shippingMethod: order.shippingMethod,
     prepaymentBy: order.prepaymentBy,
     nfDate: order.nfDate,
     nfNumber: order.nfNumber,
+    isNational,
   }
 
   const boxData = {
@@ -308,6 +314,7 @@ async function buildAndWriteDocuments(
     shipToText: order.shipToText,
     pages: buildBoxPages(order.packageCount, order.boxAssignments, docItems),
     isNational,
+    shippingMethod: order.shippingMethod,
   }
 
   const exportData = {
@@ -391,7 +398,7 @@ ordersRouter.post(
     const exchangeRate = isNational
       ? null
       : (data.exchangeRate ??
-        (await fetchUsdBrlRate().catch(() => {
+        (await fetchExchangeRate(quote.currency as 'USD' | 'EUR').catch(() => {
           throw new HttpError(400, 'Não foi possível obter o câmbio automaticamente. Informe o valor manualmente.')
         })))
     const packageCount = data.packageCount ?? 1
@@ -420,6 +427,7 @@ ordersRouter.post(
             grossWeightKg: data.grossWeightKg ?? null,
             awbNumber: data.awbNumber ?? null,
             incoterms: data.incoterms ?? null,
+            shippingMethod: data.shippingMethod ?? null,
             itemWeightsKg: data.itemWeightsKg,
             packageCount,
             boxAssignments: data.boxAssignments ?? undefined,
@@ -451,6 +459,7 @@ ordersRouter.post(
       grossWeightKg: data.grossWeightKg ?? null,
       awbNumber: data.awbNumber ?? null,
       incoterms: data.incoterms ?? null,
+      shippingMethod: data.shippingMethod ?? null,
       prepaymentBy,
       paypalFee: data.paypalFee ?? null,
       nfNumber: data.nfNumber ?? null,
@@ -489,6 +498,7 @@ ordersRouter.patch(
         data.grossWeightKg !== undefined ? data.grossWeightKg : existing.grossWeightKg !== null ? Number(existing.grossWeightKg) : null,
       awbNumber: data.awbNumber !== undefined ? data.awbNumber || null : existing.awbNumber,
       incoterms: data.incoterms !== undefined ? data.incoterms || null : existing.incoterms,
+      shippingMethod: data.shippingMethod !== undefined ? data.shippingMethod || null : existing.shippingMethod,
       prepaymentBy: data.prepaymentBy ?? existing.prepaymentBy,
       paypalFee: data.paypalFee !== undefined ? data.paypalFee : existing.paypalFee !== null ? Number(existing.paypalFee) : null,
       nfNumber: data.nfNumber !== undefined ? data.nfNumber || null : existing.nfNumber,
@@ -521,6 +531,7 @@ ordersRouter.patch(
         grossWeightKg: merged.grossWeightKg,
         awbNumber: merged.awbNumber,
         incoterms: merged.incoterms,
+        shippingMethod: merged.shippingMethod,
         prepaymentBy: merged.prepaymentBy,
         paypalFee: merged.paypalFee,
         nfNumber: merged.nfNumber,

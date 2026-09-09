@@ -198,7 +198,7 @@ export interface QuoteDTO {
   }>
 }
 
-export type PrepaymentMethod = 'PAYPAL' | 'WIRE_TRANSFER'
+export type PrepaymentMethod = 'PAYPAL' | 'WIRE_TRANSFER' | 'PIX'
 export type OrderStatus = 'PENDING' | 'COMPLETED'
 
 /**
@@ -226,6 +226,8 @@ export interface CreateOrderInput {
   grossWeightKg?: number
   awbNumber?: string
   incoterms?: string
+  /** Só pra pedido nacional — texto livre tipo "PAC", "SEDEX", "Transportadora XPTO". */
+  shippingMethod?: string
   prepaymentBy: PrepaymentMethod
   paypalFee?: number
   nfNumber?: string
@@ -255,6 +257,7 @@ export interface OrderDTO {
   grossWeightKg: string | null
   awbNumber: string | null
   incoterms: string | null
+  shippingMethod: string | null
   prepaymentBy: PrepaymentMethod
   paypalFee: string | null
   nfNumber: string | null

@@ -9,7 +9,7 @@ import {
   type PersonalTaskDTO,
   type QuoteDTO,
 } from '@prodelphusplus/shared'
-import { api } from '../lib/api'
+import { api, getErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/cn'
@@ -457,10 +457,7 @@ export function MyDesk() {
       toast.success('Quadro excluído.')
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível excluir o quadro.'
-      setColumnError(message)
+      setColumnError(getErrorMessage(err, 'Não foi possível excluir o quadro.'))
       setDeletingColumn(null)
     },
   })
