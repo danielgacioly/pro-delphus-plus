@@ -9,7 +9,8 @@ import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toQuoteDTO } from '../lib/dto.js'
 import { generateQuotePdf } from '../lib/pdf.js'
 import { generateQuoteXlsx } from '../lib/xlsx.js'
-import { defaultQuoteNotes } from '../lib/quoteI18n.js'
+import { defaultQuoteNotes, formatMoney } from '../lib/quoteI18n.js'
+import { reservationBackoff } from '../lib/numbering.js'
 import { env } from '../lib/env.js'
 import { deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 
@@ -82,7 +83,10 @@ const createQuoteSchema = z.object({
     .array(
       z.object({
         productId: z.string().min(1),
-        quantity: z.coerce.number().int().positive(),
+        // Teto alto o bastante para qualquer venda real e baixo o bastante para
+        // o total caber em Decimal(12,2) — sem ele, um zero a mais estourava o
+        // tipo no Postgres e a resposta virava "500 Erro interno".
+        quantity: z.coerce.number().int().positive().max(100_000, 'Quantidade acima do limite (100.000)'),
         title: z.string().optional(),
         description: z.string().optional(),
         unitPrice: z.coerce.number().positive().optional(),
@@ -191,7 +195,24 @@ async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
   )
 
   const subtotal = lineItems.reduce((sum, i) => sum + i.lineTotal, 0)
-  const total = subtotal + (data.freight ?? 0) - data.discount
+  const freight = data.freight ?? 0
+  // Desconto maior que o que há para descontar deixava o orçamento com total
+  // negativo, sem aviso nenhum — e o número seguia para o Invoice e para as
+  // métricas (receita cotada ficava negativa). É quase sempre um dígito a mais
+  // digitado por engano.
+  if (data.discount > subtotal + freight) {
+    throw new HttpError(
+      400,
+      `Desconto (${formatMoney(data.discount, currency, language)}) maior que o valor do orçamento (${formatMoney(subtotal + freight, currency, language)}).`,
+    )
+  }
+  const total = subtotal + freight - data.discount
+  // Decimal(12,2) no banco: acima disso o INSERT falha lá embaixo com erro de
+  // overflow, que chegava ao usuário como "500 Erro interno".
+  const MAX_DECIMAL_12_2 = 9_999_999_999.99
+  if (subtotal > MAX_DECIMAL_12_2 || total > MAX_DECIMAL_12_2) {
+    throw new HttpError(400, 'Valor total do orçamento excede o limite suportado pelo sistema.')
+  }
   const notes = data.notes ?? defaultQuoteNotes(language, currency, data.exportScope)
 
   const signature = {
@@ -293,7 +314,8 @@ quotesRouter.post(
     // tentativa seguinte pega o próximo número livre.
     let quote: Awaited<ReturnType<typeof prisma.quote.create>> | undefined
     let quoteNumber = ''
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      if (attempt > 0) await reservationBackoff(attempt)
       const now = new Date()
       const datePrefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
       const todayCount = await prisma.quote.count({ where: { quoteNumber: { startsWith: `${datePrefix}-` } } })

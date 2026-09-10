@@ -43,14 +43,39 @@ app.use('/uploads', (req, res, next) => {
     res.status(401).json({ error: 'Faça login para acessar este arquivo' })
   }
 })
-// `no-cache` = pode guardar, mas revalida sempre (ETag) antes de servir. Os
-// documentos já saem com URL versionada (`?v=`), mas os que foram gerados
-// antes disso continuam no banco com a URL antiga — sem isso, o navegador
-// segue mostrando a cópia velha deles depois de uma regeneração.
+// Só imagem e PDF são servidos para exibição direta — são os que o sistema
+// precisa renderizar (foto de produto em <img>, documento aberto em nova aba).
+// Qualquer outra extensão desce como download opaco, nunca interpretada pelo
+// navegador. Isso vale principalmente para o que já está no disco de antes do
+// filtro de upload (ver storage/local.ts): um .html/.svg servido como tal na
+// origem da API executaria script com a sessão do usuário e conseguiria trocar
+// o cookie por um accessToken em /api/auth/refresh.
+const INLINE_SAFE_EXT = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.tif', '.tiff', '.bmp', '.pdf',
+  '.xlsx', '.xls',
+])
+
 app.use(
   '/uploads',
   express.static(path.resolve(env.UPLOADS_DIR), {
-    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+    setHeaders: (res, filePath) => {
+      // `no-cache` = pode guardar, mas revalida sempre (ETag) antes de servir.
+      // Documentos novos saem com URL versionada (`?v=`), mas os gerados antes
+      // disso seguem com a URL antiga no banco — sem isto o navegador continua
+      // mostrando a cópia velha depois de uma regeneração.
+      res.setHeader('Cache-Control', 'no-cache')
+      if (!INLINE_SAFE_EXT.has(path.extname(filePath).toLowerCase())) {
+        // Baixa como binário opaco em vez de ser interpretado, e `sandbox`
+        // garante origem opaca caso o usuário abra o arquivo assim mesmo.
+        // Imagem, PDF e planilha ficam de fora deste bloco de propósito: não
+        // executam script na origem da página, e o `sandbox` atrapalharia o
+        // visualizador de PDF do navegador — que é justamente como o time abre
+        // invoice e orçamento.
+        res.setHeader('Content-Type', 'application/octet-stream')
+        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`)
+        res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+      }
+    },
   }),
 )
 

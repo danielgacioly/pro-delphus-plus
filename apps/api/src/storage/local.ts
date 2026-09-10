@@ -7,15 +7,57 @@ import { env } from '../lib/env.js'
 const uploadsDir = path.resolve(env.UPLOADS_DIR)
 fs.mkdirSync(uploadsDir, { recursive: true })
 
+/**
+ * Só entram os tipos que o sistema de fato usa: foto de produto, assinatura,
+ * e digitalização de documento (PDF/imagem) em brochura, AWB, boleto e NF.
+ *
+ * O que está fora da lista é o ponto importante: `.html`, `.svg` e afins são
+ * servidos de volta pelo /uploads na MESMA origem da API, e o navegador os
+ * executa. Um arquivo desses, aberto por quem tem sessão, roda script no
+ * contexto da API e consegue trocar o cookie por um accessToken via
+ * /api/auth/refresh. SVG fica de fora justamente por isso, mesmo sendo
+ * `image/*` — ele carrega <script> dentro.
+ */
+const ALLOWED_MIME = new Set([
+  'image/jpeg',
+  'image/pjpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/tiff',
+  'image/bmp',
+  'application/pdf',
+])
+const ALLOWED_EXT = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.tif', '.tiff', '.bmp', '.pdf',
+])
+
+export class UnsupportedFileTypeError extends Error {
+  status = 415
+  constructor(detail: string) {
+    super(`Tipo de arquivo não aceito (${detail}). Envie imagem (JPG, PNG, WEBP, HEIC) ou PDF.`)
+  }
+}
+
 export const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, uploadsDir),
     filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname)
+      // Extensão normalizada: o nome final é sempre uuid + extensão da lista
+      // acima, então nada de `.php`/`.html` chega ao disco nem por engano.
+      const ext = path.extname(file.originalname).toLowerCase()
       cb(null, `${crypto.randomUUID()}${ext}`)
     },
   }),
   limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (!ALLOWED_MIME.has(file.mimetype)) return cb(new UnsupportedFileTypeError(file.mimetype))
+    if (!ALLOWED_EXT.has(ext)) return cb(new UnsupportedFileTypeError(ext || 'sem extensão'))
+    cb(null, true)
+  },
 })
 
 export function publicUrlFor(filename: string) {

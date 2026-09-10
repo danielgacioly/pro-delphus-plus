@@ -189,6 +189,18 @@ productsRouter.delete(
       await prisma.product.update({ where: { id: req.params.id }, data: { active: false } })
       return res.json({ message: 'Produto possui orçamentos vinculados e foi desativado em vez de excluído' })
     }
+
+    // As linhas de mídia/brochura somem por cascade, mas os arquivos no disco
+    // não — sem apagá-los aqui, cada produto excluído deixava suas fotos e PDFs
+    // ocupando espaço para sempre, sem nada no banco apontando para eles.
+    const files = await prisma.product.findUnique({
+      where: { id: req.params.id },
+      select: { media: { select: { url: true } }, brochures: { select: { url: true } } },
+    })
+    for (const { url } of [...(files?.media ?? []), ...(files?.brochures ?? [])]) {
+      deleteStoredFile(url)
+    }
+
     await prisma.product.delete({ where: { id: req.params.id } })
     res.status(204).send()
   }),

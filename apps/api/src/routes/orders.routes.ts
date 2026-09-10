@@ -14,6 +14,7 @@ import { generateExportDocXlsx } from '../lib/orderXlsx.js'
 import { fetchExchangeRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
+import { reservationBackoff } from '../lib/numbering.js'
 import { formatOrderNumber, type BoxAssignments } from '@prodelphusplus/shared'
 
 export const ordersRouter = Router()
@@ -145,6 +146,35 @@ ordersRouter.get(
     res.json({ order: await toOrderDTOFresh(order) })
   }),
 )
+
+/**
+ * Pix só existe em venda nacional; PayPal (com taxa) só em exportação. A UI já
+ * mostra só a opção válida, mas a regra também precisa valer na API: um pedido
+ * duplicado ou editado por outro caminho não pode acabar com uma forma de
+ * pagamento que não existe naquele tipo de venda.
+ */
+function assertPrepaymentAllowed(prepaymentBy: 'PAYPAL' | 'WIRE_TRANSFER' | 'PIX', isNational: boolean) {
+  if (isNational && prepaymentBy === 'PAYPAL') {
+    throw new HttpError(400, 'PayPal não se aplica a pedido nacional. Use Pix ou transferência bancária.')
+  }
+  if (!isNational && prepaymentBy === 'PIX') {
+    throw new HttpError(400, 'Pix não se aplica a pedido internacional. Use PayPal ou transferência bancária.')
+  }
+}
+
+/**
+ * Cada caixa declarada precisa existir de fato: com mais listas de itens do que
+ * caixas, buildBoxPages descartava as sobrando em silêncio e o Packing List
+ * saía com menos itens do que o Invoice cobra.
+ */
+function assertBoxAssignmentsFit(boxAssignments: BoxAssignments | null | undefined, packageCount: number) {
+  if (boxAssignments && boxAssignments.length > packageCount) {
+    throw new HttpError(
+      400,
+      `A divisão informada tem ${boxAssignments.length} caixas, mas o pedido declara ${packageCount}. Ajuste o número de caixas.`,
+    )
+  }
+}
 
 async function nextOrderNumber() {
   const last = await prisma.order.findFirst({ orderBy: { orderNumber: 'desc' } })
@@ -411,13 +441,16 @@ ordersRouter.post(
         })))
     const packageCount = data.packageCount ?? 1
     const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
+    assertPrepaymentAllowed(prepaymentBy, isNational)
+    assertBoxAssignmentsFit(data.boxAssignments, packageCount)
 
     // O número é reservado com um INSERT (rápido, sem URLs de documento)
     // ANTES de gerar o PDF/xlsx (lento — Puppeteer/ExcelJS levam segundos).
     // Ver o mesmo padrão e a mesma justificativa em quotes.routes.ts POST /.
     let order: Awaited<ReturnType<typeof prisma.order.create>> | undefined
     let orderNumber = 0
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      if (attempt > 0) await reservationBackoff(attempt)
       orderNumber = await nextOrderNumber()
       try {
         order = await prisma.order.create({
@@ -519,6 +552,9 @@ ordersRouter.patch(
       packageCount: data.packageCount ?? existing.packageCount,
       boxAssignments: data.boxAssignments ?? ((existing.boxAssignments as BoxAssignments | null) ?? null),
     }
+
+    assertPrepaymentAllowed(merged.prepaymentBy, existing.quote.exportScope === 'NATIONAL')
+    assertBoxAssignmentsFit(merged.boxAssignments, merged.packageCount)
 
     const docUrls = await buildAndWriteDocuments(merged, existing.quote)
 
