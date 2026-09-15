@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
-import { Badge, Button, EmptyState } from '../components/ui'
-import { IconAlert, IconArrowUp, IconBot, IconCheckCircle } from '../components/icons'
+import { Badge, Button } from '../components/ui'
+import { NeoMascot } from '../components/NeoMascot'
+import { IconAlert, IconArrowUp, IconCheckCircle } from '../components/icons'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -162,13 +163,13 @@ export function Neo() {
     <div className="flex h-screen flex-col overflow-hidden">
       <header className="shrink-0 border-b border-neutral-200/70 px-6 pt-8 pb-6 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3.5">
-          <div
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[15px] font-semibold text-white shadow-sm"
-            aria-hidden
-          >
-            {/* Espaço reservado pro avatar animado do Neo — troca por um GIF quando ele existir. */}
-            N
-          </div>
+          {/* Avatar só se mexe enquanto o Neo está pensando: o movimento vira
+              sinal de estado, não enfeite piscando o tempo todo. */}
+          <NeoMascot
+            variant="head"
+            playing={loading}
+            className="h-11 w-11 shrink-0 rounded-full bg-white ring-1 ring-neutral-200/70"
+          />
           <div className="min-w-0">
             <h1 className="text-display text-ink-900">Neo</h1>
             <p className="mt-0.5 text-[13px] text-neutral-500">Assistente da Pro Delphus+</p>
@@ -179,11 +180,13 @@ export function Neo() {
       <div className="mx-auto flex w-full min-h-0 max-w-3xl flex-1 flex-col px-6 sm:px-8">
         <div className="my-5 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm">
           {messages.length === 0 && !pending && (
-            <EmptyState
-              icon={IconBot}
-              title="Comece uma conversa"
-              description="Pergunte sobre produtos, setores ou clientes — ou peça pro Neo montar um orçamento ou pedido pra você."
-            />
+            <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
+              <NeoMascot variant="full" className="h-40 w-40 sm:h-48 sm:w-48" />
+              <h2 className="text-heading mt-1 text-ink-900">Oi, eu sou o Neo</h2>
+              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-500">
+                Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
+              </p>
+            </div>
           )}
 
           <div className="flex flex-col gap-3">

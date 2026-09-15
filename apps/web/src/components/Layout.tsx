@@ -39,12 +39,12 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/', label: 'Início', icon: IconHome, end: true },
   { to: '/minha-pro-delphus', label: 'Minha Pro Delphus', icon: IconBoard },
-  { to: '/neo', label: 'Neo', icon: IconBot },
   { to: '/precos', label: 'Tabela de Preços', icon: IconTag },
   { to: '/produtos', label: 'Produtos', icon: IconBox },
   { to: '/clientes', label: 'Clientes', icon: IconContacts },
   { to: '/orcamentos', label: 'Orçamentos', icon: IconQuote },
   { to: '/pedidos', label: 'Pedidos', icon: IconTruck },
+  { to: '/neo', label: 'Neo', icon: IconBot },
 ]
 
 const adminNavItems: NavItem[] = [
