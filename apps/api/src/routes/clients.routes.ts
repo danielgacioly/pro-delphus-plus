@@ -16,7 +16,7 @@ clientsRouter.use(requireAuth)
 // PATCH que não mandasse `kind`/`prefix` resetava silenciosamente o cliente
 // pra "Pessoa"/"Sem tratamento". O valor padrão do create fica explícito no
 // POST, abaixo.
-const clientBodySchema = z.object({
+export const clientBodySchema = z.object({
   kind: z.enum(['INDIVIDUAL', 'INSTITUTION', 'DISTRIBUTOR']).optional(),
   prefix: z.enum(['NONE', 'MR', 'MS']).optional(),
   name: z.string().min(1, 'Informe o nome do cliente'),
@@ -196,16 +196,21 @@ clientsRouter.post(
   }),
 )
 
+export async function updateClientRecord(id: string, data: Partial<z.infer<typeof clientBodySchema>>) {
+  const normalized = normalize(clientBodySchema.partial().parse(data))
+  const existing = await prisma.client.findUnique({ where: { id } })
+  if (!existing) throw new HttpError(404, 'Cliente não encontrado')
+
+  const client = await prisma.client.update({ where: { id }, data: normalized })
+  const aggregates = await loadAggregates()
+  return { client, aggregate: aggregates.get(client.id) }
+}
+
 clientsRouter.patch(
   '/:id',
   asyncHandler(async (req, res) => {
-    const data = normalize(clientBodySchema.partial().parse(req.body))
-    const existing = await prisma.client.findUnique({ where: { id: req.params.id } })
-    if (!existing) throw new HttpError(404, 'Cliente não encontrado')
-
-    const client = await prisma.client.update({ where: { id: req.params.id }, data })
-    const aggregates = await loadAggregates()
-    res.json({ client: toClientDTO(client, aggregates.get(client.id)) })
+    const { client, aggregate } = await updateClientRecord(req.params.id, req.body)
+    res.json({ client: toClientDTO(client, aggregate) })
   }),
 )
 
