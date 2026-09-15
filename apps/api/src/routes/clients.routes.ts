@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
-import { toQuoteDTO } from '../lib/dto.js'
+import { toQuoteDTO, toClientDTO, type ClientAggregate } from '../lib/dto.js'
 
 export const clientsRouter = Router()
 
@@ -45,13 +45,6 @@ function normalize<T extends Record<string, unknown>>(data: T) {
   return out as T
 }
 
-interface ClientAggregate {
-  clientId: string
-  quoteCount: number
-  orderCount: number
-  totalQuoted: string
-  lastQuoteAt: Date | null
-}
 
 /**
  * Agregados de todos os clientes numa consulta só. Pedidos são contados via
@@ -85,37 +78,6 @@ async function loadAggregates(): Promise<Map<string, ClientAggregate>> {
   )
 }
 
-type ClientRow = Awaited<ReturnType<typeof prisma.client.findMany>>[number]
-
-function toClientDTO(client: ClientRow, agg?: ClientAggregate) {
-  return {
-    id: client.id,
-    kind: client.kind,
-    prefix: client.prefix,
-    name: client.name,
-    institution: client.institution,
-    email: client.email,
-    phone: client.phone,
-    taxId: client.taxId,
-    website: client.website,
-    country: client.country,
-    state: client.state,
-    city: client.city,
-    billToText: client.billToText,
-    shipToText: client.shipToText,
-    sectors: client.sectors,
-    notes: client.notes,
-    active: client.active,
-    inService: client.inService,
-    createdAt: client.createdAt.toISOString(),
-    stats: {
-      quoteCount: agg?.quoteCount ?? 0,
-      orderCount: agg?.orderCount ?? 0,
-      totalQuoted: agg?.totalQuoted ?? '0',
-      lastQuoteAt: agg?.lastQuoteAt?.toISOString() ?? null,
-    },
-  }
-}
 
 clientsRouter.get(
   '/',

@@ -12,6 +12,7 @@ import type {
   User,
 } from '../../generated/prisma/client.js'
 import type { BoxAssignments } from '@prodelphusplus/shared'
+import { prisma } from './prisma.js'
 
 export function toUserDTO(user: User) {
   return {
@@ -204,5 +205,45 @@ export function toPersonalBoardColumnDTO(column: PersonalBoardColumn & { isDone:
     name: column.name,
     position: column.position,
     isDone: column.isDone,
+  }
+}
+
+export interface ClientAggregate {
+  clientId: string
+  quoteCount: number
+  orderCount: number
+  totalQuoted: string
+  lastQuoteAt: Date | null
+}
+
+export type ClientRow = Awaited<ReturnType<typeof prisma.client.findMany>>[number]
+
+export function toClientDTO(client: ClientRow, agg?: ClientAggregate) {
+  return {
+    id: client.id,
+    kind: client.kind,
+    prefix: client.prefix,
+    name: client.name,
+    institution: client.institution,
+    email: client.email,
+    phone: client.phone,
+    taxId: client.taxId,
+    website: client.website,
+    country: client.country,
+    state: client.state,
+    city: client.city,
+    billToText: client.billToText,
+    shipToText: client.shipToText,
+    sectors: client.sectors,
+    notes: client.notes,
+    active: client.active,
+    inService: client.inService,
+    createdAt: client.createdAt.toISOString(),
+    stats: {
+      quoteCount: agg?.quoteCount ?? 0,
+      orderCount: agg?.orderCount ?? 0,
+      totalQuoted: agg?.totalQuoted ?? '0',
+      lastQuoteAt: agg?.lastQuoteAt?.toISOString() ?? null,
+    },
   }
 }
