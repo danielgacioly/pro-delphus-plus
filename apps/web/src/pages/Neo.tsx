@@ -7,7 +7,16 @@ import { IconAlert, IconArrowUp, IconBot, IconCheckCircle } from '../components/
 interface ChatMessage {
   role: 'user' | 'model'
   text: string
+  // Resultado de um clique em Confirmar/Cancelar. Aparece como aviso, não como
+  // bolha, mas vai no histórico: sem isso o Neo não sabia que o orçamento foi
+  // criado (nem o número dele) e não conseguia seguir pro pedido.
+  event?: 'done' | 'cancelled'
 }
+
+type ConfirmResult =
+  | { resource: 'quote'; quote: { quoteNumber: string } }
+  | { resource: 'order'; order: { orderNumber: number } }
+  | { resource: 'client'; client: { name: string } }
 
 interface PendingAction {
   id: string
@@ -24,13 +33,23 @@ const KIND_LABEL: Record<PendingAction['kind'], string> = {
 }
 
 async function sendMessage(message: string, history: ChatMessage[]) {
-  const { data } = await api.post<{ reply: string; pendingAction?: PendingAction }>('/neo', { message, history })
+  const { data } = await api.post<{ reply: string; pendingAction?: PendingAction }>('/neo', {
+    message,
+    history: history.map((m) => ({ role: m.role, text: m.event ? `[Sistema] ${m.text}` : m.text })),
+  })
   return data
 }
 
 async function confirmAction(id: string) {
-  const { data } = await api.post(`/neo/actions/${id}/confirm`)
+  const { data } = await api.post<ConfirmResult>(`/neo/actions/${id}/confirm`)
   return data
+}
+
+function describeConfirmResult(kind: PendingAction['kind'], result: ConfirmResult) {
+  const label = KIND_LABEL[kind]
+  if (result.resource === 'quote') return `${label} — feito: orçamento ${result.quote.quoteNumber}.`
+  if (result.resource === 'order') return `${label} — feito: pedido ${result.order.orderNumber}.`
+  return `${label} — feito: ${result.client.name}.`
 }
 
 async function cancelAction(id: string) {
@@ -57,13 +76,12 @@ export function Neo() {
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [actionResult, setActionResult] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, pending, error, actionResult])
+  }, [messages, pending, error, loading])
 
   // Cresce junto com o texto (como o campo de mensagem do Mensagens/iMessage),
   // até o teto de altura definido no CSS — dali pra frente rola por dentro.
@@ -91,7 +109,6 @@ export function Neo() {
     const text = input.trim()
     if (!text || loading) return
     setError(null)
-    setActionResult(null)
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', text }]
     setMessages(nextMessages)
     setInput('')
@@ -112,8 +129,8 @@ export function Neo() {
     setLoading(true)
     setError(null)
     try {
-      await confirmAction(pending.id)
-      setActionResult(`${KIND_LABEL[pending.kind]} — feito.`)
+      const result = await confirmAction(pending.id)
+      setMessages((prev) => [...prev, { role: 'model', text: describeConfirmResult(pending.kind, result), event: 'done' }])
       setPending(null)
     } catch (err) {
       setError(getErrorMessage(err, 'Não deu pra confirmar agora. Tenta de novo ou peça pro Neo montar de novo.'))
@@ -125,6 +142,7 @@ export function Neo() {
   async function handleCancel() {
     if (!pending) return
     await cancelAction(pending.id).catch(() => {})
+    setMessages((prev) => [...prev, { role: 'model', text: `${KIND_LABEL[pending.kind]} — cancelado, nada foi gravado.`, event: 'cancelled' }])
     setPending(null)
   }
 
@@ -168,19 +186,32 @@ export function Neo() {
           )}
 
           <div className="flex flex-col gap-3">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed',
-                  m.role === 'user'
-                    ? 'ml-auto rounded-br-md bg-brand-600 text-white'
-                    : 'self-start rounded-bl-md bg-neutral-500/8 text-ink-900',
-                )}
-              >
-                {m.role === 'model' ? renderInlineBold(m.text) : m.text}
-              </div>
-            ))}
+            {messages.map((m, i) =>
+              m.event ? (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px]',
+                    m.event === 'done' ? 'bg-emerald-500/10 text-emerald-700' : 'bg-neutral-500/8 text-neutral-600',
+                  )}
+                >
+                  {m.event === 'done' && <IconCheckCircle className="h-4 w-4 shrink-0" />}
+                  {m.text}
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className={cn(
+                    'max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed',
+                    m.role === 'user'
+                      ? 'ml-auto rounded-br-md bg-brand-600 text-white'
+                      : 'self-start rounded-bl-md bg-neutral-500/8 text-ink-900',
+                  )}
+                >
+                  {m.role === 'model' ? renderInlineBold(m.text) : m.text}
+                </div>
+              ),
+            )}
 
             {loading && (
               <div className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
@@ -193,7 +224,7 @@ export function Neo() {
             {pending && (
               <div className="max-w-[85%] rounded-2xl border border-brand-600/15 bg-brand-50/60 p-4">
                 <Badge tone="brand">{KIND_LABEL[pending.kind]}</Badge>
-                <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-900">{pending.summary}</p>
+                <p className="mt-2.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-900">{pending.summary}</p>
                 <div className="mt-3.5 flex gap-2">
                   <Button size="sm" onClick={handleCancel} disabled={loading}>
                     Cancelar
@@ -202,13 +233,6 @@ export function Neo() {
                     Confirmar
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {actionResult && (
-              <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-2.5 text-[13px] text-emerald-700">
-                <IconCheckCircle className="h-4 w-4 shrink-0" />
-                {actionResult}
               </div>
             )}
 
