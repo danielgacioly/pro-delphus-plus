@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { GoogleGenAI, Type, type Content, type FunctionDeclaration } from '@google/genai'
+import { ApiError, GoogleGenAI, Type, type Content, type FunctionDeclaration, type GenerateContentParameters } from '@google/genai'
 import { env } from '../lib/env.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
@@ -31,6 +31,21 @@ const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
 // 'gemini-3.6-flash' como substituto; testado e funcionando com esta chave.
 const MODEL = 'gemini-3.6-flash'
 const MAX_TOOL_ITERATIONS = 5
+
+// O ApiError do Gemini traz `status` 4xx (ex.: 429 de cota), e o errorHandler
+// repassaria a mensagem crua do Google — com detalhes de cota/projeto — como se
+// fosse erro do request. Aqui vira uma mensagem amigável e o detalhe fica no log.
+async function generateNeoContent(params: GenerateContentParameters) {
+  try {
+    return await ai.models.generateContent(params)
+  } catch (err) {
+    console.error('[neo] falha ao chamar o Gemini:', err)
+    if (err instanceof ApiError && err.status === 429) {
+      throw new HttpError(503, 'O Neo atingiu o limite de uso por agora. Tenta de novo daqui a pouco.')
+    }
+    throw new HttpError(502, 'O Neo não conseguiu responder agora. Tenta de novo em instantes.')
+  }
+}
 
 const readTools: FunctionDeclaration[] = [
   {
@@ -210,7 +225,7 @@ neoRouter.post(
     let pendingAction: ReturnType<typeof toPublicPendingAction> | undefined
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      const response = await ai.models.generateContent({
+      const response = await generateNeoContent({
         model: MODEL,
         contents,
         config: {
