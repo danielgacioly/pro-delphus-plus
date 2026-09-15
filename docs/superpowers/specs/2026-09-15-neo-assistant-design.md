@@ -155,22 +155,40 @@ volume esperado; a pessoa só pede de novo.
 - `propor_edicao_pedido({ pedidoId, ...mudanças })`.
 - `propor_edicao_cliente({ clienteId, ...mudanças })`.
 
+### Regra geral: Neo não chuta, pergunta
+
+Pra qualquer ação de escrita, campo que falta é campo que o Neo **pergunta**
+— um de cada vez ou em bloco, como fizer sentido na conversa — nunca
+preenchido sozinho com um valor assumido. Só fica em branco ou vai pro
+default do sistema quando a própria pessoa disser explicitamente que pode
+("deixa em branco", "pode usar o padrão", "não sei, usa o de sempre"). Essa
+regra vale pra todas as tools de escrita, mas importa mais em **pedidos**,
+que têm bem mais campos do que orçamento.
+
+Na prática: o system prompt do Neo instrui explicitamente essa regra, e cada
+tool de escrita só é chamada (gerando o preview) depois que o modelo já
+coletou, na conversa, todo campo obrigatório e todo campo opcional relevante
+— ou recebeu autorização explícita pra pular. O preview mostrado no cartão de
+confirmação reflete exatamente o que foi combinado, sem surpresa.
+
 ### Pedidos: limites conhecidos
 `Order` tem bem mais campos obrigatórios/operacionais que `Quote` (peso,
 número de caixas, divisão por caixa, Incoterms, forma de pagamento, AWB).
 Muitos desses só um humano decide de verdade (quantas caixas físicas, qual
-transportadora). Pra não inventar dado logístico:
-- `billToText`, `shipToText` e `orderedByEmail` são preenchidos
+transportadora) — por isso a regra acima ("Neo não chuta, pergunta") pesa
+mais aqui:
+- `billToText`, `shipToText` e `orderedByEmail` só são preenchidos
   automaticamente a partir do cadastro do cliente vinculado ao orçamento
-  (`Client.billToText`, `Client.shipToText`, `Client.email`) quando existir.
-  Sem cliente vinculado com esses dados, o Neo pergunta antes de propor.
-- Os demais campos (peso, caixas, Incoterms, forma de pagamento) usam os
-  mesmos defaults que a tela normal aceitaria em branco (ex.
-  `packageCount: 1`, `prepaymentBy: WIRE_TRANSFER` pra internacional /
-  `PIX` pra nacional) e ficam editáveis depois na tela de Pedidos, igual um
-  pedido criado manualmente com campos opcionais em branco.
-- O cartão de confirmação deixa isso explícito ("vou criar com 1 caixa,
-  pagamento por transferência — quer ajustar antes?").
+  (`Client.billToText`, `Client.shipToText`, `Client.email`) — isso não é
+  "chute", é dado real do cadastro. Sem cliente vinculado com esses dados, o
+  Neo pergunta.
+- Todo o resto (peso, caixas, Incoterms, forma de pagamento) o Neo **pergunta
+  antes de propor**. Só deixa em branco/usa o default do sistema
+  (`packageCount: 1`, `prepaymentBy: WIRE_TRANSFER`/`PIX`) se a pessoa disser
+  explicitamente que pode.
+- O cartão de confirmação sempre mostra o valor final de cada campo
+  preenchido, pra ficar claro o que foi perguntado, o que veio do cadastro do
+  cliente, e o que ficou no padrão por autorização explícita.
 
 ## Frontend
 
@@ -178,9 +196,16 @@ transportadora). Pra não inventar dado logístico:
   estado de carregando, erro amigável em falha. Cartão de confirmação
   (`pendingAction`) com resumo legível da ação e botões Confirmar/Cancelar.
 - Novo ícone (`IconBot` ou similar) em `components/icons.tsx`, seguindo o
-  padrão SVG existente.
+  padrão SVG existente — usado no menu lateral.
 - Item novo em `navItems` (`Layout.tsx`), rota `/neo` dentro do
   `<ProtectedRoute />` sem restrição de papel, registrada em `App.tsx`.
+- **Avatar animado**: o usuário vai fornecer um GIF do Neo "se mexendo". Ele
+  ganha um lugar de destaque na tela de chat (ex.: cabeçalho da conversa, ou
+  ao lado das mensagens do Neo) — o layout da tela é desenhado já pensando em
+  acomodar essa peça, não encaixado depois. Arquivo ainda não recebido;
+  entra como asset em `apps/web/src/assets/` quando chegar, sem bloquear o
+  resto da implementação (a tela nasce com o espaço reservado / um estado de
+  placeholder até o GIF chegar).
 - Nível visual: seguir a skill `frontend-design` na hora de construir —
   mesma paleta (`ink-900`/`brand-600`), mesmas sombras suaves e restrição
   visual do resto do produto, nada de "cara de IA genérica".
@@ -219,8 +244,11 @@ Sem suíte automatizada no projeto hoje (confirmado — não existe nenhum
    Orçamentos (número, PDF, itens, total) — comparar com um criado
    manualmente. Repetir pra edição de orçamento, criação/edição de pedido e
    edição de cliente.
-4. Testar cancelar um preview e confirmar que nada foi gravado.
-5. Só depois de validado localmente, deploy pro servidor (nova
+4. Testar que o Neo **pergunta** campos de pedido que faltam (peso, caixas,
+   forma de pagamento) em vez de assumir sozinho, e que só usa
+   branco/default quando autorizado explicitamente na conversa.
+5. Testar cancelar um preview e confirmar que nada foi gravado.
+6. Só depois de validado localmente, deploy pro servidor (nova
    `GEMINI_API_KEY` no `.env.prod`, redeploy).
 
 ## Processo de implementação
