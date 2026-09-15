@@ -25,7 +25,11 @@ export const neoRouter = Router()
 neoRouter.use(requireAuth)
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
-const MODEL = 'gemini-2.5-flash'
+// 'gemini-2.5-flash' (o modelo original do plano) responde 404 "no longer
+// available to new users" para chaves novas do AI Studio — confirmado em
+// 2026-09-15 via chamada direta à API. O próprio erro do Google aponta
+// 'gemini-3.6-flash' como substituto; testado e funcionando com esta chave.
+const MODEL = 'gemini-3.6-flash'
 const MAX_TOOL_ITERATIONS = 5
 
 const readTools: FunctionDeclaration[] = [
@@ -221,7 +225,11 @@ neoRouter.post(
         return
       }
 
-      contents.push({ role: 'model', parts: calls.map((c) => ({ functionCall: c })) })
+      // Reaproveita o `content` que o próprio Gemini devolveu (em vez de
+      // reconstruir só com `functionCall`), porque modelos 3.x anexam um
+      // `thoughtSignature` por parte — descartá-lo quebra a continuidade do
+      // raciocínio nas próximas iterações do loop de tool calling.
+      contents.push(response.candidates?.[0]?.content ?? { role: 'model', parts: calls.map((c) => ({ functionCall: c })) })
 
       const responseParts = []
       for (const call of calls) {
