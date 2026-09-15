@@ -6,6 +6,7 @@ import { Register } from './pages/Register'
 import { Home } from './pages/Home'
 import { Account } from './pages/Account'
 import { MyDesk } from './pages/MyDesk'
+import { Neo } from './pages/Neo'
 import { PriceTable } from './pages/PriceTable'
 import { Products } from './pages/Products'
 import { NewProduct } from './pages/NewProduct'
@@ -42,6 +43,7 @@ function App() {
           <Route path="/pedidos/:id" element={<OrderDetail />} />
           <Route path="/minha-conta" element={<Account />} />
           <Route path="/minha-pro-delphus" element={<MyDesk />} />
+          <Route path="/neo" element={<Neo />} />
 
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
             <Route path="/produtos/novo" element={<NewProduct />} />

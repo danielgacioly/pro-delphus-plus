@@ -5,6 +5,7 @@ import { cn } from '../lib/cn'
 import logo from '../assets/logo.svg'
 import {
   IconBoard,
+  IconBot,
   IconBox,
   IconChart,
   IconContacts,
@@ -38,6 +39,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/', label: 'Início', icon: IconHome, end: true },
   { to: '/minha-pro-delphus', label: 'Minha Pro Delphus', icon: IconBoard },
+  { to: '/neo', label: 'Neo', icon: IconBot },
   { to: '/precos', label: 'Tabela de Preços', icon: IconTag },
   { to: '/produtos', label: 'Produtos', icon: IconBox },
   { to: '/clientes', label: 'Clientes', icon: IconContacts },
