@@ -37,6 +37,20 @@ async function cancelAction(id: string) {
   await api.post(`/neo/actions/${id}/cancel`)
 }
 
+// O Gemini responde em markdown. Listas com "- " já ficam legíveis com
+// `whitespace-pre-wrap`; o que aparecia cru eram os `**negritos**`.
+function renderInlineBold(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+      <strong key={i} className="font-semibold">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      part
+    ),
+  )
+}
+
 export function Neo() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -53,11 +67,24 @@ export function Neo() {
 
   // Cresce junto com o texto (como o campo de mensagem do Mensagens/iMessage),
   // até o teto de altura definido no CSS — dali pra frente rola por dentro.
+  // Remede também quando a largura muda: na montagem o layout ainda está se
+  // acomodando e a medida sai com o campo estreito demais (altura inflada).
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    const autosize = () => {
+      el.style.height = 'auto'
+      el.style.height = `${el.scrollHeight}px`
+    }
+    autosize()
+    let lastWidth = el.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === lastWidth) return
+      lastWidth = el.clientWidth
+      autosize()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [input])
 
   async function handleSend() {
@@ -148,15 +175,15 @@ export function Neo() {
                   'max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed',
                   m.role === 'user'
                     ? 'ml-auto rounded-br-md bg-brand-600 text-white'
-                    : 'rounded-bl-md bg-neutral-500/8 text-ink-900',
+                    : 'self-start rounded-bl-md bg-neutral-500/8 text-ink-900',
                 )}
               >
-                {m.text}
+                {m.role === 'model' ? renderInlineBold(m.text) : m.text}
               </div>
             ))}
 
             {loading && (
-              <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
+              <div className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400 [animation-delay:-0.3s]" />
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400 [animation-delay:-0.15s]" />
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400" />
