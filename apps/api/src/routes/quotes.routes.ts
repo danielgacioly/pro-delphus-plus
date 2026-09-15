@@ -108,7 +108,7 @@ export type CreateQuoteInput = z.infer<typeof createQuoteSchema>
  * o mesmo cálculo, só divergindo em como o número do orçamento é definido e
  * se é um create ou update no banco.
  */
-async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
+export async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
   // Nacional é sempre BRL/português — não é mais o idioma que decide a
   // moeda, é o tipo (Nacional/Internacional) escolhido explicitamente no
   // formulário. Ver NewQuote.tsx.

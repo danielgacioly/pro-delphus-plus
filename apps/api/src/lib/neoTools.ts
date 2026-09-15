@@ -1,5 +1,9 @@
 import { prisma } from './prisma.js'
 import { toClientDTO } from './dto.js'
+import { createQuoteSchema, resolveQuoteData, type CreateQuoteInput } from '../routes/quotes.routes.js'
+import { orderFieldsSchema, type OrderFieldsInput } from '../routes/orders.routes.js'
+import { createPendingAction } from './neoPendingActions.js'
+import { HttpError } from '../middleware/errorHandler.js'
 
 function productSummary(p: {
   id: string
@@ -79,4 +83,62 @@ export async function buscarCliente(args: { nome: string }) {
 
 export async function listarSetores() {
   return prisma.sector.findMany({ select: { name: true, namePt: true }, orderBy: { name: 'asc' } })
+}
+
+function money(currency: string, value: number) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value)
+}
+
+export async function proporOrcamento(args: CreateQuoteInput, userId: string) {
+  const data = createQuoteSchema.parse(args)
+  const resolved = await resolveQuoteData(data, userId)
+  const summary = `Orçamento novo para ${data.clientName}, ${resolved.lineItems.length} item(ns), total ${money(resolved.currency, resolved.total)}.`
+  const pendingAction = createPendingAction('orcamento_criar', summary, data, userId)
+  return { pendingAction, summaryForModel: summary }
+}
+
+export async function proporEdicaoOrcamento(args: { orcamentoId: string } & CreateQuoteInput, userId: string) {
+  const { orcamentoId, ...rest } = args
+  const data = createQuoteSchema.parse(rest)
+  const resolved = await resolveQuoteData(data, userId)
+  const summary = `Edição do orçamento — ${resolved.lineItems.length} item(ns), novo total ${money(resolved.currency, resolved.total)}.`
+  const pendingAction = createPendingAction('orcamento_editar', summary, { orcamentoId, data }, userId)
+  return { pendingAction, summaryForModel: summary }
+}
+
+export async function proporPedido(args: Partial<OrderFieldsInput> & { quoteId: string }, userId: string) {
+  // billToText/shipToText/orderedByEmail vêm do cadastro do cliente vinculado
+  // ao orçamento quando existirem — isso é dado real, não "chute" (ver
+  // regra em neoKnowledge.ts). Sem cliente vinculado ou sem esses campos
+  // preenchidos no cadastro, `orderFieldsSchema.parse` abaixo falha por
+  // campo obrigatório ausente, e o Neo (instruído pelo system prompt) deve
+  // perguntar antes de tentar de novo.
+  const quote = await prisma.quote.findUnique({ where: { id: args.quoteId }, include: { client: true } })
+  if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
+
+  const merged = {
+    ...args,
+    billToText: args.billToText ?? quote.client?.billToText ?? undefined,
+    shipToText: args.shipToText ?? quote.client?.shipToText ?? undefined,
+    orderedByEmail: args.orderedByEmail ?? quote.client?.email ?? undefined,
+  }
+  const data = orderFieldsSchema.parse(merged)
+  const summary = `Pedido novo a partir do orçamento ${quote.quoteNumber}, ${data.packageCount ?? 1} caixa(s), pagamento ${data.prepaymentBy ?? 'transferência bancária (padrão)'}.`
+  const pendingAction = createPendingAction('pedido_criar', summary, data, userId)
+  return { pendingAction, summaryForModel: summary }
+}
+
+export async function proporEdicaoPedido(args: { pedidoId: string } & Omit<OrderFieldsInput, 'quoteId'>, userId: string) {
+  const { pedidoId, ...rest } = args
+  const data = orderFieldsSchema.omit({ quoteId: true }).partial().parse(rest)
+  const summary = `Edição do pedido — campos alterados: ${Object.keys(data).join(', ') || '(nenhum)'}.`
+  const pendingAction = createPendingAction('pedido_editar', summary, { pedidoId, data }, userId)
+  return { pendingAction, summaryForModel: summary }
+}
+
+export async function proporEdicaoCliente(args: { clienteId: string } & Record<string, unknown>, userId: string) {
+  const { clienteId, ...rest } = args
+  const summary = `Edição do cliente — campos alterados: ${Object.keys(rest).join(', ') || '(nenhum)'}.`
+  const pendingAction = createPendingAction('cliente_editar', summary, { clienteId, data: rest }, userId)
+  return { pendingAction, summaryForModel: summary }
 }
