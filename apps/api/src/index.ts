@@ -13,6 +13,7 @@ import { sectorsRouter } from './routes/sectors.routes.js'
 import { ordersRouter } from './routes/orders.routes.js'
 import { statsRouter } from './routes/stats.routes.js'
 import { tasksRouter } from './routes/tasks.routes.js'
+import { neoRouter } from './routes/neo.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { apiLimiter, authLimiter, securityHeaders } from './middleware/security.js'
 
@@ -92,6 +93,7 @@ app.use('/api/sectors', sectorsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/tasks', tasksRouter)
+app.use('/api/neo', neoRouter)
 
 app.use(errorHandler)
 

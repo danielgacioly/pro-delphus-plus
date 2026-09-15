@@ -4,7 +4,7 @@ import { env } from '../lib/env.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { buildNeoSystemInstruction } from '../lib/neoKnowledge.js'
-import { toPublicPendingAction } from '../lib/neoPendingActions.js'
+import { toPublicPendingAction, getPendingAction, discardPendingAction } from '../lib/neoPendingActions.js'
 import {
   buscarProdutos,
   listarClientes,
@@ -16,6 +16,10 @@ import {
   proporEdicaoPedido,
   proporEdicaoCliente,
 } from '../lib/neoTools.js'
+import { toQuoteDTO, toClientDTO } from '../lib/dto.js'
+import { createQuoteRecord, updateQuoteRecord } from './quotes.routes.js'
+import { createOrderRecord, updateOrderRecord, toOrderDTOFresh } from './orders.routes.js'
+import { updateClientRecord } from './clients.routes.js'
 
 export const neoRouter = Router()
 neoRouter.use(requireAuth)
@@ -229,5 +233,58 @@ neoRouter.post(
     }
 
     throw new HttpError(500, 'O Neo não conseguiu concluir a resposta (muitas chamadas de ferramenta em sequência).')
+  }),
+)
+
+neoRouter.post(
+  '/actions/:id/confirm',
+  asyncHandler(async (req, res) => {
+    const action = getPendingAction(req.params.id, req.user!.id)
+    if (!action) throw new HttpError(404, 'Essa ação expirou ou não existe mais. Peça pro Neo montar de novo.')
+
+    switch (action.kind) {
+      case 'orcamento_criar': {
+        const quote = await createQuoteRecord(action.payload as never, req.user!.id)
+        discardPendingAction(action.id)
+        res.json({ resource: 'quote', quote: toQuoteDTO(quote) })
+        return
+      }
+      case 'orcamento_editar': {
+        const { orcamentoId, data } = action.payload as { orcamentoId: string; data: unknown }
+        const quote = await updateQuoteRecord(orcamentoId, data as never, req.user!.id)
+        discardPendingAction(action.id)
+        res.json({ resource: 'quote', quote: toQuoteDTO(quote) })
+        return
+      }
+      case 'pedido_criar': {
+        const order = await createOrderRecord(action.payload as never, req.user!.id)
+        discardPendingAction(action.id)
+        res.json({ resource: 'order', order: await toOrderDTOFresh(order) })
+        return
+      }
+      case 'pedido_editar': {
+        const { pedidoId, data } = action.payload as { pedidoId: string; data: unknown }
+        const order = await updateOrderRecord(pedidoId, data as never, req.user!.id)
+        discardPendingAction(action.id)
+        res.json({ resource: 'order', order: await toOrderDTOFresh(order) })
+        return
+      }
+      case 'cliente_editar': {
+        const { clienteId, data } = action.payload as { clienteId: string; data: unknown }
+        const { client, aggregate } = await updateClientRecord(clienteId, data as never)
+        discardPendingAction(action.id)
+        res.json({ resource: 'client', client: toClientDTO(client, aggregate) })
+        return
+      }
+    }
+  }),
+)
+
+neoRouter.post(
+  '/actions/:id/cancel',
+  asyncHandler(async (req, res) => {
+    const action = getPendingAction(req.params.id, req.user!.id)
+    if (action) discardPendingAction(action.id)
+    res.status(204).send()
   }),
 )

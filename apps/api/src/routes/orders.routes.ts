@@ -36,7 +36,7 @@ type RawOrder = Omit<Parameters<typeof toOrderDTO>[0], 'documentsGeneratedAt' | 
   quote: Omit<Parameters<typeof toOrderDTO>[0]['quote'], 'updatedAt'>
 }
 
-async function toOrderDTOFresh(order: RawOrder) {
+export async function toOrderDTOFresh(order: RawOrder) {
   const [docRows, quoteRows] = await Promise.all([
     prisma.$queryRaw<{ documentsGeneratedAt: Date }[]>`SELECT "documentsGeneratedAt" FROM orders WHERE id = ${order.id}`,
     prisma.$queryRaw<{ updatedAt: Date }[]>`SELECT "updatedAt" FROM quotes WHERE id = ${order.quoteId}`,
