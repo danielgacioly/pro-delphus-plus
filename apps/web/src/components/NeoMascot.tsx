@@ -1,28 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
+import avatar from '../assets/neo-avatar.png'
 import mascote from '../assets/neo-mascote.mp4'
 
 /**
- * O arquivo é 16:9 com fundo branco e o Neo ocupando só a faixa central do
- * quadro. Num container quadrado o `object-cover` já descarta as laterais
- * (sobra o quadrado central do vídeo); o transform abaixo enquadra o que
- * interessa dentro desse quadrado — a cabeça, para o avatar pequeno, ou o
- * corpo inteiro, para a saudação. Valores medidos no próprio arquivo.
+ * Retrato do Neo, já recortado no traço do rosto: a borda desenhada é a
+ * própria borda do círculo, então não precisa de moldura por CSS.
+ * Enquanto ele pensa, o avatar respira — é o sinal de "estou trabalhando".
  */
-const FRAMING = {
-  head: 'scale(1.95) translate(-3.5%, 16%)',
-  full: 'scale(1.2) translate(-3.5%, -6.1%)',
-} as const
+export function NeoAvatar({ thinking = false, className }: { thinking?: boolean; className?: string }) {
+  return (
+    <img
+      src={avatar}
+      alt="Neo"
+      className={cn('shrink-0 rounded-full object-cover', thinking && 'animate-neo-breathe', className)}
+    />
+  )
+}
+
+/**
+ * O vídeo é 16:9 com fundo branco e o Neo ocupando só a faixa central do
+ * quadro. Num container quadrado o `object-cover` já descarta as laterais
+ * (sobra o quadrado central do vídeo); o transform enquadra o corpo inteiro
+ * dentro desse quadrado. Valores medidos no próprio arquivo.
+ */
+const FRAMING = 'scale(1.2) translate(-3.5%, -6.1%)'
 
 /** Quadro em que o Neo está de frente e sorrindo — é como ele fica parado. */
 const STILL_TIME = 2.4
-
-interface NeoMascotProps {
-  variant?: keyof typeof FRAMING
-  /** Anima enquanto true; parado (primeiro quadro) quando false. */
-  playing?: boolean
-  className?: string
-}
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(() =>
@@ -38,7 +43,13 @@ function usePrefersReducedMotion() {
   return reduced
 }
 
-export function NeoMascot({ variant = 'head', playing = true, className }: NeoMascotProps) {
+interface NeoMascotProps {
+  /** Anima enquanto true; parado (num quadro escolhido) quando false. */
+  playing?: boolean
+  className?: string
+}
+
+export function NeoMascot({ playing = true, className }: NeoMascotProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const reducedMotion = usePrefersReducedMotion()
   const shouldPlay = playing && !reducedMotion
@@ -91,14 +102,14 @@ export function NeoMascot({ variant = 'head', playing = true, className }: NeoMa
         src={mascote}
         muted
         loop
-        autoPlay={shouldPlay}
         playsInline
+        autoPlay={shouldPlay}
         preload="auto"
         aria-hidden
         // `multiply` some com o fundo branco do vídeo sobre qualquer superfície
-        // clara — sem isso fica um quadrado branco no meio do cabeçalho.
+        // clara — sem isso fica um retângulo branco no meio da tela.
         className="absolute inset-0 h-full w-full object-cover mix-blend-multiply"
-        style={{ transform: FRAMING[variant] }}
+        style={{ transform: FRAMING }}
       />
     </div>
   )
