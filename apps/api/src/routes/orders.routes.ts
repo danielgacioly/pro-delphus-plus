@@ -199,7 +199,7 @@ const dateOnlySchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida')
   .transform((s) => new Date(`${s}T12:00:00Z`))
 
-const orderFieldsSchema = z.object({
+export const orderFieldsSchema = z.object({
   quoteId: z.string().min(1),
   purchaseOrder: z.string().optional(),
   orderedByEmail: z.string().email(),
@@ -223,6 +223,7 @@ const orderFieldsSchema = z.object({
     .array(z.array(z.object({ label: z.string().min(1), quantity: z.number().int().positive() })))
     .optional(),
 })
+export type OrderFieldsInput = z.infer<typeof orderFieldsSchema>
 
 // "01 Carton" / "02 Cartons" — the Invoice/Packing List "Number of Packages"
 // field is always derived from packageCount rather than free-typed, so it
@@ -417,179 +418,171 @@ async function buildAndWriteDocuments(
   }
 }
 
+export async function createOrderRecord(data: OrderFieldsInput, requesterId: string) {
+  const quote = await prisma.quote.findUnique({ where: { id: data.quoteId }, include: quoteInclude })
+  if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
+  if (quote.items.length === 0) throw new HttpError(400, 'Este orçamento não possui itens')
+
+  const isNational = quote.exportScope === 'NATIONAL'
+  const exchangeRate = isNational
+    ? null
+    : (data.exchangeRate ??
+      (await fetchExchangeRate(quote.currency as 'USD' | 'EUR').catch(() => {
+        throw new HttpError(400, 'Não foi possível obter o câmbio automaticamente. Informe o valor manualmente.')
+      })))
+  const packageCount = data.packageCount ?? 1
+  const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
+  assertPrepaymentAllowed(prepaymentBy, isNational)
+  assertBoxAssignmentsFit(data.boxAssignments, packageCount)
+
+  let order: Awaited<ReturnType<typeof prisma.order.create>> | undefined
+  let orderNumber = 0
+  for (let attempt = 0; attempt < 12; attempt++) {
+    if (attempt > 0) await reservationBackoff(attempt)
+    orderNumber = await nextOrderNumber()
+    try {
+      order = await prisma.order.create({
+        data: {
+          orderNumber,
+          quoteId: data.quoteId,
+          purchaseOrder: data.purchaseOrder ?? null,
+          orderedByEmail: data.orderedByEmail,
+          shipDate: data.shipDate ?? null,
+          billToText: data.billToText,
+          shipToText: data.shipToText,
+          shipToNote: data.shipToNote ?? null,
+          numberOfPackages: formatPackageCountLabel(packageCount),
+          netWeightKg: data.netWeightKg ?? null,
+          grossWeightKg: data.grossWeightKg ?? null,
+          awbNumber: data.awbNumber ?? null,
+          incoterms: data.incoterms ?? null,
+          shippingMethod: data.shippingMethod ?? null,
+          itemWeightsKg: data.itemWeightsKg,
+          packageCount,
+          boxAssignments: data.boxAssignments ?? undefined,
+          prepaymentBy,
+          paypalFee: data.paypalFee ?? null,
+          nfNumber: data.nfNumber ?? null,
+          nfDate: data.nfDate ?? null,
+          exchangeRate,
+          createdById: requesterId,
+        },
+        include,
+      })
+      break
+    } catch (err) {
+      if (isOrderNumberConflict(err)) continue
+      throw err
+    }
+  }
+  if (!order) throw new HttpError(409, 'Não foi possível reservar um número de pedido. Tente novamente.')
+
+  const orderForDocs = {
+    orderNumber,
+    purchaseOrder: data.purchaseOrder ?? null,
+    orderedByEmail: data.orderedByEmail,
+    invoiceDate: order.invoiceDate,
+    billToText: data.billToText,
+    shipToText: data.shipToText,
+    netWeightKg: data.netWeightKg ?? null,
+    grossWeightKg: data.grossWeightKg ?? null,
+    awbNumber: data.awbNumber ?? null,
+    incoterms: data.incoterms ?? null,
+    shippingMethod: data.shippingMethod ?? null,
+    prepaymentBy,
+    paypalFee: data.paypalFee ?? null,
+    nfNumber: data.nfNumber ?? null,
+    nfDate: data.nfDate ?? null,
+    exchangeRate,
+    itemWeightsKg: data.itemWeightsKg ?? null,
+    packageCount,
+    boxAssignments: data.boxAssignments ?? null,
+  }
+
+  const docUrls = await buildAndWriteDocuments(orderForDocs, quote)
+  return prisma.order.update({ where: { id: order.id }, data: docUrls, include })
+}
+
 ordersRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const data = orderFieldsSchema.parse(req.body)
-
-    const quote = await prisma.quote.findUnique({ where: { id: data.quoteId }, include: quoteInclude })
-    if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
-    if (quote.items.length === 0) throw new HttpError(400, 'Este orçamento não possui itens')
-
-    // Venda nacional não tem câmbio nenhum — é só a mesma moeda, sem
-    // conversão nem Documento de Exportação (ver buildAndWriteDocuments).
-    const isNational = quote.exportScope === 'NATIONAL'
-
-    // Nunca cair silenciosamente para um câmbio de 1 — isso corrompe o valor
-    // total do Invoice/Export Doc sem aviso nenhum. Se não veio do form e a
-    // busca automática falhar, é melhor recusar e pedir para digitar à mão.
-    const exchangeRate = isNational
-      ? null
-      : (data.exchangeRate ??
-        (await fetchExchangeRate(quote.currency as 'USD' | 'EUR').catch(() => {
-          throw new HttpError(400, 'Não foi possível obter o câmbio automaticamente. Informe o valor manualmente.')
-        })))
-    const packageCount = data.packageCount ?? 1
-    const prepaymentBy = data.prepaymentBy ?? 'WIRE_TRANSFER'
-    assertPrepaymentAllowed(prepaymentBy, isNational)
-    assertBoxAssignmentsFit(data.boxAssignments, packageCount)
-
-    // O número é reservado com um INSERT (rápido, sem URLs de documento)
-    // ANTES de gerar o PDF/xlsx (lento — Puppeteer/ExcelJS levam segundos).
-    // Ver o mesmo padrão e a mesma justificativa em quotes.routes.ts POST /.
-    let order: Awaited<ReturnType<typeof prisma.order.create>> | undefined
-    let orderNumber = 0
-    for (let attempt = 0; attempt < 12; attempt++) {
-      if (attempt > 0) await reservationBackoff(attempt)
-      orderNumber = await nextOrderNumber()
-      try {
-        order = await prisma.order.create({
-          data: {
-            orderNumber,
-            quoteId: data.quoteId,
-            purchaseOrder: data.purchaseOrder ?? null,
-            orderedByEmail: data.orderedByEmail,
-            shipDate: data.shipDate ?? null,
-            billToText: data.billToText,
-            shipToText: data.shipToText,
-            shipToNote: data.shipToNote ?? null,
-            numberOfPackages: formatPackageCountLabel(packageCount),
-            netWeightKg: data.netWeightKg ?? null,
-            grossWeightKg: data.grossWeightKg ?? null,
-            awbNumber: data.awbNumber ?? null,
-            incoterms: data.incoterms ?? null,
-            shippingMethod: data.shippingMethod ?? null,
-            itemWeightsKg: data.itemWeightsKg,
-            packageCount,
-            boxAssignments: data.boxAssignments ?? undefined,
-            prepaymentBy,
-            paypalFee: data.paypalFee ?? null,
-            nfNumber: data.nfNumber ?? null,
-            nfDate: data.nfDate ?? null,
-            exchangeRate,
-            createdById: req.user!.id,
-          },
-          include,
-        })
-        break
-      } catch (err) {
-        if (isOrderNumberConflict(err)) continue
-        throw err
-      }
-    }
-    if (!order) throw new HttpError(409, 'Não foi possível reservar um número de pedido. Tente novamente.')
-
-    const orderForDocs = {
-      orderNumber,
-      purchaseOrder: data.purchaseOrder ?? null,
-      orderedByEmail: data.orderedByEmail,
-      invoiceDate: order.invoiceDate,
-      billToText: data.billToText,
-      shipToText: data.shipToText,
-      netWeightKg: data.netWeightKg ?? null,
-      grossWeightKg: data.grossWeightKg ?? null,
-      awbNumber: data.awbNumber ?? null,
-      incoterms: data.incoterms ?? null,
-      shippingMethod: data.shippingMethod ?? null,
-      prepaymentBy,
-      paypalFee: data.paypalFee ?? null,
-      nfNumber: data.nfNumber ?? null,
-      nfDate: data.nfDate ?? null,
-      exchangeRate,
-      itemWeightsKg: data.itemWeightsKg ?? null,
-      packageCount,
-      boxAssignments: data.boxAssignments ?? null,
-    }
-
-    const docUrls = await buildAndWriteDocuments(orderForDocs, quote)
-
-    const updated = await prisma.order.update({ where: { id: order.id }, data: docUrls, include })
-
+    const updated = await createOrderRecord(data, req.user!.id)
     res.status(201).json({ order: await toOrderDTOFresh(updated) })
   }),
 )
 
+export async function updateOrderRecord(existingId: string, data: Partial<Omit<OrderFieldsInput, 'quoteId'>>, _requesterId: string) {
+  const existing = await prisma.order.findUnique({ where: { id: existingId }, include: { quote: { include: quoteInclude } } })
+  if (!existing) throw new HttpError(404, 'Pedido não encontrado')
+
+  const merged = {
+    orderNumber: existing.orderNumber,
+    purchaseOrder: data.purchaseOrder !== undefined ? data.purchaseOrder || null : existing.purchaseOrder,
+    orderedByEmail: data.orderedByEmail ?? existing.orderedByEmail,
+    invoiceDate: existing.invoiceDate,
+    billToText: data.billToText ?? existing.billToText,
+    shipToText: data.shipToText ?? existing.shipToText,
+    netWeightKg: data.netWeightKg !== undefined ? data.netWeightKg : existing.netWeightKg !== null ? Number(existing.netWeightKg) : null,
+    grossWeightKg:
+      data.grossWeightKg !== undefined ? data.grossWeightKg : existing.grossWeightKg !== null ? Number(existing.grossWeightKg) : null,
+    awbNumber: data.awbNumber !== undefined ? data.awbNumber || null : existing.awbNumber,
+    incoterms: data.incoterms !== undefined ? data.incoterms || null : existing.incoterms,
+    shippingMethod: data.shippingMethod !== undefined ? data.shippingMethod || null : existing.shippingMethod,
+    prepaymentBy: data.prepaymentBy ?? existing.prepaymentBy,
+    paypalFee: data.paypalFee !== undefined ? data.paypalFee : existing.paypalFee !== null ? Number(existing.paypalFee) : null,
+    nfNumber: data.nfNumber !== undefined ? data.nfNumber || null : existing.nfNumber,
+    nfDate: data.nfDate !== undefined ? (data.nfDate ?? null) : existing.nfDate,
+    exchangeRate:
+      existing.quote.exportScope === 'NATIONAL'
+        ? null
+        : (data.exchangeRate ?? (existing.exchangeRate !== null ? Number(existing.exchangeRate) : 1)),
+    itemWeightsKg: data.itemWeightsKg ?? ((existing.itemWeightsKg as (number | null)[] | null) ?? null),
+    packageCount: data.packageCount ?? existing.packageCount,
+    boxAssignments: data.boxAssignments ?? ((existing.boxAssignments as BoxAssignments | null) ?? null),
+  }
+
+  assertPrepaymentAllowed(merged.prepaymentBy, existing.quote.exportScope === 'NATIONAL')
+  assertBoxAssignmentsFit(merged.boxAssignments, merged.packageCount)
+
+  const docUrls = await buildAndWriteDocuments(merged, existing.quote)
+
+  const order = await prisma.order.update({
+    where: { id: existing.id },
+    data: {
+      purchaseOrder: merged.purchaseOrder,
+      orderedByEmail: merged.orderedByEmail,
+      shipDate: data.shipDate !== undefined ? (data.shipDate ?? null) : existing.shipDate,
+      billToText: merged.billToText,
+      shipToText: merged.shipToText,
+      itemWeightsKg: merged.itemWeightsKg ?? undefined,
+      packageCount: merged.packageCount,
+      boxAssignments: merged.boxAssignments ?? undefined,
+      shipToNote: data.shipToNote !== undefined ? data.shipToNote || null : existing.shipToNote,
+      numberOfPackages: formatPackageCountLabel(merged.packageCount),
+      netWeightKg: merged.netWeightKg,
+      grossWeightKg: merged.grossWeightKg,
+      awbNumber: merged.awbNumber,
+      incoterms: merged.incoterms,
+      shippingMethod: merged.shippingMethod,
+      prepaymentBy: merged.prepaymentBy,
+      paypalFee: merged.paypalFee,
+      nfNumber: merged.nfNumber,
+      nfDate: merged.nfDate,
+      exchangeRate: merged.exchangeRate,
+      ...docUrls,
+    },
+    include,
+  })
+  await prisma.$executeRaw`UPDATE orders SET "documentsGeneratedAt" = now() WHERE id = ${order.id}`
+  return order
+}
+
 ordersRouter.patch(
   '/:id',
   asyncHandler(async (req, res) => {
-    const existing = await prisma.order.findUnique({ where: { id: req.params.id }, include: { quote: { include: quoteInclude } } })
-    if (!existing) throw new HttpError(404, 'Pedido não encontrado')
-
     const data = orderFieldsSchema.omit({ quoteId: true }).partial().parse(req.body)
-
-    const merged = {
-      orderNumber: existing.orderNumber,
-      purchaseOrder: data.purchaseOrder !== undefined ? data.purchaseOrder || null : existing.purchaseOrder,
-      orderedByEmail: data.orderedByEmail ?? existing.orderedByEmail,
-      invoiceDate: existing.invoiceDate,
-      billToText: data.billToText ?? existing.billToText,
-      shipToText: data.shipToText ?? existing.shipToText,
-      netWeightKg: data.netWeightKg !== undefined ? data.netWeightKg : existing.netWeightKg !== null ? Number(existing.netWeightKg) : null,
-      grossWeightKg:
-        data.grossWeightKg !== undefined ? data.grossWeightKg : existing.grossWeightKg !== null ? Number(existing.grossWeightKg) : null,
-      awbNumber: data.awbNumber !== undefined ? data.awbNumber || null : existing.awbNumber,
-      incoterms: data.incoterms !== undefined ? data.incoterms || null : existing.incoterms,
-      shippingMethod: data.shippingMethod !== undefined ? data.shippingMethod || null : existing.shippingMethod,
-      prepaymentBy: data.prepaymentBy ?? existing.prepaymentBy,
-      paypalFee: data.paypalFee !== undefined ? data.paypalFee : existing.paypalFee !== null ? Number(existing.paypalFee) : null,
-      nfNumber: data.nfNumber !== undefined ? data.nfNumber || null : existing.nfNumber,
-      nfDate: data.nfDate !== undefined ? data.nfDate ?? null : existing.nfDate,
-      exchangeRate:
-        existing.quote.exportScope === 'NATIONAL'
-          ? null
-          : (data.exchangeRate ?? (existing.exchangeRate !== null ? Number(existing.exchangeRate) : 1)),
-      itemWeightsKg: data.itemWeightsKg ?? ((existing.itemWeightsKg as (number | null)[] | null) ?? null),
-      packageCount: data.packageCount ?? existing.packageCount,
-      boxAssignments: data.boxAssignments ?? ((existing.boxAssignments as BoxAssignments | null) ?? null),
-    }
-
-    assertPrepaymentAllowed(merged.prepaymentBy, existing.quote.exportScope === 'NATIONAL')
-    assertBoxAssignmentsFit(merged.boxAssignments, merged.packageCount)
-
-    const docUrls = await buildAndWriteDocuments(merged, existing.quote)
-
-    const order = await prisma.order.update({
-      where: { id: existing.id },
-      data: {
-        purchaseOrder: merged.purchaseOrder,
-        orderedByEmail: merged.orderedByEmail,
-        shipDate: data.shipDate !== undefined ? data.shipDate ?? null : existing.shipDate,
-        billToText: merged.billToText,
-        shipToText: merged.shipToText,
-        itemWeightsKg: merged.itemWeightsKg ?? undefined,
-        packageCount: merged.packageCount,
-        boxAssignments: merged.boxAssignments ?? undefined,
-        shipToNote: data.shipToNote !== undefined ? data.shipToNote || null : existing.shipToNote,
-        numberOfPackages: formatPackageCountLabel(merged.packageCount),
-        netWeightKg: merged.netWeightKg,
-        grossWeightKg: merged.grossWeightKg,
-        awbNumber: merged.awbNumber,
-        incoterms: merged.incoterms,
-        shippingMethod: merged.shippingMethod,
-        prepaymentBy: merged.prepaymentBy,
-        paypalFee: merged.paypalFee,
-        nfNumber: merged.nfNumber,
-        nfDate: merged.nfDate,
-        exchangeRate: merged.exchangeRate,
-        ...docUrls,
-      },
-      include,
-    })
-    // Documentos regenerados agora — marca o instante pra comparar com
-    // quote.updatedAt e detectar quando o orçamento vinculado mudar de novo
-    // depois disso (ver toOrderDTOFresh/documentsStale).
-    await prisma.$executeRaw`UPDATE orders SET "documentsGeneratedAt" = now() WHERE id = ${order.id}`
-
+    const order = await updateOrderRecord(req.params.id, data, req.user!.id)
     res.json({ order: await toOrderDTOFresh(order) })
   }),
 )
