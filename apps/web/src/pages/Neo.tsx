@@ -56,10 +56,11 @@ async function cancelAction(id: string) {
   await api.post(`/neo/actions/${id}/cancel`)
 }
 
-// O Gemini responde em markdown. Listas com "- " já ficam legíveis com
-// `whitespace-pre-wrap`; o que aparecia cru eram os `**negritos**`.
+// O Gemini responde em markdown, e o pouco que ele usa de verdade — negrito e
+// listas — aparecia cru na tela ("**Peso bruto**", "* Endereço").
 function renderInlineBold(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+  const withBullets = text.replace(/^[ \t]*[*-][ \t]+/gm, '• ')
+  return withBullets.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
       <strong key={i} className="font-semibold">
         {part.slice(2, -2)}
