@@ -1,5 +1,12 @@
 import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { extendTailwindMerge } from 'tailwind-merge'
+
+// index.css defines .text-display/.text-title/.text-heading/.text-eyebrow as
+// font-size utilities; without this, tailwind-merge's isAny validator files them
+// under `text-color` and silently drops them when composed with a text color.
+const twMerge = extendTailwindMerge({
+  extend: { classGroups: { 'font-size': ['text-display', 'text-title', 'text-heading', 'text-eyebrow'] } },
+})
 
 export type { ClassValue }
 
