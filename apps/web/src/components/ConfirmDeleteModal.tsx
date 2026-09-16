@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from './Modal'
+import { Button, Input } from './ui'
 
 interface ConfirmDeleteModalProps {
   title: string
@@ -18,36 +19,29 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
 
   return (
     <Modal onClose={onCancel}>
-      <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+      <div className="animate-scale-in w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">{title}</h2>
         <p className="mt-1 text-sm text-neutral-500">{description}</p>
-        {error && <p className="mt-3 text-sm text-brand-600">{error}</p>}
+        {error && <p className="mt-3 text-sm text-danger-600">{error}</p>}
         <p className="mt-3 text-sm text-neutral-600">
-          Para confirmar, digite <strong className="text-brand-600">excluir</strong> abaixo:
+          Para confirmar, digite <strong className="text-danger-600">excluir</strong> abaixo:
         </p>
-        <input
+        <Input
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && canConfirm) onConfirm()
           }}
-          className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          className="mt-2"
         />
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100"
-          >
+          <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={!canConfirm || isPending}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98] disabled:opacity-40"
-          >
-            {isPending ? 'Excluindo…' : 'Excluir'}
-          </button>
+          </Button>
+          <Button variant="danger" size="sm" onClick={onConfirm} disabled={!canConfirm} isLoading={isPending}>
+            Excluir
+          </Button>
         </div>
       </div>
     </Modal>
