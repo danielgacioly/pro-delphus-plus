@@ -10,6 +10,19 @@ export interface SegmentedOption<T extends string> {
 /**
  * Controle segmentado no estilo iOS: trilho recuado com a opção ativa
  * “levantada” numa pastilha branca.
+ *
+ * Convenção de “estado selecionado/ativo” no app (documentada aqui por ser
+ * o primeiro primitivo do arquivo; vale para FilterChip abaixo e para
+ * Badge.tsx também):
+ *   - Controle de alternância exclusiva num trilho (como este SegmentedControl):
+ *     pílula branca elevada sobre o item ativo.
+ *   - Filtro booleano solto (como FilterChip abaixo): preenchimento sólido
+ *     bg-ink-900 quando ativo.
+ *   - Rótulo de status/contagem (Badge, em Feedback.tsx): tom suave da cor
+ *     semântica, nunca preenchimento sólido.
+ * Três linguagens visuais diferentes de propósito — cada uma sinaliza um
+ * tipo de “seleção” distinto (modo exclusivo vs. filtro vs. rótulo
+ * informativo). Não unificar visualmente sem necessidade real de produto.
  */
 export function SegmentedControl<T extends string>({
   options,
