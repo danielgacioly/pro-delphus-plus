@@ -13,6 +13,18 @@
   --color-brand-800: #8d1e15;
   --color-brand-900: #751e18;
 
+  /* ---- Danger (dedicated red — distinct hue from the warm brand ramp) --- */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-300: #fca5a5;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
+
   /* ---- Ink (warm near-blacks) --------------------------------------- */
   --color-ink-900: #17161a;
   --color-ink-800: #232227;
