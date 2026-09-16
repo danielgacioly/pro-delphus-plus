@@ -58,7 +58,16 @@
   --shadow-lg: 0 14px 36px rgb(23 22 26 / 0.09), 0 3px 10px rgb(23 22 26 / 0.04);
   --shadow-xl: 0 28px 70px rgb(23 22 26 / 0.14), 0 10px 20px rgb(23 22 26 / 0.06);
 
-  /* ---- Radii — generous, closer to Apple's continuous corners -------- */
+  /* ---- Radii — generous, closer to Apple's continuous corners --------
+     Convenção por nível de superfície (não escolher um rounded-* por
+     preferência pontual — seguir esta tabela):
+       - Controles inline (button, input, select, chip, segmented item,
+         ícone de ação): rounded-lg
+       - Containers de conteúdo (card, tabela, painel de seção): rounded-2xl
+       - Superfícies flutuantes (modal, popover, dropdown, toast): rounded-3xl
+     Hoje só o SegmentedControl (rounded-[7px], em Controls.tsx) e as
+     superfícies flutuantes (rounded-xl em Modal/DropZone/ConfirmDeleteModal)
+     divergem desta tabela — corrigido na Camada B. */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.625rem;
