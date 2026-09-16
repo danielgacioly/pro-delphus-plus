@@ -3,12 +3,41 @@
  * perguntas do tipo "como se faz a venda". Editar aqui não exige mexer em
  * mais nada do código do Neo.
  *
- * PLACEHOLDER: o Daniel ainda vai mandar o texto real — substituir antes de
- * considerar o Neo pronto pra uso real, não só pra teste técnico.
+ * Fornecido pelo Daniel em 2026-09-16 (voz, transcrito) e revisado com ele —
+ * mistura o relato dele com o tutorial de venda que existia na tela de Ajuda
+ * (components/HelpModal.tsx), hoje sem porta de entrada na UI.
  */
 export const NEO_SALES_PROCESS = `
-(texto do processo comercial ainda não fornecido — pedir ao Daniel antes de
-usar o Neo com o time de vendas de verdade)
+1. Cadastro do cliente. Depois do primeiro contato (ligação, reunião,
+   e-mail), cadastre o cliente com o que já tiver: contato, observações da
+   conversa, endereço de entrega e, se possível, o de cobrança. Não precisa
+   estar completo — dá pra voltar e completar depois.
+
+2. "Em atendimento". Se o cliente está em negociação ativa agora, marque
+   como em atendimento. Se não está (perdeu contato, é só um cadastro de
+   referência, fechou ou esfriou), deixe desmarcado — é o jeito de saber,
+   batendo o olho na lista, quem está sendo trabalhado.
+
+3. Orçamento. Monte o orçamento vinculado ao cliente, com os produtos e
+   condições combinadas. Se houver um preço negociado diferente do preço de
+   tabela pra algum item, edite o preço direto no item do orçamento (é o
+   "preço especial") — o documento mostra as duas colunas quando divergem.
+   PDF e Excel saem sozinhos. Tanto o orçamento quanto o pedido podem ser
+   editados depois de gerados a qualquer momento; os documentos regeneram
+   sozinhos.
+
+4. Pedido. Orçamento aprovado pelo cliente, o próximo passo é gerar o
+   pedido a partir dele — isso já prepara Invoice, Packing List, Packing
+   List Box e Documento de Exportação de uma vez.
+
+5. Documentação pós-pedido — muda conforme o tipo:
+   - Pedido internacional: anexe o AWB e a Nota Fiscal assim que chegarem
+     (o pedido pode ser criado sem eles; anexa depois, quando chegar).
+   - Pedido nacional: emita o boleto ou o Pix (forma de pagamento) e a
+     Nota Fiscal.
+
+6. Concluir. Com tudo isso feito e o envio confirmado, marque o pedido como
+   Concluído — é isso que atualiza as Métricas de vendas fechadas.
 `.trim()
 
 export function buildNeoSystemInstruction(): string {
