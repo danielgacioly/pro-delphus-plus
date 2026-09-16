@@ -22,6 +22,7 @@ import {
   buscarOrcamentos,
   buscarPedidos,
   verificarPendencias,
+  criarTarefa,
   proporOrcamento,
   proporEdicaoOrcamento,
   proporPedido,
@@ -230,6 +231,25 @@ const orderItemProps: Record<string, Schema> = {
 
 const writeTools: FunctionDeclaration[] = [
   {
+    name: 'criar_tarefa',
+    description:
+      'Cria uma tarefa no quadro pessoal (Minha Pro Delphus) de quem está conversando com você — GRAVA NA HORA, sem prévia nem confirmação (diferente das ferramentas "propor_*"): é um lembrete pessoal, não um documento comercial. Use quando pedirem pra anotar, lembrar ou criar uma tarefa/pendência.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING },
+        notas: { type: Type.STRING },
+        clienteNome: { type: Type.STRING, description: 'Nome do cliente relacionado, se houver — texto livre' },
+        tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+        prazo: { type: Type.STRING, description: 'Data limite, formato AAAA-MM-DD' },
+        coluna: { type: Type.STRING, description: 'Nome da coluna do quadro a usar; se não informar, usa a primeira' },
+        orcamentoId: { type: Type.STRING, description: 'Id do orçamento relacionado (de buscar_orcamentos), se houver' },
+        pedidoId: { type: Type.STRING, description: 'Id do pedido relacionado (de buscar_pedidos), se houver' },
+      },
+      required: ['titulo'],
+    },
+  },
+  {
     name: 'propor_orcamento',
     description:
       'Monta uma prévia de orçamento novo — NÃO grava nada. Antes, tenha confirmado com a pessoa: cliente, itens (productId real de buscar_produtos) e quantidades, se é nacional ou internacional e, se internacional, moeda, idioma e (em USD) preço final ou distribuidor. Se a ferramenta devolver "erro", pergunte o que falta.',
@@ -353,6 +373,8 @@ async function dispatchTool(
       return { result: await buscarPedidos(args as any) }
     case 'verificar_pendencias':
       return { result: await verificarPendencias() }
+    case 'criar_tarefa':
+      return { result: await criarTarefa(args as any, userId) }
     case 'propor_orcamento': {
       const { pendingAction, summaryForModel } = await proporOrcamento(args as any, userId)
       return { result: summaryForModel, pendingAction }

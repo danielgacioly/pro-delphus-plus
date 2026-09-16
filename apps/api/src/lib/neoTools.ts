@@ -3,6 +3,7 @@ import { toClientDTO } from './dto.js'
 import { completedOrdersFor, createQuoteSchema, resolveQuoteData, type CreateQuoteInput } from '../routes/quotes.routes.js'
 import { orderFieldsSchema, missingPostOrderDocs, type OrderFieldsInput } from '../routes/orders.routes.js'
 import { clientBodySchema } from '../routes/clients.routes.js'
+import { ensureColumns } from '../routes/tasks.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
 
@@ -207,6 +208,72 @@ export async function verificarPendencias() {
   }
 
   return { pedidosComPendencia, clientesEmAtendimento }
+}
+
+interface CriarTarefaArgs {
+  titulo: string
+  notas?: string
+  clienteNome?: string
+  tags?: string[]
+  prazo?: string
+  coluna?: string
+  orcamentoId?: string
+  pedidoId?: string
+}
+
+/**
+ * Única escrita do Neo que não passa por prévia+confirmação (ver a exceção
+ * na regra inegociável em neoKnowledge.ts): é uma tarefa pessoal no quadro
+ * de quem está conversando, não um documento comercial — baixo risco,
+ * reversível na hora pela própria pessoa (editar/apagar na tela).
+ */
+export async function criarTarefa(args: CriarTarefaArgs, userId: string) {
+  if (!args.titulo?.trim()) throw new HttpError(400, 'Toda tarefa precisa de um título.')
+
+  let dueDate: Date | null = null
+  if (args.prazo) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.prazo)) throw new HttpError(400, 'Prazo inválido — peça a data no formato AAAA-MM-DD.')
+    dueDate = new Date(`${args.prazo}T12:00:00Z`)
+  }
+
+  if (args.orcamentoId) {
+    const quote = await prisma.quote.findUnique({ where: { id: args.orcamentoId }, select: { id: true } })
+    if (!quote) throw new HttpError(404, 'Orçamento não encontrado — use buscar_orcamentos pra achar o id certo.')
+  }
+  if (args.pedidoId) {
+    const order = await prisma.order.findUnique({ where: { id: args.pedidoId }, select: { id: true } })
+    if (!order) throw new HttpError(404, 'Pedido não encontrado — use buscar_pedidos pra achar o id certo.')
+  }
+
+  const columns = await ensureColumns(userId)
+  let column = columns[0]
+  if (args.coluna) {
+    const match = columns.find((c) => normalize(c.name) === normalize(args.coluna!))
+    if (!match) {
+      throw new HttpError(
+        400,
+        `Não existe coluna "${args.coluna}" nesse quadro. Colunas disponíveis: ${columns.map((c) => c.name).join(', ')}.`,
+      )
+    }
+    column = match
+  }
+
+  const position = await prisma.personalTask.count({ where: { userId, columnId: column.id } })
+  const task = await prisma.personalTask.create({
+    data: {
+      userId,
+      title: args.titulo.trim(),
+      notes: args.notas?.trim() || null,
+      clientName: args.clienteNome?.trim() || null,
+      tags: args.tags ?? [],
+      dueDate,
+      columnId: column.id,
+      position,
+      quoteId: args.orcamentoId || null,
+      orderId: args.pedidoId || null,
+    },
+  })
+  return { id: task.id, titulo: task.title, coluna: column.name }
 }
 
 export async function listarSetores() {
