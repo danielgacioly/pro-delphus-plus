@@ -75,6 +75,16 @@
   --radius-2xl: 1.125rem;
   --radius-3xl: 1.5rem;
 
+  /* ---- Opacity convention for interactive states ----------------------
+     Usar sempre um destes quatro valores como modificador de opacidade
+     Tailwind (ex.: bg-neutral-500/6) em vez de um número arbitrário:
+       - /6   hover sutil (linha de tabela, item de lista)
+       - /10  hover de destaque / fundo de badge neutro
+       - /14  estado selecionado ou ativo (fundo sólido leve)
+       - /25  overlay/scrim (fundo de modal, backdrop)
+     Hoje há usos soltos de /4, /8, /12, /15 sem critério — corrigidos
+     conforme cada arquivo for tocado na Camada B/C. */
+
   /* ---- Motion --------------------------------------------------------- */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
