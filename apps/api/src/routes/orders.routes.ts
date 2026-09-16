@@ -654,6 +654,16 @@ export async function updateOrderRecord(existingId: string, data: Partial<Omit<O
     include,
   })
   await prisma.$executeRaw`UPDATE orders SET "documentsGeneratedAt" = now() WHERE id = ${order.id}`
+
+  // Preencher AWB/NF por edição resolve a pendência tanto quanto marcar o
+  // pedido como Concluído — a tarefa que o sistema criou sozinho não deve
+  // ficar esquecida na coluna Pendente só porque ninguém tocou no status.
+  const stillMissing = missingPostOrderDocs(
+    { status: existing.status, awbNumber: merged.awbNumber, nfNumber: merged.nfNumber },
+    existing.quote.exportScope,
+  )
+  if (stillMissing.length === 0) await moveOrderTasksToDone(existing.id)
+
   return order
 }
 
