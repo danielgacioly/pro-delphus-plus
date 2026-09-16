@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { cn } from '../../lib/cn'
 import { IconSearch } from '../icons'
@@ -42,6 +42,13 @@ export function Combobox<T extends string>({
     )
   }, [options, query])
 
+  // Recoloca activeIndex dentro dos limites se `filtered` encolher por fora
+  // (ex.: options trocado após busca assíncrona), senão Enter fica sem alvo
+  // até a próxima seta re-clampar.
+  useEffect(() => {
+    setActiveIndex((i) => Math.min(i, Math.max(filtered.length - 1, 0)))
+  }, [filtered.length])
+
   function select(option: ComboboxOption<T>) {
     onSelect(option.value)
     setQuery('')
@@ -71,16 +78,25 @@ export function Combobox<T extends string>({
               } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
                 setActiveIndex((i) => Math.max(i - 1, 0))
-              } else if (e.key === 'Enter' && filtered[activeIndex]) {
+              } else if (e.key === 'Enter' && open) {
+                // Sempre previne o default enquanto o dropdown está aberto —
+                // senão, sem match, o Enter cai para o comportamento nativo
+                // do <input> e submete um <form> ao redor (NewQuote, ClientPicker).
                 e.preventDefault()
-                select(filtered[activeIndex])
+                if (filtered[activeIndex]) {
+                  select(filtered[activeIndex])
+                }
               } else if (e.key === 'Escape') {
                 setOpen(false)
+                // Evita que o Escape borbulhe para um Modal ao redor e o feche
+                // também — aqui ele deve só fechar o dropdown do Combobox.
+                e.stopPropagation()
               }
             }}
             placeholder={placeholder}
             role="combobox"
             aria-expanded={open}
+            autoComplete="off"
             className={cn(
               'h-10 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm text-ink-900 shadow-xs',
               'placeholder:text-neutral-400',
@@ -103,7 +119,7 @@ export function Combobox<T extends string>({
               e.preventDefault()
             }
           }}
-          className="z-50 w-[var(--radix-popover-trigger-width)] rounded-2xl border border-neutral-200/70 bg-white p-1.5 shadow-lg"
+          className="z-50 w-[var(--radix-popover-trigger-width)] rounded-3xl border border-neutral-200/70 bg-white p-1.5 shadow-lg"
         >
           {filtered.length === 0 ? (
             <p className="px-3 py-6 text-center text-[13px] text-neutral-500">{emptyMessage}</p>
@@ -118,7 +134,7 @@ export function Combobox<T extends string>({
                   onClick={() => select(option)}
                   className={cn(
                     'flex cursor-pointer flex-col rounded-lg px-3 py-2 text-[13px]',
-                    i === activeIndex && 'bg-neutral-500/8',
+                    i === activeIndex && 'bg-neutral-500/14',
                   )}
                 >
                   <span className="font-medium text-ink-900">{option.label}</span>

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 /** Dica contextual acessível (Radix cuida de teclado/foco/posicionamento). */
@@ -8,7 +8,7 @@ export function Tooltip({
   side = 'top',
 }: {
   content: ReactNode
-  children: ReactNode
+  children: ReactElement
   side?: 'top' | 'right' | 'bottom' | 'left'
 }) {
   return (
