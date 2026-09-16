@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { cn } from '../lib/cn'
 
 interface DropZoneProps {
   onFiles: (files: File[]) => void
@@ -9,7 +10,7 @@ interface DropZoneProps {
   children: ReactNode
 }
 
-export function DropZone({ onFiles, accept, multiple, disabled, className = '', children }: DropZoneProps) {
+export function DropZone({ onFiles, accept, multiple, disabled, className, children }: DropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -18,9 +19,23 @@ export function DropZone({ onFiles, accept, multiple, disabled, className = '', 
     onFiles(Array.from(fileList))
   }
 
+  function openPicker() {
+    if (!disabled) inputRef.current?.click()
+  }
+
   return (
     <div
-      onClick={() => !disabled && inputRef.current?.click()}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || undefined}
+      onClick={openPicker}
+      onKeyDown={(e) => {
+        if (disabled) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          openPicker()
+        }
+      }}
       onDragOver={(e) => {
         e.preventDefault()
         if (!disabled) setIsDragging(true)
@@ -32,9 +47,12 @@ export function DropZone({ onFiles, accept, multiple, disabled, className = '', 
         if (disabled) return
         handleFiles(e.dataTransfer.files)
       }}
-      className={`cursor-pointer rounded-xl border border-dashed bg-white/60 p-4 text-center transition-[background-color,border-color] duration-150 ${
-        isDragging ? 'border-brand-400 bg-brand-50' : 'border-neutral-300 hover:border-neutral-400 hover:bg-white'
-      } ${disabled ? 'cursor-not-allowed opacity-60' : ''} ${className}`}
+      className={cn(
+        'cursor-pointer rounded-xl border border-dashed bg-white/60 p-4 text-center transition-[background-color,border-color] duration-150',
+        isDragging ? 'border-brand-400 bg-brand-50' : 'border-neutral-300 hover:border-neutral-400 hover:bg-white',
+        disabled && 'cursor-not-allowed opacity-60',
+        className,
+      )}
     >
       <input
         ref={inputRef}
