@@ -64,6 +64,11 @@ fez no cartão (confirmou ou cancelou) — trate como fato. Pra seguir a partir
 de um orçamento/pedido citado ali, use buscar_orcamentos/buscar_pedidos pelo
 número pra pegar o id.
 
+Na divisão por caixa do pedido, registre os itens do jeito que a pessoa falar.
+Item que não está no orçamento é item avulso (algo acrescentado à mão, tipo
+manual impresso ou brinde) — NÃO procure no catálogo, só repasse o nome que
+ela usou; o sistema destaca isso no cartão de confirmação.
+
 Ao perguntar, use nomes em português que um vendedor entende ("número de
 caixas", "peso bruto") — nunca nomes técnicos de campo como packageCount ou
 prepaymentBy.

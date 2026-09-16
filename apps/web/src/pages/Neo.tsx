@@ -72,10 +72,31 @@ function renderInlineBold(text: string) {
   )
 }
 
+// A conversa vive enquanto a aba viver: sair pra Orçamentos e voltar mantém o
+// fio (antes zerava, porque a página desmonta). sessionStorage e não
+// localStorage de propósito — fechou o navegador, conversa nova.
+const STORAGE_KEY = 'neo:conversa'
+
+interface StoredChat {
+  messages: ChatMessage[]
+  pending: PendingAction | null
+}
+
+function loadChat(): StoredChat {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return { messages: [], pending: null }
+    const parsed = JSON.parse(raw) as Partial<StoredChat>
+    return { messages: parsed.messages ?? [], pending: parsed.pending ?? null }
+  } catch {
+    return { messages: [], pending: null }
+  }
+}
+
 export function Neo() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat().messages)
   const [input, setInput] = useState('')
-  const [pending, setPending] = useState<PendingAction | null>(null)
+  const [pending, setPending] = useState<PendingAction | null>(() => loadChat().pending)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -84,6 +105,14 @@ export function Neo() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, pending, error, loading])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, pending }))
+    } catch {
+      // storage cheio ou bloqueado — a conversa só não sobrevive à navegação
+    }
+  }, [messages, pending])
 
   // Cresce junto com o texto (como o campo de mensagem do Mensagens/iMessage),
   // até o teto de altura definido no CSS — dali pra frente rola por dentro.
@@ -148,6 +177,16 @@ export function Neo() {
     setPending(null)
   }
 
+  function handleNewChat() {
+    // A prévia pendente é descartada junto: guardá-la fora da conversa que a
+    // gerou é o caminho pra alguém confirmar sem lembrar do que se tratava.
+    if (pending) void cancelAction(pending.id).catch(() => {})
+    setMessages([])
+    setPending(null)
+    setError(null)
+    setInput('')
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -166,10 +205,15 @@ export function Neo() {
           {/* Só respira enquanto o Neo está pensando: o movimento vira sinal de
               estado, não enfeite se mexendo o tempo todo. */}
           <NeoAvatar thinking={loading} className="h-11 w-11" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-display text-ink-900">Neo</h1>
             <p className="mt-0.5 text-[13px] text-neutral-500">Assistente da Pro Delphus+</p>
           </div>
+          {messages.length > 0 && (
+            <Button size="sm" onClick={handleNewChat} disabled={loading}>
+              Nova conversa
+            </Button>
+          )}
         </div>
       </header>
 

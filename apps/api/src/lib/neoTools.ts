@@ -55,12 +55,40 @@ async function resolveSectorNames(inputs: string[]) {
 
 const PRODUCT_LIMIT = 30
 
-export async function buscarProdutos(args: { setores?: string[]; texto?: string }) {
-  const { texto } = args
+// "Qual o mais caro?", "tem versão mais barata pra essa área?", "o que cabe em
+// até 5 mil?" — perguntas de tabela de preço que, sem ordenação/filtro no
+// banco, o modelo só conseguiria responder lendo o catálogo inteiro (e erraria,
+// porque a lista vem cortada).
+const PRICE_COLUMN = {
+  BRL: 'priceBRL',
+  USD: 'priceUSD',
+  EUR: 'priceEUR',
+  USD_DISTRIBUIDOR: 'priceUSDDistributor',
+} as const
+
+type PriceCurrency = keyof typeof PRICE_COLUMN
+
+interface BuscarProdutosArgs {
+  setores?: string[]
+  texto?: string
+  moeda?: PriceCurrency
+  ordenar?: 'preco_desc' | 'preco_asc' | 'nome'
+  precoMin?: number
+  precoMax?: number
+  limite?: number
+}
+
+export async function buscarProdutos(args: BuscarProdutosArgs) {
+  const { texto, ordenar = 'nome', precoMin, precoMax } = args
+  const moeda: PriceCurrency = args.moeda ?? 'BRL'
+  const coluna = PRICE_COLUMN[moeda]
+  const porPreco = ordenar !== 'nome' || precoMin !== undefined || precoMax !== undefined
+
   const { names: setores, notFound } = await resolveSectorNames(args.setores ?? [])
   if (args.setores?.length && setores.length === 0) {
     return { produtos: [], aviso: `Nenhum destes setores existe: ${notFound.join(', ')}. Use os nomes de listar_setores.` }
   }
+  const limite = Math.min(Math.max(args.limite ?? PRODUCT_LIMIT, 1), PRODUCT_LIMIT)
   const products = await prisma.product.findMany({
     where: {
       active: true,
@@ -75,14 +103,20 @@ export async function buscarProdutos(args: { setores?: string[]; texto?: string 
               ],
             }
           : {},
+        // Produto sem preço na moeda pedida não pode entrar num ranking de
+        // preço: apareceria como "mais barato" por não ter valor nenhum.
+        porPreco ? { [coluna]: { not: null } } : {},
+        precoMin !== undefined ? { [coluna]: { gte: precoMin } } : {},
+        precoMax !== undefined ? { [coluna]: { lte: precoMax } } : {},
       ],
     },
-    take: PRODUCT_LIMIT + 1,
-    orderBy: { name: 'asc' },
+    take: limite + 1,
+    orderBy: ordenar === 'nome' ? { name: 'asc' } : { [coluna]: ordenar === 'preco_desc' ? 'desc' : 'asc' },
   })
   return {
-    produtos: products.slice(0, PRODUCT_LIMIT).map(productSummary),
-    ...(products.length > PRODUCT_LIMIT && { aviso: `Lista cortada em ${PRODUCT_LIMIT} — refine com texto ou menos setores.` }),
+    ...(porPreco && { criterio: `preços em ${moeda}${ordenar === 'preco_desc' ? ', do mais caro' : ordenar === 'preco_asc' ? ', do mais barato' : ''}` }),
+    produtos: products.slice(0, limite).map(productSummary),
+    ...(products.length > limite && { aviso: `Lista cortada em ${limite} — refine com texto, setor ou limite.` }),
     ...(notFound.length > 0 && { setoresNaoEncontrados: notFound }),
   }
 }
@@ -302,21 +336,126 @@ const FIELD_LABEL: Record<string, string> = {
   shippingMethod: 'Envio',
   netWeightKg: 'Peso líquido (kg)',
   grossWeightKg: 'Peso bruto (kg)',
+  awbNumber: 'AWB',
+  purchaseOrder: 'Pedido de compra',
+  shipDate: 'Data de expedição',
+  nfNumber: 'Número da NF',
+  nfDate: 'Data da NF',
+  paypalFee: 'Taxa do PayPal',
 }
 
 function describeChanges(fields: Record<string, unknown>) {
   return Object.entries(fields)
     .filter(([, v]) => v !== undefined)
     .map(([k, v]) => {
-      const value = typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : k === 'prepaymentBy' ? PREPAYMENT_LABEL[String(v)] : v === '' ? '(em branco)' : String(v)
+      const value =
+        typeof v === 'boolean' ? (v ? 'Sim' : 'Não')
+        : v instanceof Date ? formatDate(v)
+        : k === 'prepaymentBy' ? PREPAYMENT_LABEL[String(v)]
+        : v === '' ? '(em branco)'
+        : String(v)
       return `• ${FIELD_LABEL[k] ?? k}: ${value}`
     })
 }
 
 const PREPAYMENT_LABEL: Record<string, string> = { PAYPAL: 'PayPal', WIRE_TRANSFER: 'Transferência bancária', PIX: 'Pix' }
 
+function formatDate(value: Date | undefined) {
+  return value ? value.toISOString().slice(0, 10).split('-').reverse().join('/') : '(em branco)'
+}
+
+function describeItemWeights(items: QuoteItemRef[], weights: (number | null)[] | undefined) {
+  if (!weights?.some((w) => w !== null)) return []
+  const linhas = items
+    .map((item, i) => (weights[i] === null ? null : `   ${item.title ?? item.productName}: ${weights[i]} kg/un`))
+    .filter(Boolean) as string[]
+  return ['Peso por unidade:', ...linhas]
+}
+
+function describeBoxes(boxes: { label: string; quantity: number }[][] | undefined, avulsos: string[]) {
+  if (!boxes?.length) return []
+  const linhas = boxes.map(
+    (itens, i) => `   Caixa ${i + 1}: ${itens.map((e) => `${e.quantity}× ${e.label}`).join(', ') || '(vazia)'}`,
+  )
+  const aviso = avulsos.length > 0 ? [`⚠ Item que não está no orçamento (item avulso): ${[...new Set(avulsos)].join(', ')}`] : []
+  return ['Divisão por caixa:', ...linhas, ...aviso]
+}
+
+/**
+ * O banco guarda peso por item como array alinhado por índice do item do
+ * orçamento, e caixa como array de arrays. Pedir isso ao modelo nessa forma é
+ * convite a desalinhamento silencioso (peso do item errado no documento), então
+ * as tools recebem por SKU/nome e a conversão acontece aqui.
+ */
+interface NeoOrderExtras {
+  pesosPorItem?: { item: string; kgPorUnidade: number }[]
+  caixas?: { caixa: number; itens: { item: string; quantidade: number }[] }[]
+  pessoaAutorizouPadrao?: boolean
+}
+
+type QuoteItemRef = { sku: string; title: string | null; productName: string; quantity: number }
+
+function matchQuoteItem(items: QuoteItemRef[], termo: string) {
+  const alvo = normalize(termo)
+  return items.findIndex(
+    (i) => normalize(i.sku) === alvo || normalize(i.title ?? '') === alvo || normalize(i.productName) === alvo,
+  )
+}
+
+function buildItemWeights(items: QuoteItemRef[], pesos: NeoOrderExtras['pesosPorItem']) {
+  if (!pesos?.length) return undefined
+  const weights: (number | null)[] = items.map(() => null)
+  const naoEncontrados: string[] = []
+  for (const { item, kgPorUnidade } of pesos) {
+    const index = matchQuoteItem(items, item)
+    if (index === -1) naoEncontrados.push(item)
+    else weights[index] = kgPorUnidade
+  }
+  if (naoEncontrados.length > 0) {
+    throw new HttpError(
+      400,
+      `Estes itens não existem no orçamento: ${naoEncontrados.join(', ')}. Use o SKU ou o nome exato que buscar_orcamentos devolveu.`,
+    )
+  }
+  return weights
+}
+
+function buildBoxAssignments(
+  items: QuoteItemRef[],
+  caixas: NeoOrderExtras['caixas'],
+  packageCount: number | undefined,
+  // Numa edição, caixa não citada continua como está: sem isto, mexer só na
+  // caixa 2 apagaria o conteúdo da caixa 1.
+  existentes?: { label: string; quantity: number }[][] | null,
+) {
+  if (!caixas?.length) return { boxAssignments: undefined, avulsos: [] as string[] }
+  const invalidas = caixas.filter((c) => !Number.isInteger(c.caixa) || c.caixa < 1)
+  if (invalidas.length > 0) {
+    throw new HttpError(400, 'Número de caixa inválido: as caixas são numeradas a partir de 1. Confirme com a pessoa qual item vai em qual caixa.')
+  }
+  const maiorCaixa = Math.max(...caixas.map((c) => c.caixa), existentes?.length ?? 0)
+  if (packageCount !== undefined && maiorCaixa > packageCount) {
+    throw new HttpError(400, `A divisão usa ${maiorCaixa} caixas, mas o pedido declara ${packageCount}. Confirme o número de caixas com a pessoa.`)
+  }
+  const boxAssignments: { label: string; quantity: number }[][] = Array.from({ length: maiorCaixa }, (_, i) =>
+    caixas.some((c) => c.caixa === i + 1) ? [] : [...(existentes?.[i] ?? [])],
+  )
+  const avulsos: string[] = []
+  for (const caixa of caixas) {
+    for (const { item, quantidade } of caixa.itens) {
+      const index = matchQuoteItem(items, item)
+      // Item que não está no orçamento é item avulso (adicionado à mão na
+      // caixa). É legítimo, mas vai destacado no cartão pra ninguém gravar um
+      // item inventado sem perceber.
+      if (index === -1) avulsos.push(item)
+      boxAssignments[caixa.caixa - 1].push({ label: index === -1 ? item : (items[index].title ?? items[index].productName), quantity: quantidade })
+    }
+  }
+  return { boxAssignments, avulsos }
+}
+
 export async function proporPedido(
-  args: Partial<OrderFieldsInput> & { quoteId: string; pessoaAutorizouPadrao?: boolean },
+  args: Partial<OrderFieldsInput> & { quoteId: string } & NeoOrderExtras,
   userId: string,
 ) {
   // billToText/shipToText/orderedByEmail vêm do cadastro do cliente vinculado
@@ -325,14 +464,29 @@ export async function proporPedido(
   // preenchidos no cadastro, `orderFieldsSchema.parse` abaixo falha por
   // campo obrigatório ausente, e o Neo (instruído pelo system prompt) deve
   // perguntar antes de tentar de novo.
-  const quote = await prisma.quote.findUnique({ where: { id: args.quoteId }, include: { client: true } })
+  const quote = await prisma.quote.findUnique({
+    where: { id: args.quoteId },
+    include: { client: true, items: { include: { product: { select: { name: true } } } } },
+  })
   if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
 
+  const { pesosPorItem, caixas, pessoaAutorizouPadrao, ...orderArgs } = args
+  const quoteItems: QuoteItemRef[] = quote.items.map((i) => ({
+    sku: i.sku,
+    title: i.title,
+    productName: i.product.name,
+    quantity: i.quantity,
+  }))
+  const itemWeightsKg = buildItemWeights(quoteItems, pesosPorItem)
+  const { boxAssignments, avulsos } = buildBoxAssignments(quoteItems, caixas, orderArgs.packageCount)
+
   const merged = {
-    ...args,
-    billToText: args.billToText ?? quote.client?.billToText ?? undefined,
-    shipToText: args.shipToText ?? quote.client?.shipToText ?? undefined,
-    orderedByEmail: args.orderedByEmail ?? quote.client?.email ?? undefined,
+    ...orderArgs,
+    ...(itemWeightsKg && { itemWeightsKg }),
+    ...(boxAssignments && { boxAssignments }),
+    billToText: orderArgs.billToText ?? quote.client?.billToText ?? undefined,
+    shipToText: orderArgs.shipToText ?? quote.client?.shipToText ?? undefined,
+    orderedByEmail: orderArgs.orderedByEmail ?? quote.client?.email ?? undefined,
   }
   // Mesmo motivo de `missingQuoteDecisions`: campo operacional de pedido só
   // fica no default do sistema se a pessoa disse explicitamente que pode.
@@ -344,14 +498,21 @@ export async function proporPedido(
     !merged.billToText && 'endereço de cobrança (o cliente não tem no cadastro)',
     !merged.shipToText && 'endereço de entrega (o cliente não tem no cadastro)',
   ]
-  const defaultable = args.pessoaAutorizouPadrao
+  const defaultable = pessoaAutorizouPadrao
     ? []
     : [
-        args.packageCount === undefined && 'número de caixas',
-        !args.prepaymentBy && 'forma de pagamento (PayPal, transferência ou Pix)',
-        args.netWeightKg === undefined && 'peso líquido (kg)',
-        args.grossWeightKg === undefined && 'peso bruto (kg)',
-        isNational ? !args.shippingMethod && 'forma de envio' : !args.incoterms && 'Incoterms',
+        orderArgs.packageCount === undefined && 'número de caixas',
+        !orderArgs.prepaymentBy && 'forma de pagamento (PayPal, transferência ou Pix)',
+        orderArgs.netWeightKg === undefined && 'peso líquido (kg)',
+        orderArgs.grossWeightKg === undefined && 'peso bruto (kg)',
+        isNational ? !orderArgs.shippingMethod && 'forma de envio' : !orderArgs.incoterms && 'Incoterms',
+        !orderArgs.awbNumber && 'AWB',
+        !orderArgs.purchaseOrder && 'pedido de compra',
+        !orderArgs.shipDate && 'data de expedição',
+        !pesosPorItem?.length && 'peso por unidade de cada item (Kg/Un)',
+        !orderArgs.nfNumber && 'número da NF',
+        !orderArgs.nfDate && 'data da NF',
+        !caixas?.length && 'quais itens vão em cada caixa',
       ]
   const missing = [...neverDefault, ...defaultable].filter(Boolean)
   if (missing.length > 0) {
@@ -359,6 +520,15 @@ export async function proporPedido(
       400,
       `Não proponha ainda — pergunte à pessoa, numa mensagem só e com estes nomes em português: ${missing.join('; ')}. ` +
         'pessoaAutorizouPadrao=true só se ela disser explicitamente que pode deixar em branco/usar o padrão (não vale pros endereços e e-mail).',
+    )
+  }
+  // A taxa do PayPal entra no total do invoice, então é perguntada sozinha,
+  // depois de a pessoa dizer que o pagamento é PayPal — e nenhuma autorização
+  // genérica de "usa o padrão" pula esta.
+  if (orderArgs.prepaymentBy === 'PAYPAL' && orderArgs.paypalFee === undefined) {
+    throw new HttpError(
+      400,
+      'Falta a taxa do PayPal. Mande uma mensagem só sobre isso, perguntando qual é a taxa do PayPal desse pedido (ela entra no total do invoice). Se não houver taxa, use paypalFee=0.',
     )
   }
   const data = orderFieldsSchema.parse(merged)
@@ -377,17 +547,57 @@ export async function proporPedido(
     isNational ? `Envio: ${data.shippingMethod ?? '(em branco)'}` : `Incoterms: ${data.incoterms ?? '(em branco)'}`,
     `Peso líquido: ${data.netWeightKg !== undefined ? `${data.netWeightKg} kg` : '(em branco)'}`,
     `Peso bruto: ${data.grossWeightKg !== undefined ? `${data.grossWeightKg} kg` : '(em branco)'}`,
+    `AWB: ${data.awbNumber ?? '(em branco)'}`,
+    `Pedido de compra: ${data.purchaseOrder ?? '(em branco)'}`,
+    `Data de expedição: ${formatDate(data.shipDate)}`,
+    `NF: ${data.nfNumber ?? '(em branco)'} — ${formatDate(data.nfDate)}`,
+    ...(data.prepaymentBy === 'PAYPAL' ? [`Taxa do PayPal: ${money(quote.currency, data.paypalFee ?? 0)}`] : []),
+    ...describeItemWeights(quoteItems, data.itemWeightsKg),
+    ...describeBoxes(data.boxAssignments, avulsos),
   ].join('\n')
   const pendingAction = createPendingAction('pedido_criar', summary, data, userId)
   return { pendingAction, summaryForModel: summary }
 }
 
-export async function proporEdicaoPedido(args: { pedidoId: string } & Omit<OrderFieldsInput, 'quoteId'>, userId: string) {
-  const { pedidoId, ...rest } = args
-  const order = await prisma.order.findUnique({ where: { id: pedidoId }, select: { orderNumber: true } })
+export async function proporEdicaoPedido(
+  args: { pedidoId: string } & Omit<OrderFieldsInput, 'quoteId'> & NeoOrderExtras,
+  userId: string,
+) {
+  const { pedidoId, pesosPorItem, caixas, pessoaAutorizouPadrao: _ignorado, ...rest } = args
+  const order = await prisma.order.findUnique({
+    where: { id: pedidoId },
+    select: {
+      orderNumber: true,
+      packageCount: true,
+      boxAssignments: true,
+      quote: { select: { items: { include: { product: { select: { name: true } } } } } },
+    },
+  })
   if (!order) throw new HttpError(404, 'Pedido não encontrado — use buscar_pedidos pra achar o id certo.')
-  const data = orderFieldsSchema.omit({ quoteId: true }).partial().parse(rest)
-  const changes = describeChanges(data)
+
+  const quoteItems: QuoteItemRef[] = order.quote.items.map((i) => ({
+    sku: i.sku,
+    title: i.title,
+    productName: i.product.name,
+    quantity: i.quantity,
+  }))
+  const itemWeightsKg = buildItemWeights(quoteItems, pesosPorItem)
+  const { boxAssignments, avulsos } = buildBoxAssignments(
+    quoteItems,
+    caixas,
+    rest.packageCount ?? order.packageCount,
+    order.boxAssignments as { label: string; quantity: number }[][] | null,
+  )
+
+  const data = orderFieldsSchema
+    .omit({ quoteId: true })
+    .partial()
+    .parse({ ...rest, ...(itemWeightsKg && { itemWeightsKg }), ...(boxAssignments && { boxAssignments }) })
+  const changes = [
+    ...describeChanges({ ...data, itemWeightsKg: undefined, boxAssignments: undefined }),
+    ...describeItemWeights(quoteItems, data.itemWeightsKg),
+    ...describeBoxes(data.boxAssignments, avulsos),
+  ]
   const summary = [`Edição do pedido ${order.orderNumber}`, ...(changes.length ? changes : ['(nenhum campo alterado)'])].join('\n')
   const pendingAction = createPendingAction('pedido_editar', summary, { pedidoId, data }, userId)
   return { pendingAction, summaryForModel: summary }

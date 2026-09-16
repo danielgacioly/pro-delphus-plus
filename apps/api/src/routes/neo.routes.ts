@@ -1,5 +1,13 @@
 import { Router } from 'express'
-import { ApiError, GoogleGenAI, Type, type Content, type FunctionDeclaration, type GenerateContentParameters } from '@google/genai'
+import {
+  ApiError,
+  GoogleGenAI,
+  Type,
+  type Content,
+  type FunctionDeclaration,
+  type GenerateContentParameters,
+  type Schema,
+} from '@google/genai'
 import { ZodError } from 'zod'
 import { env, IS_PRODUCTION } from '../lib/env.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -78,12 +86,18 @@ function toolErrorForModel(err: unknown) {
 const readTools: FunctionDeclaration[] = [
   {
     name: 'buscar_produtos',
-    description: 'Busca produtos ativos do catálogo por setor(es) e/ou texto livre. Devolve nome, SKU, tipo, setores e todos os preços.',
+    description:
+      'Busca produtos ativos do catálogo por setor(es) e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo, setores e todos os preços.',
     parameters: {
       type: Type.OBJECT,
       properties: {
         setores: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Nomes de setor, pode incluir vários (inclusive correlatos)' },
         texto: { type: Type.STRING, description: 'Texto livre pra buscar no nome/descrição do produto' },
+        moeda: { type: Type.STRING, enum: ['BRL', 'USD', 'EUR', 'USD_DISTRIBUIDOR'], description: 'Moeda usada pra ordenar/filtrar preço (padrão BRL)' },
+        ordenar: { type: Type.STRING, enum: ['nome', 'preco_desc', 'preco_asc'], description: 'preco_desc = mais caro primeiro; preco_asc = mais barato primeiro' },
+        precoMin: { type: Type.NUMBER },
+        precoMax: { type: Type.NUMBER, description: 'Ex.: "algo até 5 mil" → precoMax 5000' },
+        limite: { type: Type.NUMBER, description: 'Quantos produtos devolver (máx. 30). Pro "mais caro", use 1' },
       },
     },
   },
@@ -170,6 +184,43 @@ const quoteFieldsProps = {
   notes: { type: Type.STRING },
 }
 
+// Peso por unidade e divisão por caixa são informados por SKU/nome do item; a
+// API converte pro formato posicional que o banco guarda.
+const orderItemProps: Record<string, Schema> = {
+  pesosPorItem: {
+    type: Type.ARRAY,
+    description: 'Kg/Un: peso por unidade de cada item do orçamento',
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        item: { type: Type.STRING, description: 'SKU ou nome exato do item, como veio em buscar_orcamentos' },
+        kgPorUnidade: { type: Type.NUMBER },
+      },
+      required: ['item', 'kgPorUnidade'],
+    },
+  },
+  caixas: {
+    type: Type.ARRAY,
+    description:
+      'O que vai em cada caixa, do jeito que a pessoa falar. Item que não está no orçamento é aceito como item avulso e sai destacado no cartão.',
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        caixa: { type: Type.NUMBER, description: 'Número da caixa, começando em 1' },
+        itens: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: { item: { type: Type.STRING }, quantidade: { type: Type.NUMBER } },
+            required: ['item', 'quantidade'],
+          },
+        },
+      },
+      required: ['caixa', 'itens'],
+    },
+  },
+}
+
 const writeTools: FunctionDeclaration[] = [
   {
     name: 'propor_orcamento',
@@ -195,7 +246,7 @@ const writeTools: FunctionDeclaration[] = [
   {
     name: 'propor_pedido',
     description:
-      'Monta uma prévia de pedido novo a partir de um orçamento (quoteId de buscar_orcamentos) — NÃO grava nada. orderedByEmail/billToText/shipToText vêm do cadastro do cliente vinculado quando existirem; só informe se faltarem ou a pessoa pedir outro valor. Caixas, pagamento, pesos e incoterms (internacional) ou forma de envio (nacional) você PERGUNTA; pessoaAutorizouPadrao=true só se a pessoa disser explicitamente que pode deixar em branco/usar o padrão.',
+      'Monta uma prévia de pedido novo a partir de um orçamento (quoteId de buscar_orcamentos) — NÃO grava nada. orderedByEmail/billToText/shipToText vêm do cadastro do cliente vinculado quando existirem; só informe se faltarem ou a pessoa pedir outro valor. Todo o resto você PERGUNTA numa mensagem só (caixas, pagamento, pesos, incoterms ou forma de envio, AWB, pedido de compra, data de expedição, Kg/Un, NF e data da NF, e o que vai em cada caixa); pessoaAutorizouPadrao=true só se a pessoa disser explicitamente que pode deixar em branco/usar o padrão. A taxa do PayPal é exceção: pergunte numa mensagem separada, depois de ela dizer que o pagamento é PayPal.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -205,11 +256,18 @@ const writeTools: FunctionDeclaration[] = [
         shipToText: { type: Type.STRING, description: 'Endereço de entrega completo' },
         packageCount: { type: Type.NUMBER, description: 'Número de caixas' },
         prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'] },
+        paypalFee: { type: Type.NUMBER, description: 'Taxa do PayPal. Só quando o pagamento é PayPal, e perguntada numa mensagem separada' },
         incoterms: { type: Type.STRING, description: 'Só internacional, ex. EXW, DAP, DDP' },
         shippingMethod: { type: Type.STRING, description: 'Só nacional, ex. SEDEX, PAC, transportadora' },
         netWeightKg: { type: Type.NUMBER },
         grossWeightKg: { type: Type.NUMBER },
-        pessoaAutorizouPadrao: { type: Type.BOOLEAN, description: 'true só se a pessoa autorizou explicitamente usar padrão/deixar em branco o que falta' },
+        awbNumber: { type: Type.STRING, description: 'AWB do envio' },
+        purchaseOrder: { type: Type.STRING, description: 'Pedido de compra do cliente' },
+        shipDate: { type: Type.STRING, description: 'Data de expedição, formato AAAA-MM-DD' },
+        nfNumber: { type: Type.STRING, description: 'Número da nota fiscal' },
+        nfDate: { type: Type.STRING, description: 'Data da nota fiscal, formato AAAA-MM-DD' },
+        ...orderItemProps,
+        pessoaAutorizouPadrao: { type: Type.BOOLEAN, description: 'true só se a pessoa autorizou explicitamente usar padrão/deixar em branco o que falta (nunca vale pra taxa do PayPal)' },
       },
       required: ['quoteId'],
     },
@@ -223,10 +281,17 @@ const writeTools: FunctionDeclaration[] = [
         pedidoId: { type: Type.STRING },
         packageCount: { type: Type.NUMBER },
         prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'] },
+        paypalFee: { type: Type.NUMBER },
         incoterms: { type: Type.STRING },
         shippingMethod: { type: Type.STRING },
         netWeightKg: { type: Type.NUMBER },
         grossWeightKg: { type: Type.NUMBER },
+        awbNumber: { type: Type.STRING },
+        purchaseOrder: { type: Type.STRING },
+        shipDate: { type: Type.STRING, description: 'AAAA-MM-DD' },
+        nfNumber: { type: Type.STRING },
+        nfDate: { type: Type.STRING, description: 'AAAA-MM-DD' },
+        ...orderItemProps,
         billToText: { type: Type.STRING },
         shipToText: { type: Type.STRING },
         orderedByEmail: { type: Type.STRING },
@@ -358,7 +423,18 @@ neoRouter.post(
       contents.push({ role: 'user', parts: responseParts })
     }
 
-    throw new HttpError(500, 'O Neo não conseguiu concluir a resposta (muitas chamadas de ferramenta em sequência).')
+    // Estourou o teto de ferramentas: em vez de devolver erro (o que joga fora
+    // tudo que já foi apurado), pede uma resposta final sem ferramentas — o
+    // modelo conclui com o que tem, ou pergunta.
+    const finalResponse = await generateNeoContent({
+      model: env.GEMINI_MODEL,
+      contents: [
+        ...contents,
+        { role: 'user', parts: [{ text: 'Responda agora em texto, sem chamar mais ferramentas, com o que você já apurou. Se ainda falta informação, pergunte.' }] },
+      ],
+      config: { systemInstruction: buildNeoSystemInstruction() },
+    })
+    res.json({ reply: finalResponse.text ?? '', pendingAction })
   }),
 )
 
