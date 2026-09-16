@@ -1,73 +1,40 @@
-import type { ComponentType, SVGProps } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import type { OrderDTO, PersonalBoardColumnDTO, PersonalTaskDTO, QuoteDTO } from '@prodelphusplus/shared'
+import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { cn } from '../lib/cn'
-import { Page, Section, ButtonLink } from '../components/ui'
-import {
-  IconBoard,
-  IconBox,
-  IconChart,
-  IconChevronRight,
-  IconContacts,
-  IconBot,
-  IconLayers,
-  IconQuote,
-  IconTag,
-  IconTruck,
-  IconUsers,
-} from '../components/icons'
+import { Alert, ButtonLink, Page, Skeleton } from '../components/ui'
+import { IconBot, IconPlus } from '../components/icons'
 
-interface Shortcut {
-  to: string
-  title: string
-  description: string
-  icon: ComponentType<SVGProps<SVGSVGElement>>
+async function fetchQuotes() {
+  const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
+  return data.quotes
 }
 
-const shortcuts: Shortcut[] = [
-  {
-    to: '/minha-pro-delphus',
-    title: 'Minha Pro Delphus',
-    description: 'Seu mural pessoal de tarefas, lembretes e acesso rápido.',
-    icon: IconBoard,
-  },
-  {
-    to: '/clientes',
-    title: 'Clientes',
-    description: 'Contatos, endereços e o histórico de cada cliente.',
-    icon: IconContacts,
-  },
-  {
-    to: '/orcamentos',
-    title: 'Orçamentos',
-    description: 'Gere orçamentos em PDF ou Excel a partir do catálogo.',
-    icon: IconQuote,
-  },
-  {
-    to: '/precos',
-    title: 'Tabela de preços',
-    description: 'Consulte preços em real, dólar e euro por setor.',
-    icon: IconTag,
-  },
-  {
-    to: '/produtos',
-    title: 'Produtos',
-    description: 'Veja o catálogo, mídia e customizações disponíveis.',
-    icon: IconBox,
-  },
-  {
-    to: '/pedidos',
-    title: 'Pedidos',
-    description: 'Invoice, Packing List e documentos de exportação.',
-    icon: IconTruck,
-  },
-]
+async function fetchOrders() {
+  const { data } = await api.get<{ orders: OrderDTO[] }>('/orders')
+  return data.orders
+}
 
-const adminShortcuts: Shortcut[] = [
-  { to: '/admin/contas', title: 'Contas', description: 'Aprove cadastros e gerencie o acesso.', icon: IconUsers },
-  { to: '/admin/setores', title: 'Setores', description: 'Crie, renomeie e exclua setores do catálogo.', icon: IconLayers },
-  { to: '/admin/metricas', title: 'Métricas', description: 'Vendas, status dos pedidos e mais vendidos.', icon: IconChart },
-]
+async function fetchTasks() {
+  const { data } = await api.get<{ tasks: PersonalTaskDTO[] }>('/tasks')
+  return data.tasks
+}
+
+async function fetchColumns() {
+  const { data } = await api.get<{ columns: PersonalBoardColumnDTO[] }>('/tasks/board-columns')
+  return data.columns
+}
+
+// Tarefa num quadro marcado como "concluído" nunca conta como atrasada — mesma
+// regra que Minha Pro Delphus já usa.
+function isOverdue(dueDate: string | null, isDone: boolean) {
+  if (!dueDate || isDone) return false
+  return new Date(dueDate).getTime() < Date.now()
+}
+
+/** Orçamento sem pedido gerado depois desse tanto de dias entra no painel de atenção. */
+const STALE_QUOTE_DAYS = 5
 
 function greeting() {
   const hour = new Date().getHours()
@@ -76,41 +43,41 @@ function greeting() {
   return 'Boa noite'
 }
 
-function ShortcutCard({ shortcut, tone, index }: { shortcut: Shortcut; tone: 'brand' | 'neutral'; index: number }) {
-  const { to, title, description, icon: Icon } = shortcut
-  return (
-    <Link
-      to={to}
-      style={{ animationDelay: `${index * 40}ms` }}
-      className={cn(
-        'group animate-fade-in-up relative flex flex-col rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm',
-        'transition-[transform,box-shadow,border-color] duration-200 ease-out',
-        'hover:-translate-y-0.5 hover:shadow-lg',
-        tone === 'brand' ? 'hover:border-brand-200' : 'hover:border-neutral-300',
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200',
-          tone === 'brand'
-            ? 'bg-brand-50 text-brand-600 group-hover:bg-brand-100'
-            : 'bg-neutral-500/8 text-ink-800 group-hover:bg-neutral-500/14',
-        )}
-      >
-        <Icon className="h-4.75 w-4.75" />
-      </div>
-
-      <h3 className="text-heading mt-3.5 text-ink-900">{title}</h3>
-      <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{description}</p>
-
-      <IconChevronRight className="absolute right-4 top-5 h-4 w-4 text-neutral-300 transition-[transform,color] duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-neutral-500" />
-    </Link>
-  )
-}
-
 export function Home() {
   const { user } = useAuth()
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
+
+  const { data: quotes, isLoading: loadingQuotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
+  const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
+  const { data: tasks, isLoading: loadingTasks } = useQuery({ queryKey: ['tasks'], queryFn: fetchTasks })
+  const { data: columns, isLoading: loadingColumns } = useQuery({
+    queryKey: ['board-columns'],
+    queryFn: fetchColumns,
+  })
+
+  const isLoading = loadingQuotes || loadingOrders || loadingTasks || loadingColumns
+
+  const staleQuotesCount = useMemo(() => {
+    if (!quotes || !orders || !user) return 0
+    const orderedQuoteIds = new Set(orders.map((o) => o.quoteId))
+    const cutoff = Date.now() - STALE_QUOTE_DAYS * 24 * 60 * 60 * 1000
+    return quotes.filter(
+      (q) => q.createdBy.id === user.id && !orderedQuoteIds.has(q.id) && new Date(q.createdAt).getTime() < cutoff,
+    ).length
+  }, [quotes, orders, user])
+
+  const staleOrdersCount = useMemo(() => {
+    if (!orders || !user) return 0
+    return orders.filter((o) => o.createdBy.id === user.id && o.documentsStale).length
+  }, [orders, user])
+
+  const overdueTasksCount = useMemo(() => {
+    if (!tasks || !columns) return 0
+    const doneColumnIds = new Set(columns.filter((c) => c.isDone).map((c) => c.id))
+    return tasks.filter((t) => isOverdue(t.dueDate, doneColumnIds.has(t.columnId))).length
+  }, [tasks, columns])
+
+  const hasAttention = staleQuotesCount > 0 || staleOrdersCount > 0 || overdueTasksCount > 0
 
   return (
     <Page
@@ -123,21 +90,73 @@ export function Home() {
         </ButtonLink>
       }
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {shortcuts.map((shortcut, i) => (
-          <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" index={i} />
-        ))}
-      </div>
-
-      {user?.role === 'ADMIN' && (
-        <Section title="Administração">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {adminShortcuts.map((shortcut, i) => (
-              <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="neutral" index={i} />
-            ))}
-          </div>
-        </Section>
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {staleQuotesCount > 0 && (
+            <Alert
+              tone="warning"
+              action={
+                <ButtonLink to="/orcamentos" size="sm" variant="ghost">
+                  Ver orçamentos
+                </ButtonLink>
+              }
+            >
+              {staleQuotesCount === 1
+                ? '1 orçamento seu está parado há mais de 5 dias, sem pedido gerado.'
+                : `${staleQuotesCount} orçamentos seus estão parados há mais de 5 dias, sem pedido gerado.`}
+            </Alert>
+          )}
+          {staleOrdersCount > 0 && (
+            <Alert
+              tone="warning"
+              action={
+                <ButtonLink to="/pedidos" size="sm" variant="ghost">
+                  Ver pedidos
+                </ButtonLink>
+              }
+            >
+              {staleOrdersCount === 1
+                ? '1 pedido seu está com os documentos desatualizados.'
+                : `${staleOrdersCount} pedidos seus estão com os documentos desatualizados.`}
+            </Alert>
+          )}
+          {overdueTasksCount > 0 && (
+            <Alert
+              tone="warning"
+              action={
+                <ButtonLink to="/minha-pro-delphus" size="sm" variant="ghost">
+                  Ver quadro
+                </ButtonLink>
+              }
+            >
+              {overdueTasksCount === 1
+                ? '1 tarefa sua está atrasada no quadro pessoal.'
+                : `${overdueTasksCount} tarefas suas estão atrasadas no quadro pessoal.`}
+            </Alert>
+          )}
+          {!hasAttention && (
+            <Alert tone="success">
+              Tudo em dia — nenhum orçamento parado, pedido com documento desatualizado ou tarefa atrasada.
+            </Alert>
+          )}
+        </div>
       )}
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <ButtonLink to="/orcamentos/novo" variant="primary" size="lg">
+          <IconPlus className="h-4 w-4" />
+          Novo Orçamento
+        </ButtonLink>
+        <ButtonLink to="/pedidos/novo" variant="primary" size="lg">
+          <IconPlus className="h-4 w-4" />
+          Novo Pedido
+        </ButtonLink>
+      </div>
     </Page>
   )
 }
