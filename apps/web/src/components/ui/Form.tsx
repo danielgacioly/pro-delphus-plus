@@ -35,7 +35,7 @@ export function Field({
       )}
       {children}
       {error ? (
-        <p className="mt-1.5 text-[12px] text-brand-600">{error}</p>
+        <p className="mt-1.5 text-[12px] text-danger-600">{error}</p>
       ) : (
         hint && <p className="mt-1.5 text-[12px] text-neutral-500">{hint}</p>
       )}

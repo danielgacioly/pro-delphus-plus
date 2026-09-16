@@ -25,6 +25,7 @@ export function DropZone({ onFiles, accept, multiple, disabled, className, child
 
   return (
     <div
+      // A área toda já é um único controle interativo — nunca colocar botão/link dentro.
       role="button"
       tabIndex={disabled ? -1 : 0}
       aria-disabled={disabled || undefined}
@@ -48,7 +49,7 @@ export function DropZone({ onFiles, accept, multiple, disabled, className, child
         handleFiles(e.dataTransfer.files)
       }}
       className={cn(
-        'cursor-pointer rounded-xl border border-dashed bg-white/60 p-4 text-center transition-[background-color,border-color] duration-150',
+        'cursor-pointer rounded-2xl border border-dashed bg-white/60 p-4 text-center transition-[background-color,border-color] duration-150',
         isDragging ? 'border-brand-400 bg-brand-50' : 'border-neutral-300 hover:border-neutral-400 hover:bg-white',
         disabled && 'cursor-not-allowed opacity-60',
         className,

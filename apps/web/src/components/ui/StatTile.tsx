@@ -52,7 +52,7 @@ export function StatTile({ icon: Icon, label, value, sub, to, tone = 'brand', de
 
   if (to) {
     return (
-      <Link to={to} style={{ animationDelay: `${delay}ms` }} className={cn('group block', classes)}>
+      <Link to={to} style={{ animationDelay: `${delay}ms` }} className={cn('block', classes)}>
         {content}
       </Link>
     )
