@@ -23,6 +23,7 @@ import {
   Page,
   Select,
   Skeleton,
+  StatTile,
   Textarea,
 } from '../components/ui'
 import {
@@ -531,30 +532,8 @@ export function MyDesk() {
       }
     >
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Link
-          to="/orcamentos"
-          className="group rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <IconQuote className="h-4 w-4" />
-            </span>
-            <p className="text-eyebrow text-neutral-400">Meus orçamentos</p>
-          </div>
-          <p className="tabular mt-3 text-[28px] font-bold leading-none text-ink-900">{myQuotes.length}</p>
-        </Link>
-        <Link
-          to="/pedidos"
-          className="group rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <IconTruck className="h-4 w-4" />
-            </span>
-            <p className="text-eyebrow text-neutral-400">Meus pedidos</p>
-          </div>
-          <p className="tabular mt-3 text-[28px] font-bold leading-none text-ink-900">{myOrders.length}</p>
-        </Link>
+        <StatTile to="/orcamentos" icon={IconQuote} label="Meus orçamentos" value={myQuotes.length} />
+        <StatTile to="/pedidos" icon={IconTruck} label="Meus pedidos" value={myOrders.length} />
       </div>
 
       <h2 className="text-eyebrow mb-3.5 text-neutral-400">Mural de tarefas</h2>

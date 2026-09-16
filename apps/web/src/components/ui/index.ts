@@ -5,5 +5,6 @@ export { SegmentedControl, FilterChip, SearchField, Toolbar, type SegmentedOptio
 export { TableShell, Table, THead, TBody, Th, Td, Tr } from './Table'
 export { Badge, EmptyState, Skeleton, SkeletonRows, Spinner } from './Feedback'
 export { Alert } from './Alert'
+export { StatTile } from './StatTile'
 export { AnimatedNumber } from './AnimatedNumber'
 export { Page, Section, BackLink } from './Page'

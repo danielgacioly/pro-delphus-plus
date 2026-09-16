@@ -16,7 +16,7 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../lib/api'
-import { AnimatedNumber, Card, Page, SegmentedControl, Skeleton } from '../components/ui'
+import { AnimatedNumber, Card, Page, SegmentedControl, Skeleton, StatTile } from '../components/ui'
 
 interface MonthStat {
   year: number
@@ -129,21 +129,6 @@ function RateBar({ rate }: { rate: number }) {
         />
       </div>
       <span className="tabular text-[13px] font-medium text-ink-900">{pct(rate)}</span>
-    </div>
-  )
-}
-
-function StatCard({ label, value, sub, delay = 0 }: { label: string; value: ReactNode; sub?: ReactNode; delay?: number }) {
-  return (
-    <div
-      style={{ animationDelay: `${delay}ms` }}
-      className="animate-fade-in-up rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg"
-    >
-      <p className="text-eyebrow text-neutral-400">{label}</p>
-      <p className="tabular mt-2.5 text-[26px] font-bold leading-none text-ink-900">
-        {value}
-        {sub && <span className="ml-1.5 text-[15px] font-normal text-neutral-400">{sub}</span>}
-      </p>
     </div>
   )
 }
@@ -325,14 +310,14 @@ export function Stats() {
             anterior e a contagem parte do número errado — "Pedidos totais: 11"
             virava um "1100%" piscando antes de assentar na taxa de conversão. */}
         <div key="efficiency" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Taxa de conversão" value={<AnimatedNumber value={eff.overall.conversionRate} format={pct} />} />
-          <StatCard
+          <StatTile label="Taxa de conversão" value={<AnimatedNumber value={eff.overall.conversionRate} format={pct} />} />
+          <StatTile
             label="Orçamentos emitidos"
             value={<AnimatedNumber value={eff.overall.quotes} />}
             sub={`→ ${eff.overall.converted}`}
             delay={40}
           />
-          <StatCard
+          <StatTile
             label="Tempo médio até fechar"
             value={days(eff.overall.avgDaysToConvert)}
             sub={
@@ -342,7 +327,7 @@ export function Stats() {
             }
             delay={80}
           />
-          <StatCard
+          <StatTile
             label="Valor convertido"
             value={<AnimatedNumber value={eff.overall.orderedUSD} format={(v) => `$ ${fmt(v)}`} />}
             sub={`de $ ${fmt(eff.overall.quotedUSD)}`}
@@ -418,18 +403,18 @@ export function Stats() {
   return page(
     <>
       <div key="sales" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Pedidos totais" value={<AnimatedNumber value={data.totalOrders} />} />
-        <StatCard
+        <StatTile label="Pedidos totais" value={<AnimatedNumber value={data.totalOrders} />} />
+        <StatTile
           label="Vendido (USD)"
           value={<AnimatedNumber value={data.totalByCurrency.USD} format={(v) => `$ ${fmt(v)}`} />}
           delay={40}
         />
-        <StatCard
+        <StatTile
           label="Vendido (BRL)"
           value={<AnimatedNumber value={data.totalByCurrency.BRL} format={(v) => `R$ ${fmt(v)}`} />}
           delay={80}
         />
-        <StatCard
+        <StatTile
           label="Concluídos"
           value={<AnimatedNumber value={data.statusBreakdown.COMPLETED} />}
           sub={`/ ${data.totalOrders}`}
