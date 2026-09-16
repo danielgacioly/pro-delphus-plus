@@ -119,7 +119,7 @@ export function Home() {
       actions={
         <ButtonLink size="sm" to="/neo">
           <IconBot className="h-4 w-4" />
-          Neo
+          NEO
         </ButtonLink>
       }
     >

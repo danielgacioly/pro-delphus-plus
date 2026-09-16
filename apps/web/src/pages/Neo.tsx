@@ -149,7 +149,7 @@ export function Neo() {
       setMessages((prev) => [...prev, { role: 'model', text: reply }])
       setPending(pendingAction ?? null)
     } catch (err) {
-      setError(getErrorMessage(err, 'Neo não conseguiu responder agora. Tenta de novo em instantes.'))
+      setError(getErrorMessage(err, 'NEO não conseguiu responder agora. Tenta de novo em instantes.'))
     } finally {
       setLoading(false)
     }
@@ -206,8 +206,8 @@ export function Neo() {
               estado, não enfeite se mexendo o tempo todo. */}
           <NeoAvatar thinking={loading} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-display text-ink-900">Neo</h1>
-            <p className="mt-0.5 text-[13px] text-neutral-500">Assistente da Pro Delphus+</p>
+            <h1 className="text-display text-ink-900">NEO</h1>
+            <p className="mt-0.5 text-[13px] text-neutral-500">Ou Network Executive Operator. Seu assistente pessoal na Pro Delphus+</p>
           </div>
           {messages.length > 0 && (
             <Button size="sm" onClick={handleNewChat} disabled={loading}>
@@ -222,7 +222,7 @@ export function Neo() {
           {messages.length === 0 && !pending && (
             <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
               <NeoMascot className="h-40 w-40 sm:h-48 sm:w-48" />
-              <h2 className="text-heading mt-1 text-ink-900">Oi, eu sou o Neo</h2>
+              <h2 className="text-heading mt-1 text-ink-900">Oi, eu sou o NEO</h2>
               <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-500">
                 Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
               </p>
@@ -299,7 +299,7 @@ export function Neo() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="Pergunte alguma coisa ao Neo…"
+              placeholder="Pergunte alguma coisa ao NEO…"
               className={cn(
                 'max-h-32 w-full flex-1 resize-none overflow-y-auto rounded-lg border border-neutral-200 bg-white px-4 py-2.5',
                 'text-[13.5px] leading-relaxed text-ink-900 shadow-xs placeholder:text-neutral-400',
@@ -319,7 +319,7 @@ export function Neo() {
                 'disabled:pointer-events-none disabled:opacity-40',
               )}
             >
-              <IconArrowUp className="h-[18px] w-[18px]" />
+              <IconArrowUp className="h-4.5 w-4.5" />
             </button>
           </div>
         </div>
