@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '../../lib/cn'
+import { IconChevronLeft } from '../icons'
 
 /**
  * Observa a rolagem do contêiner rolável mais próximo.
@@ -126,17 +127,7 @@ export function BackLink({ to, children }: { to: string; children: ReactNode }) 
       to={to}
       className="group -ml-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] font-medium text-neutral-500 transition-colors hover:text-ink-900"
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover:-translate-x-0.5"
-      >
-        <path d="m15 18-6-6 6-6" />
-      </svg>
+      <IconChevronLeft className="h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover:-translate-x-0.5" />
       {children}
     </Link>
   )
