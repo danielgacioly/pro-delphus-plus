@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
   { to: '/clientes', label: 'Clientes', icon: IconContacts },
   { to: '/orcamentos', label: 'Orçamentos', icon: IconQuote },
   { to: '/pedidos', label: 'Pedidos', icon: IconTruck },
-  { to: '/neo', label: 'Neo', icon: IconBot },
+  { to: '/neo', label: 'NEO', icon: IconBot },
 ]
 
 const adminNavItems: NavItem[] = [
