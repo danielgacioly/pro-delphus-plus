@@ -20,3 +20,6 @@ backups/
 
 # Scratch de execução do superpowers (ledgers/briefs de subagent-driven-development)
 .superpowers/
+
+# Worktrees isolados de trabalho em andamento
+.worktrees/
