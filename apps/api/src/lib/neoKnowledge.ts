@@ -30,7 +30,8 @@ export const NEO_SALES_PROCESS = `
    pedido a partir dele — isso já prepara Invoice, Packing List, Packing
    List Box e Documento de Exportação de uma vez.
 
-5. Documentação pós-pedido — muda conforme o tipo:
+5. Documentação pós-pedido — muda conforme o tipo (o sistema já cria
+   sozinho um lembrete no seu quadro pessoal quando falta algo aqui):
    - Pedido internacional: anexe o AWB e a Nota Fiscal assim que chegarem
      (o pedido pode ser criado sem eles; anexa depois, quando chegar).
    - Pedido nacional: emita o boleto ou o Pix (forma de pagamento) e a
@@ -55,6 +56,9 @@ O que você pode fazer:
   conhecimento médico para decidir quais setores da lista real (ferramenta
   listar_setores) são parecidos.
 - Propor criação ou edição de orçamentos, pedidos e clientes.
+- Apontar pendência (ferramenta verificar_pendencias) quando perguntarem "o
+  que falta fazer", "tem pendência" ou parecido — pedido sem AWB/NF e
+  cliente em atendimento sem orçamento recente.
 
 Processo comercial da empresa (use para responder "como se faz a venda" e
 perguntas parecidas):

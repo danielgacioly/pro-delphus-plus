@@ -21,6 +21,7 @@ import {
   listarSetores,
   buscarOrcamentos,
   buscarPedidos,
+  verificarPendencias,
   proporOrcamento,
   proporEdicaoOrcamento,
   proporPedido,
@@ -145,6 +146,12 @@ const readTools: FunctionDeclaration[] = [
         cliente: { type: Type.STRING, description: 'Nome do cliente' },
       },
     },
+  },
+  {
+    name: 'verificar_pendencias',
+    description:
+      'Lista o que está parado: pedidos pendentes sem AWB e/ou Nota Fiscal (conforme o pedido é nacional ou internacional) e clientes marcados em atendimento sem orçamento recente ou nunca orçados. Use pra perguntas como "o que falta fazer", "tem pendência", "quem eu preciso retornar".',
+    parameters: { type: Type.OBJECT, properties: {} },
   },
 ]
 
@@ -344,6 +351,8 @@ async function dispatchTool(
       return { result: await buscarOrcamentos(args as any) }
     case 'buscar_pedidos':
       return { result: await buscarPedidos(args as any) }
+    case 'verificar_pendencias':
+      return { result: await verificarPendencias() }
     case 'propor_orcamento': {
       const { pendingAction, summaryForModel } = await proporOrcamento(args as any, userId)
       return { result: summaryForModel, pendingAction }

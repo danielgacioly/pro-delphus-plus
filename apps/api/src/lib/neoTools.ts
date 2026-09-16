@@ -1,7 +1,7 @@
 import { prisma } from './prisma.js'
 import { toClientDTO } from './dto.js'
 import { completedOrdersFor, createQuoteSchema, resolveQuoteData, type CreateQuoteInput } from '../routes/quotes.routes.js'
-import { orderFieldsSchema, type OrderFieldsInput } from '../routes/orders.routes.js'
+import { orderFieldsSchema, missingPostOrderDocs, type OrderFieldsInput } from '../routes/orders.routes.js'
 import { clientBodySchema } from '../routes/clients.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
@@ -154,6 +154,59 @@ export async function buscarCliente(args: { nome: string }) {
     orderBy: { name: 'asc' },
   })
   return clients.map((c) => toClientDTO(c))
+}
+
+/**
+ * "O que falta fazer": pedidos pendentes sem AWB/NF (regra em
+ * missingPostOrderDocs, compartilhada com o lembrete automático que o
+ * sistema cria sozinho) e clientes em atendimento sem orçamento recente ou
+ * nunca orçados — sinal de acompanhamento comercial esfriando.
+ */
+export async function verificarPendencias() {
+  const pendingOrders = await prisma.order.findMany({
+    where: { status: 'PENDING' },
+    select: {
+      orderNumber: true,
+      awbNumber: true,
+      nfNumber: true,
+      quote: { select: { quoteNumber: true, clientName: true, exportScope: true } },
+    },
+    orderBy: { orderNumber: 'asc' },
+  })
+  const pedidosComPendencia = pendingOrders
+    .map((o) => ({
+      orderNumber: o.orderNumber,
+      quoteNumber: o.quote.quoteNumber,
+      clientName: o.quote.clientName,
+      falta: missingPostOrderDocs({ status: 'PENDING', awbNumber: o.awbNumber, nfNumber: o.nfNumber }, o.quote.exportScope),
+    }))
+    .filter((o) => o.falta.length > 0)
+
+  const inServiceClients = await prisma.client.findMany({
+    where: { active: true, inService: true },
+    select: { id: true, name: true },
+  })
+  let clientesEmAtendimento: { name: string; diasSemOrcamento: number | null; nuncaOrcado: boolean }[] = []
+  if (inServiceClients.length > 0) {
+    const lastQuoteRows = await prisma.quote.groupBy({
+      by: ['clientId'],
+      where: { clientId: { in: inServiceClients.map((c) => c.id) } },
+      _max: { createdAt: true },
+    })
+    const lastQuoteMap = new Map(lastQuoteRows.map((r) => [r.clientId, r._max.createdAt]))
+    clientesEmAtendimento = inServiceClients
+      .map((c) => {
+        const last = lastQuoteMap.get(c.id) ?? null
+        return {
+          name: c.name,
+          diasSemOrcamento: last ? Math.floor((Date.now() - last.getTime()) / 86_400_000) : null,
+          nuncaOrcado: last === null,
+        }
+      })
+      .sort((a, b) => (b.diasSemOrcamento ?? Infinity) - (a.diasSemOrcamento ?? Infinity))
+  }
+
+  return { pedidosComPendencia, clientesEmAtendimento }
 }
 
 export async function listarSetores() {

@@ -16,6 +16,7 @@ import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFo
 import { env } from '../lib/env.js'
 import { reservationBackoff } from '../lib/numbering.js'
 import { formatOrderNumber, type BoxAssignments } from '@prodelphusplus/shared'
+import { ensureColumns, findDoneColumnId } from './tasks.routes.js'
 
 export const ordersRouter = Router()
 
@@ -173,6 +174,75 @@ function assertBoxAssignmentsFit(boxAssignments: BoxAssignments | null | undefin
       400,
       `A divisão informada tem ${boxAssignments.length} caixas, mas o pedido declara ${packageCount}. Ajuste o número de caixas.`,
     )
+  }
+}
+
+/**
+ * O que falta documentar num pedido, pelas regras do passo 5 do processo
+ * comercial (ver NEO_SALES_PROCESS em neoKnowledge.ts): internacional pede
+ * AWB + Nota Fiscal; nacional só Nota Fiscal (boleto/Pix é a forma de
+ * pagamento escolhida, não um documento a conferir aqui). Pedido já
+ * concluído não tem pendência — a pessoa já decidiu que está tudo certo.
+ * Compartilhada com o Neo (`verificar_pendencias` em neoTools.ts) — as duas
+ * pontas usam exatamente a mesma regra, uma só existe no código.
+ */
+export function missingPostOrderDocs(
+  order: { status: 'PENDING' | 'COMPLETED'; awbNumber: string | null; nfNumber: string | null },
+  exportScope: 'NATIONAL' | 'INTERNATIONAL',
+): string[] {
+  if (order.status === 'COMPLETED') return []
+  const missing: string[] = []
+  if (exportScope === 'INTERNATIONAL' && !order.awbNumber) missing.push('AWB')
+  if (!order.nfNumber) missing.push('Nota Fiscal')
+  return missing
+}
+
+// Lembrete é um bônus sobre um pedido que já foi criado com sucesso — se
+// isto falhar por qualquer motivo, o pedido não pode ser desfeito por causa
+// disso, só logamos e seguimos.
+async function createPendingDocsTask(
+  userId: string,
+  order: { id: string; orderNumber: number },
+  quoteNumber: string,
+  clientName: string,
+  missing: string[],
+) {
+  try {
+    const columns = await ensureColumns(userId)
+    const columnId = columns[0].id
+    const count = await prisma.personalTask.count({ where: { userId, columnId } })
+    await prisma.personalTask.create({
+      data: {
+        userId,
+        title: `Pedido ${formatOrderNumber(order.orderNumber)}: anexar ${missing.join(' e ')}`,
+        notes: `Cliente ${clientName} — orçamento ${quoteNumber}`,
+        clientName,
+        columnId,
+        position: count,
+        orderId: order.id,
+      },
+    })
+  } catch (err) {
+    console.error('[orders] falha ao criar tarefa de pendência pós-pedido:', err)
+  }
+}
+
+// Fecha o ciclo do passo 6: quando o pedido vira Concluído, a tarefa que o
+// próprio sistema criou pra ele (se houver) migra sozinha pra coluna de
+// concluído de quem a criou, sem precisar arrastar o card à mão. Silencioso
+// por natureza — nem toda tarefa tem uma coluna "concluído" definida, e isso
+// não é motivo pra falhar a mudança de status do pedido.
+async function moveOrderTasksToDone(orderId: string) {
+  try {
+    const tasks = await prisma.personalTask.findMany({ where: { orderId }, select: { id: true, userId: true, columnId: true } })
+    for (const task of tasks) {
+      const doneColumnId = await findDoneColumnId(task.userId)
+      if (!doneColumnId || doneColumnId === task.columnId) continue
+      const count = await prisma.personalTask.count({ where: { userId: task.userId, columnId: doneColumnId } })
+      await prisma.personalTask.update({ where: { id: task.id }, data: { columnId: doneColumnId, position: count } })
+    }
+  } catch (err) {
+    console.error('[orders] falha ao mover tarefa do pedido pra concluído:', err)
   }
 }
 
@@ -500,6 +570,15 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
   }
 
   const docUrls = await buildAndWriteDocuments(orderForDocs, quote)
+
+  const missing = missingPostOrderDocs(
+    { status: 'PENDING', awbNumber: data.awbNumber ?? null, nfNumber: data.nfNumber ?? null },
+    quote.exportScope,
+  )
+  if (missing.length > 0) {
+    await createPendingDocsTask(requesterId, { id: order.id, orderNumber }, quote.quoteNumber, quote.clientName, missing)
+  }
+
   return prisma.order.update({ where: { id: order.id }, data: docUrls, include })
 }
 
@@ -599,6 +678,7 @@ ordersRouter.patch(
     if (!existing) throw new HttpError(404, 'Pedido não encontrado')
 
     const order = await prisma.order.update({ where: { id: existing.id }, data: { status }, include })
+    if (status === 'COMPLETED') await moveOrderTasksToDone(existing.id)
     res.json({ order: await toOrderDTOFresh(order) })
   }),
 )
