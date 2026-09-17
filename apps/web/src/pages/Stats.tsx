@@ -355,15 +355,7 @@ export function Stats() {
           </ChartCard>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-          <ChartCard title="Por vendedor" description="Quem orça mais e quem converte mais.">
-            <FunnelTable
-              label="Vendedor"
-              empty="Nenhum orçamento emitido ainda."
-              rows={eff.bySalesperson.map((s) => ({ key: s.id, name: s.name, funnel: s }))}
-            />
-          </ChartCard>
-
+        <div className="mt-4">
           <ChartCard title="Por setor" description="Setor de cada item do orçamento — um orçamento misto conta em todos.">
             <FunnelTable
               label="Setor"
