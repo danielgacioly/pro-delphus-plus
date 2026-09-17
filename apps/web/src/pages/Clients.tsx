@@ -9,6 +9,7 @@ import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { CLIENT_KIND_LABEL, ClientForm, type ClientFormValues } from '../components/ClientForm'
 import {
+  Alert,
   AnimatedNumber,
   Badge,
   Button,
@@ -255,9 +256,7 @@ export function Clients() {
 
       <div className="mt-5">
         {isError ? (
-          <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-            Não foi possível carregar os clientes.
-          </div>
+          <Alert tone="error">Não foi possível carregar os clientes.</Alert>
         ) : isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (

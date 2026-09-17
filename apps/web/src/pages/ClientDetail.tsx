@@ -9,6 +9,7 @@ import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { CLIENT_KIND_LABEL, ClientForm, clientToForm, type ClientFormValues } from '../components/ClientForm'
 import {
+  Alert,
   Badge,
   Button,
   ButtonLink,
@@ -136,9 +137,7 @@ export function ClientDetail() {
   if (isError || !data) {
     return (
       <Page title="Cliente">
-        <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-          Não foi possível carregar esse cliente.
-        </div>
+        <Alert tone="error">Não foi possível carregar esse cliente.</Alert>
       </Page>
     )
   }
@@ -167,8 +166,10 @@ export function ClientDetail() {
       </div>
 
       {!client.active && (
-        <div className="mb-5 rounded-xl bg-amber-500/10 px-4 py-3 text-[13px] text-amber-800">
-          Este cliente está inativo. O histórico continua disponível, mas ele não deve receber novos orçamentos.
+        <div className="mb-5">
+          <Alert tone="warning">
+            Este cliente está inativo. O histórico continua disponível, mas ele não deve receber novos orçamentos.
+          </Alert>
         </div>
       )}
 
