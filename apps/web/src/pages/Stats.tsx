@@ -87,10 +87,10 @@ function fmt(value: number) {
   return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
-const BRAND = '#cd2b1d'
-const INK = '#33313a'
-const GRID = '#e8e6e3'
-const STATUS_COLORS = { PENDING: '#f59e0b', COMPLETED: BRAND }
+const BRAND = 'var(--color-brand-600)'
+const INK = 'var(--color-ink-700)'
+const GRID = 'var(--color-neutral-200)'
+const STATUS_COLORS = { PENDING: 'var(--color-amber-500)', COMPLETED: BRAND }
 
 const axisProps = {
   fontSize: 11,
