@@ -1,21 +1,17 @@
-import { useState, type ComponentType, type SVGProps } from 'react'
+import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
-import { Page, Section, Button } from '../components/ui'
-import { HelpModal } from '../components/HelpModal'
+import { Page, ButtonLink } from '../components/ui'
 import {
   IconBoard,
   IconBox,
-  IconChart,
   IconChevronRight,
   IconContacts,
-  IconHelp,
-  IconLayers,
+  IconBot,
   IconQuote,
   IconTag,
   IconTruck,
-  IconUsers,
 } from '../components/icons'
 
 interface Shortcut {
@@ -64,12 +60,6 @@ const shortcuts: Shortcut[] = [
   },
 ]
 
-const adminShortcuts: Shortcut[] = [
-  { to: '/admin/contas', title: 'Contas', description: 'Aprove cadastros e gerencie o acesso.', icon: IconUsers },
-  { to: '/admin/setores', title: 'Setores', description: 'Crie, renomeie e exclua setores do catálogo.', icon: IconLayers },
-  { to: '/admin/metricas', title: 'Métricas', description: 'Vendas, status dos pedidos e mais vendidos.', icon: IconChart },
-]
-
 function greeting() {
   const hour = new Date().getHours()
   if (hour < 12) return 'Bom dia'
@@ -112,17 +102,16 @@ function ShortcutCard({ shortcut, tone, index }: { shortcut: Shortcut; tone: 'br
 export function Home() {
   const { user } = useAuth()
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
-  const [helpOpen, setHelpOpen] = useState(false)
 
   return (
     <Page
       title={`${greeting()}, ${firstName}.`}
       description="O que você deseja fazer hoje?"
       actions={
-        <Button size="sm" onClick={() => setHelpOpen(true)}>
-          <IconHelp className="h-4 w-4" />
-          Ajuda
-        </Button>
+        <ButtonLink size="sm" to="/neo">
+          <IconBot className="h-4 w-4" />
+          NEO
+        </ButtonLink>
       }
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -130,18 +119,6 @@ export function Home() {
           <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" index={i} />
         ))}
       </div>
-
-      {user?.role === 'ADMIN' && (
-        <Section title="Administração">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {adminShortcuts.map((shortcut, i) => (
-              <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="neutral" index={i} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
     </Page>
   )
 }

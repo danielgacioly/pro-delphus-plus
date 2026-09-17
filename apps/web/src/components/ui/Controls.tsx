@@ -32,7 +32,7 @@ export function SegmentedControl<T extends string>({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex items-center gap-1 rounded-[10px] bg-neutral-500/8 p-1',
+        'inline-flex items-center gap-1 rounded-lg bg-neutral-500/8 p-1',
         fill && 'flex w-full',
         className,
       )}

@@ -181,6 +181,19 @@ h3 {
   }
 }
 
+/* Respiro do avatar do Neo enquanto ele pensa — o movimento é o sinal de
+   "estou trabalhando nisso". A regra global de prefers-reduced-motion lá
+   embaixo já desliga isso pra quem pede menos movimento. */
+@keyframes neo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 150% 0;
@@ -200,6 +213,10 @@ h3 {
 
 .animate-scale-in {
   animation: scale-in 0.28s var(--ease-out-expo) both;
+}
+
+.animate-neo-breathe {
+  animation: neo-breathe 1.5s ease-in-out infinite;
 }
 
 .skeleton {

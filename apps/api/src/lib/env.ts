@@ -64,6 +64,16 @@ const envSchema = z.object({
   // Sem default: o seed é o que cria a primeira conta de admin, e um default
   // conhecido no código é uma porta aberta em qualquer instalação nova.
   ADMIN_SEED_PASSWORD: z.string().min(10, 'ADMIN_SEED_PASSWORD precisa de pelo menos 10 caracteres').optional(),
+
+  // Google AI Studio free-tier key — https://aistudio.google.com/apikey.
+  // Sem default: sem chave, o Neo não tem como funcionar, e é melhor a API
+  // recusar subir do que o endpoint falhar silenciosamente na primeira
+  // pergunta.
+  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY é obrigatório — gere uma chave grátis em https://aistudio.google.com/apikey'),
+  // A cota grátis é separada por modelo: o 3.6-flash só dá 20 requisições/dia,
+  // o que acaba em poucas conversas (cada pergunta com ferramenta gasta 2-5).
+  // O flash-lite tem cota grátis bem maior e faz function calling bem.
+  GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
 })
 
 const parsed = envSchema.safeParse(process.env)

@@ -31,7 +31,22 @@ async function fetchIsDoneMap(columnIds: string[]): Promise<Map<string, boolean>
   return new Map(rows.map((r) => [r.id, r.isDone]))
 }
 
-async function ensureColumns(userId: string) {
+/**
+ * Coluna marcada como "concluído" de um usuário, se houver uma. Usada quando
+ * um pedido é marcado como Concluído: a tarefa de pendência que o próprio
+ * sistema criou pra aquele pedido é movida pra lá sozinha — fecha o ciclo do
+ * passo 6 do processo comercial sem a pessoa precisar arrastar o card à mão.
+ */
+export async function findDoneColumnId(userId: string): Promise<string | null> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM personal_board_columns WHERE "userId" = ${userId} AND "isDone" = true ORDER BY position ASC LIMIT 1
+  `
+  return rows[0]?.id ?? null
+}
+
+// Exportada: o lembrete automático pós-pedido (orders.routes.ts) precisa
+// garantir que existe uma coluna pra colocar a tarefa antes de criá-la.
+export async function ensureColumns(userId: string) {
   // A tela de Minha Pro Delphus dispara GET /tasks e GET /board-columns em
   // paralelo, e as duas chamam esta função — sem essa trava, duas requisições
   // concorrentes na primeira visita de um usuário novo podiam ver "zero

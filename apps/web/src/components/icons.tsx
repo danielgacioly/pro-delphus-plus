@@ -291,3 +291,25 @@ export function IconInfo(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconBot(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="8" width="16" height="12" rx="3" />
+      <path d="M12 8V4" />
+      <circle cx="12" cy="3" r="1" />
+      <circle cx="9" cy="13" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="13" r="1.25" fill="currentColor" stroke="none" />
+      <path d="M9 17h6" />
+    </Base>
+  )
+}
+
+export function IconArrowUp(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 19V5" />
+      <path d="m6 11 6-6 6 6" />
+    </Base>
+  )
+}

@@ -99,7 +99,7 @@ quotesRouter.get(
   }),
 )
 
-const createQuoteSchema = z.object({
+export const createQuoteSchema = z.object({
   exportScope: z.enum(['NATIONAL', 'INTERNATIONAL']).default('INTERNATIONAL'),
   language: z.enum(['PT', 'EN', 'ES']).default('PT'),
   // Optional for backward compatibility — older clients that don't send it
@@ -133,7 +133,7 @@ const createQuoteSchema = z.object({
   confirmCompletedOrders: z.boolean().optional(),
 })
 
-type CreateQuoteInput = z.infer<typeof createQuoteSchema>
+export type CreateQuoteInput = z.infer<typeof createQuoteSchema>
 
 /**
  * Resolve preços/itens/notas/assinatura a partir do payload — compartilhado
@@ -141,7 +141,7 @@ type CreateQuoteInput = z.infer<typeof createQuoteSchema>
  * o mesmo cálculo, só divergindo em como o número do orçamento é definido e
  * se é um create ou update no banco.
  */
-async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
+export async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
   // Nacional é sempre BRL/português — não é mais o idioma que decide a
   // moeda, é o tipo (Nacional/Internacional) escolhido explicitamente no
   // formulário. Ver NewQuote.tsx.
@@ -329,117 +329,30 @@ function isQuoteNumberConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
 
-quotesRouter.post(
-  '/',
-  asyncHandler(async (req, res) => {
-    const data = createQuoteSchema.parse(req.body)
-    const resolved = await resolveQuoteData(data, req.user!.id)
-    const { language, currency, priceTier, lineItems, subtotal, total, notes } = resolved
+export async function completedOrdersFor(quoteId: string) {
+  return prisma.order.findMany({
+    where: { quoteId, status: 'COMPLETED' },
+    select: { orderNumber: true },
+    orderBy: { orderNumber: 'asc' },
+  })
+}
 
-    // O número é reservado com um INSERT (rápido) ANTES de gerar o PDF/xlsx
-    // (lento — Puppeteer/ExcelJS levam segundos). Antes, o número era só
-    // calculado (contagem do dia) e o INSERT só acontecia depois de gerar os
-    // arquivos — nessa janela larga, dois orçamentos criados perto um do
-    // outro podiam calcular o MESMO número, e o segundo (perdedor da corrida
-    // no INSERT, bloqueado pela constraint única) já tinha sobrescrito o
-    // arquivo do primeiro no disco antes de falhar. Reservando primeiro, uma
-    // colisão falha na hora — antes de qualquer arquivo ser escrito — e a
-    // tentativa seguinte pega o próximo número livre.
-    let quote: Awaited<ReturnType<typeof prisma.quote.create>> | undefined
-    let quoteNumber = ''
-    for (let attempt = 0; attempt < 12; attempt++) {
-      if (attempt > 0) await reservationBackoff(attempt)
-      const now = new Date()
-      const datePrefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-      const todayCount = await prisma.quote.count({ where: { quoteNumber: { startsWith: `${datePrefix}-` } } })
-      quoteNumber = `${datePrefix}-${String(todayCount + 1).padStart(2, '0')}`
-      try {
-        quote = await prisma.quote.create({
-          data: {
-            quoteNumber,
-            language,
-            currency,
-            exportScope: data.exportScope,
-            priceTier,
-            clientPrefix: data.clientPrefix,
-            clientName: data.clientName,
-            clientId: data.clientId ?? null,
-            notes,
-            freight: data.freight ?? null,
-            discount: data.discount,
-            subtotal,
-            total,
-            createdById: req.user!.id,
-            items: {
-              create: lineItems.map((i) => ({
-                sku: i.sku,
-                productId: i.productId,
-                title: i.titleOverride,
-                quantity: i.quantity,
-                listPrice: i.listPrice,
-                unitPrice: i.unitPrice,
-                lineTotal: i.lineTotal,
-                description: i.description,
-              })),
-            },
-          },
-          include,
-        })
-        break
-      } catch (err) {
-        if (isQuoteNumberConflict(err)) continue
-        throw err
-      }
-    }
-    if (!quote) throw new HttpError(409, 'Não foi possível reservar um número de orçamento. Tente novamente.')
+export async function createQuoteRecord(data: CreateQuoteInput, requesterId: string) {
+  const resolved = await resolveQuoteData(data, requesterId)
+  const { language, currency, priceTier, lineItems, subtotal, total, notes } = resolved
 
-    const { pdfUrl, xlsxUrl } = await generateQuoteFiles(quoteNumber, data, resolved)
-    const updated = await prisma.quote.update({ where: { id: quote.id }, data: { pdfUrl, xlsxUrl }, include })
-
-    res.status(201).json({ quote: toQuoteDTO(updated) })
-  }),
-)
-
-quotesRouter.patch(
-  '/:id',
-  asyncHandler(async (req, res) => {
-    const existing = await prisma.quote.findUnique({ where: { id: req.params.id } })
-    if (!existing) throw new HttpError(404, 'Orçamento não encontrado')
-
-    const data = createQuoteSchema.parse(req.body)
-
-    // Um pedido "Concluído" já foi entregue/faturado — editar o orçamento de
-    // origem muda o total exibido e, na próxima regeneração de documentos,
-    // o Invoice também, sem deixar rastro nenhum de que algo mudou depois da
-    // conclusão. Em vez de bloquear, exige confirmação explícita informada
-    // do que está em jogo (`confirmCompletedOrders`), pedida pelo frontend
-    // assim que este erro chega.
-    if (!data.confirmCompletedOrders) {
-      const completedOrders = await prisma.order.findMany({
-        where: { quoteId: existing.id, status: 'COMPLETED' },
-        select: { orderNumber: true },
-        orderBy: { orderNumber: 'asc' },
-      })
-      if (completedOrders.length > 0) {
-        throw new HttpError(
-          409,
-          'Este orçamento já tem pedido concluído vinculado. Editar vai mudar os valores desse pedido.',
-          { completedOrderNumbers: completedOrders.map((o) => o.orderNumber) },
-        )
-      }
-    }
-
-    const resolved = await resolveQuoteData(data, req.user!.id)
-    // Número do orçamento nunca muda — os arquivos regenerados sobrescrevem
-    // os antigos no mesmo caminho, então pdfUrl/xlsxUrl também ficam iguais.
-    const { pdfUrl, xlsxUrl } = await generateQuoteFiles(existing.quoteNumber, data, resolved)
-    const { language, currency, priceTier, lineItems, subtotal, total, notes } = resolved
-
-    const quote = await prisma.$transaction(async (tx) => {
-      await tx.quoteItem.deleteMany({ where: { quoteId: existing.id } })
-      const updated = await tx.quote.update({
-        where: { id: existing.id },
+  let quote: Awaited<ReturnType<typeof prisma.quote.create>> | undefined
+  let quoteNumber = ''
+  for (let attempt = 0; attempt < 12; attempt++) {
+    if (attempt > 0) await reservationBackoff(attempt)
+    const now = new Date()
+    const datePrefix = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    const todayCount = await prisma.quote.count({ where: { quoteNumber: { startsWith: `${datePrefix}-` } } })
+    quoteNumber = `${datePrefix}-${String(todayCount + 1).padStart(2, '0')}`
+    try {
+      quote = await prisma.quote.create({
         data: {
+          quoteNumber,
           language,
           currency,
           exportScope: data.exportScope,
@@ -452,8 +365,7 @@ quotesRouter.patch(
           discount: data.discount,
           subtotal,
           total,
-          pdfUrl,
-          xlsxUrl,
+          createdById: requesterId,
           items: {
             create: lineItems.map((i) => ({
               sku: i.sku,
@@ -469,14 +381,91 @@ quotesRouter.patch(
         },
         include,
       })
-      // `updatedAt` não está no client tipado (prisma generate não roda
-      // neste ambiente) — sem isto, um pedido já gerado a partir deste
-      // orçamento nunca saberia que ficou desatualizado (ver
-      // toOrderDTOFresh/documentsStale em orders.routes.ts).
-      await tx.$executeRaw`UPDATE quotes SET "updatedAt" = now() WHERE id = ${existing.id}`
-      return updated
-    })
+      break
+    } catch (err) {
+      if (isQuoteNumberConflict(err)) continue
+      throw err
+    }
+  }
+  if (!quote) throw new HttpError(409, 'Não foi possível reservar um número de orçamento. Tente novamente.')
 
+  const { pdfUrl, xlsxUrl } = await generateQuoteFiles(quoteNumber, data, resolved)
+  return prisma.quote.update({ where: { id: quote.id }, data: { pdfUrl, xlsxUrl }, include })
+}
+
+export async function updateQuoteRecord(existingId: string, data: CreateQuoteInput, requesterId: string) {
+  const existing = await prisma.quote.findUnique({ where: { id: existingId } })
+  if (!existing) throw new HttpError(404, 'Orçamento não encontrado')
+
+  const resolved = await resolveQuoteData(data, requesterId)
+  const { pdfUrl, xlsxUrl } = await generateQuoteFiles(existing.quoteNumber, data, resolved)
+  const { language, currency, priceTier, lineItems, subtotal, total, notes } = resolved
+
+  return prisma.$transaction(async (tx) => {
+    await tx.quoteItem.deleteMany({ where: { quoteId: existing.id } })
+    const updated = await tx.quote.update({
+      where: { id: existing.id },
+      data: {
+        language,
+        currency,
+        exportScope: data.exportScope,
+        priceTier,
+        clientPrefix: data.clientPrefix,
+        clientName: data.clientName,
+        clientId: data.clientId ?? null,
+        notes,
+        freight: data.freight ?? null,
+        discount: data.discount,
+        subtotal,
+        total,
+        pdfUrl,
+        xlsxUrl,
+        items: {
+          create: lineItems.map((i) => ({
+            sku: i.sku,
+            productId: i.productId,
+            title: i.titleOverride,
+            quantity: i.quantity,
+            listPrice: i.listPrice,
+            unitPrice: i.unitPrice,
+            lineTotal: i.lineTotal,
+            description: i.description,
+          })),
+        },
+      },
+      include,
+    })
+    await tx.$executeRaw`UPDATE quotes SET "updatedAt" = now() WHERE id = ${existing.id}`
+    return updated
+  })
+}
+
+quotesRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const data = createQuoteSchema.parse(req.body)
+    const quote = await createQuoteRecord(data, req.user!.id)
+    res.status(201).json({ quote: toQuoteDTO(quote) })
+  }),
+)
+
+quotesRouter.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const data = createQuoteSchema.parse(req.body)
+
+    if (!data.confirmCompletedOrders) {
+      const completedOrders = await completedOrdersFor(req.params.id)
+      if (completedOrders.length > 0) {
+        throw new HttpError(
+          409,
+          'Este orçamento já tem pedido concluído vinculado. Editar vai mudar os valores desse pedido.',
+          { completedOrderNumbers: completedOrders.map((o) => o.orderNumber) },
+        )
+      }
+    }
+
+    const quote = await updateQuoteRecord(req.params.id, data, req.user!.id)
     res.json({ quote: toQuoteDTO(quote) })
   }),
 )

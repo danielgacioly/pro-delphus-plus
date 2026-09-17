@@ -5,6 +5,7 @@ import { cn } from '../lib/cn'
 import logo from '../assets/logo.svg'
 import {
   IconBoard,
+  IconBot,
   IconBox,
   IconChart,
   IconContacts,
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { to: '/clientes', label: 'Clientes', icon: IconContacts },
   { to: '/orcamentos', label: 'Orçamentos', icon: IconQuote },
   { to: '/pedidos', label: 'Pedidos', icon: IconTruck },
+  { to: '/neo', label: 'NEO', icon: IconBot },
 ]
 
 const adminNavItems: NavItem[] = [

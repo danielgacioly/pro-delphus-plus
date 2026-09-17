@@ -4,6 +4,105 @@ Sistema interno da Pro Delphus para gestão de tabela de preços, produtos e ger
 
 **Stack**: React + Vite + TypeScript + Tailwind CSS (frontend) · Express + TypeScript + Prisma (backend) · PostgreSQL.
 
+## Funcionalidades
+
+O que cada área do sistema faz e as regras de negócio por trás dela.
+
+### Catálogo de produtos
+
+- Cadastro com SKU, nome, descrição (inglês e português), lista de componentes, setores/áreas médicas (um produto pode pertencer a vários), links de vídeo e tipo — **Modelo completo** ou **Componente/peça avulsa**.
+- Preço em até quatro colunas independentes: **BRL**, **USD final**, **USD distribuidor** e **EUR**. Qualquer uma pode ficar em branco — um produto sem preço numa moeda simplesmente não pode ser orçado nela, mas continua visível no catálogo.
+- Peso (kg) por produto, usado depois no Documento de Exportação do pedido.
+- Mídia (fotos e documentos) por produto, com uma imagem marcada como principal — é ela que entra no orçamento; reordenável e substituível.
+- Brochuras (PDFs) anexadas por produto, para download.
+- Customizações: campos de opção livre por produto (ex.: "Cor" → "Azul, Vermelho, Verde").
+- Busca por texto livre (SKU, nome, setor, descrição) e filtro por tipo/setor.
+- Excluir um produto já usado em algum orçamento não apaga de verdade — o sistema o desativa, preservando os orçamentos que o referenciam.
+
+### Tabela de preços
+
+- Catálogo agrupado por setor, com todas as moedas/tabelas lado a lado.
+- Colunas configuráveis (descrição, componentes, cada moeda) — a escolha fica salva no navegador.
+- Exportação em PDF com os mesmos filtros aplicados na tela.
+- Idioma de exibição (nome do setor, descrição do produto) segue o idioma do catálogo configurado em Minha Conta.
+
+### Clientes
+
+- Cadastro com tipo (**Pessoa física**, **Instituição** ou **Distribuidor**), instituição/hospital vinculado, contatos, CNPJ/Tax ID, site e endereço.
+- Endereço de cobrança e de entrega guardados como texto pronto (`billToText`/`shipToText`) — evita redigitar isso a cada pedido de exportação; é o que alimenta o Invoice e a Packing List automaticamente.
+- Setores de interesse do cliente, usados para casar com o catálogo — inclusive pelo Neo, ao buscar produtos "pra essa área".
+- Marcação manual de **"em atendimento"**, independente do cadastro estar ativo — é o sinalizador de quem está sendo trabalhado agora comercialmente.
+- Ficha do cliente mostra todo o histórico: orçamentos e pedidos gerados, total cotado e data do último orçamento.
+- Cliente com pelo menos um orçamento não pode ser excluído de verdade — é desativado, mantendo o histórico navegável; só quem nunca gerou orçamento pode ser removido por completo.
+
+### Orçamentos
+
+- Dois tipos, escolhidos explicitamente (não inferidos do idioma do documento): **Nacional** — sempre BRL, sempre em português, sem documentação de exportação — e **Internacional** — USD ou EUR, com o documento em português, inglês ou espanhol.
+- Tabela de preço **Final** ou **Distribuidor**; distribuidor só existe em USD — BRL e EUR sempre usam o preço final.
+- Itens buscados do catálogo por nome/SKU/descrição, com título, descrição e preço editáveis por item. Um preço digitado à mão fica registrado ao lado do preço de tabela, e o documento passa a mostrar as duas colunas quando divergem — é o "preço especial" negociado com o cliente.
+- Frete e desconto opcionais; desconto maior que o total do orçamento é rejeitado, para não sair um total negativo por um dígito a mais digitado por engano.
+- Numeração automática no formato `AAMMDD-NN` (ex.: `260915-01`, primeiro orçamento daquele dia), sem colisão mesmo com duas pessoas gerando ao mesmo tempo.
+- Cada orçamento gera automaticamente um **PDF** e uma planilha **Excel**, com foto do produto, texto de observações padrão por idioma/moeda/tipo (ou personalizado) e a assinatura de quem criou (nome, cargo, telefone, WhatsApp, e-mail e imagem da assinatura, configurados em Minha Conta).
+- O tratamento Sr./Sra./Mr./Ms. no documento segue a nacionalidade do **cliente vinculado**, não o idioma do orçamento — um cliente brasileiro tratado num orçamento em inglês continua "Sr."/"Sra.", e vice-versa.
+- Vínculo opcional com um cliente cadastrado; o nome impresso no documento é um retrato daquele momento — renomear o cliente depois não muda orçamentos já emitidos.
+- Editar um orçamento que já tem **pedido concluído** vinculado exige confirmação explícita, porque os valores desse pedido mudam junto.
+- Excluir um orçamento é restrito a administradores, e só é permitido se nenhum pedido foi gerado a partir dele.
+
+### Pedidos
+
+- Gerados a partir de um orçamento existente — herdam itens, preços e moeda dele.
+- Câmbio (USD/BRL ou EUR/BRL) buscado automaticamente numa API externa no momento da criação; pode ser sobrescrito à mão quando a busca falhar ou houver uma cotação combinada com o cliente. Pedido nacional não usa câmbio.
+- Forma de pagamento antecipado: **Transferência bancária** (qualquer venda), **Pix** (só nacional) e **PayPal** com taxa própria (só internacional) — a API recusa a combinação errada mesmo que alguém tente forçar por fora da tela.
+- Peso líquido/bruto do pedido, mais peso por unidade de cada item (usado no Documento de Exportação; um peso digitado no pedido vence o peso de catálogo, que costuma estar em branco).
+- Divisão dos itens por caixa/pacote — controla quantas páginas o Packing List Box gera, uma por caixa.
+- Cada pedido gera um conjunto de documentos, que se regeneram sozinhos a cada edição:
+  - **Invoice** e **Packing List** (só internacional);
+  - **Packing List Box** (sempre — em português com código NCM por item para pedido nacional; em inglês, estilo exportação, para internacional);
+  - **Documento de Exportação** em Excel (só internacional).
+- Upload manual de documentos complementares: AWB, comprovante/boleto (só nacional) e Nota Fiscal.
+- "Baixar tudo" empacota todos os documentos do pedido num único `.zip` — baixar vários arquivos separados esbarra no navegador bloqueando downloads automáticos em sequência.
+- Aviso de **documentos desatualizados** quando o orçamento de origem foi editado depois da última geração dos documentos do pedido.
+- Status **Pendente**/**Concluído**, alternável sem regenerar nenhum documento — é só um marcador (ver também o efeito dele nas Métricas).
+- Excluir um pedido é restrito a administradores e apaga também os arquivos gerados/enviados.
+
+### Métricas (administradores)
+
+Painel de análise comercial, calculado sobre todos os pedidos e orçamentos:
+
+- Total vendido, separado por moeda, mais o equivalente inteiro convertido pra BRL usando o câmbio gravado em cada pedido;
+- Pedidos por mês e por ano, pendentes vs. concluídos;
+- Produtos mais vendidos, por quantidade;
+- Setores mais vendidos — contado por orçamento, não por item (um orçamento com 5 produtos do mesmo setor conta uma vez);
+- **Funil orçamento → pedido**: taxa de conversão e tempo médio/mediano entre orçamento e fechamento, quebrado por vendedor, por setor e por cliente (ranking dos principais clientes por valor efetivamente fechado).
+
+### Minha Pro Delphus (quadro pessoal)
+
+- Quadro estilo Kanban por usuário, com colunas e tarefas arrastáveis. Três colunas padrão (**Pendente**, **Em andamento**, **Concluído**) são criadas automaticamente no primeiro acesso.
+- Tarefas com título, notas, cliente associado (texto livre), tags e prazo; podem linkar direto a um orçamento ou pedido específico.
+- Colunas próprias podem ser criadas, renomeadas (duplo clique) e reordenadas; qualquer uma pode ser marcada como "coluna de concluído" — sempre precisa sobrar pelo menos uma.
+
+### NEO — assistente de IA
+
+- Chat interno (Google Gemini) que responde em português sobre o catálogo: produtos por setor — inclusive setores correlatos, decidido pelo próprio modelo —, preços em qualquer moeda, comparação de mais caro/mais barato/dentro de um teto, situação de clientes ("em atendimento" ou não).
+- Cria e edita **orçamentos**, **pedidos** e **clientes** — mas nunca grava nada sozinho: toda ação de escrita vira um cartão de prévia (com os valores já calculados) que só é efetivado com um clique explícito de confirmação.
+- Regra central, imposta pela API (não só pedida no texto do modelo): moeda, idioma, tipo de preço, peso por item, divisão por caixa e todo campo que muda o total de um documento têm que vir da pessoa — o Neo nunca assume um valor sozinho, sempre pergunta.
+- A conversa persiste durante a sessão do navegador: sair da tela e voltar mantém o histórico; fechar o navegador (ou clicar em "Nova conversa") começa do zero.
+
+### Contas e permissões
+
+- Dois papéis: **Administrador** (acesso total — catálogo, setores, contas e métricas incluídos) e **Usuário**/vendedor (clientes, orçamentos, pedidos, tabela de preços e o quadro pessoal, sem catálogo de produtos nem administração).
+- Cadastro é auto-serviço (`/cadastro`), mas toda conta nova nasce **pendente** — só entra depois que um admin aprova em Administração → Contas. Rejeitar bloqueia o acesso sem apagar o cadastro.
+- Sem recuperação de senha por e-mail: um admin redefine a senha de qualquer conta manualmente.
+- O sistema nunca fica sem nenhum admin ativo — remover o cargo, desativar ou excluir o último administrador é bloqueado pela própria API.
+- Conta de administrador não pode ser excluída (só desativada); excluir uma conta de vendedor transfere para o admin mais antigo tudo que ela criou (produtos atualizados, clientes, orçamentos, pedidos), preservando o histórico.
+
+### Configurações da conta
+
+- Dados pessoais (nome, cargo, telefone fixo, WhatsApp) — usados na assinatura automática dos orçamentos.
+- Idioma padrão do catálogo (inglês ou português) — decide o idioma de exibição do catálogo e qual descrição entra por padrão num orçamento novo.
+- Assinatura em imagem, anexada automaticamente no rodapé de todo orçamento gerado por aquele usuário.
+- Troca de senha (exige a senha atual).
+
 ## Pré-requisitos
 
 Antes de começar, tenha instalado:
