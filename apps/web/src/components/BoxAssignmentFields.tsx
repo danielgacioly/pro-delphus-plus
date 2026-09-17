@@ -1,5 +1,5 @@
 import type { BoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
-import { Button, Field, Input, Select } from './ui'
+import { Button, Field, Input, Select, Table, TBody, Td, THead, Th, Tr } from './ui'
 import { IconPlus } from './icons'
 
 interface ItemLike {
@@ -76,55 +76,79 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
           )}
         </div>
 
-        <div className="space-y-2">
-          {editor.boxLines.map((line) => (
-            <div key={line.id} className="flex flex-wrap items-center gap-2">
-              <Input
-                value={line.label}
-                placeholder="Nome do item ou componente"
-                onChange={(e) => editor.updateBoxLine(line.id, { label: e.target.value })}
-                className="h-9 min-w-48 flex-1 text-[13px]"
-              />
-              <Input
-                type="number"
-                min={1}
-                aria-label="Quantidade"
-                value={line.quantity}
-                onChange={(e) => editor.updateBoxLine(line.id, { quantity: Number(e.target.value) || 1 })}
-                className="tabular h-9 w-16 shrink-0 text-center text-[13px]"
-              />
-              <Select
-                auto
-                aria-label="Caixa"
-                value={line.box}
-                onChange={(e) => editor.updateBoxLine(line.id, { box: Number(e.target.value) })}
-                className="h-9 text-[13px]"
-              >
-                {Array.from({ length: editor.boxCount }, (_, i) => i + 1).map((b) => (
-                  <option key={b} value={b}>
-                    Caixa {b}
-                  </option>
-                ))}
-              </Select>
-              <Button
-                type="button"
-                size="sm"
-                disabled={line.quantity <= 1}
-                title={line.quantity <= 1 ? 'Item de quantidade 1 não pode ser dividido' : 'Dividir em duas caixas'}
-                onClick={() => editor.splitBoxLine(line.id)}
-              >
-                Dividir
-              </Button>
-              <button
-                type="button"
-                onClick={() => editor.removeBoxLine(line.id)}
-                aria-label="Remover linha"
-                className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+        <div className="overflow-x-auto rounded-lg border border-neutral-200/70 bg-white">
+          <Table>
+            <THead>
+              <Tr>
+                <Th>Nome do item ou componente</Th>
+                <Th align="center">Qtd.</Th>
+                <Th>Caixa</Th>
+                <Th />
+              </Tr>
+            </THead>
+            <TBody>
+              {editor.boxLines.map((line) => (
+                <Tr key={line.id}>
+                  <Td>
+                    <Input
+                      value={line.label}
+                      placeholder="Nome do item ou componente"
+                      onChange={(e) => editor.updateBoxLine(line.id, { label: e.target.value })}
+                      className="h-9 min-w-48 text-[13px]"
+                    />
+                  </Td>
+                  <Td>
+                    <Input
+                      type="number"
+                      min={1}
+                      aria-label="Quantidade"
+                      value={line.quantity}
+                      onChange={(e) => editor.updateBoxLine(line.id, { quantity: Number(e.target.value) || 1 })}
+                      className="tabular h-9 w-16 text-center text-[13px]"
+                    />
+                  </Td>
+                  <Td>
+                    <Select
+                      auto
+                      aria-label="Caixa"
+                      value={line.box}
+                      onChange={(e) => editor.updateBoxLine(line.id, { box: Number(e.target.value) })}
+                      className="h-9 text-[13px]"
+                    >
+                      {Array.from({ length: editor.boxCount }, (_, i) => i + 1).map((b) => (
+                        <option key={b} value={b}>
+                          Caixa {b}
+                        </option>
+                      ))}
+                    </Select>
+                  </Td>
+                  <Td>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={line.quantity <= 1}
+                        title={
+                          line.quantity <= 1 ? 'Item de quantidade 1 não pode ser dividido' : 'Dividir em duas caixas'
+                        }
+                        onClick={() => editor.splitBoxLine(line.id)}
+                      >
+                        Dividir
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => editor.removeBoxLine(line.id)}
+                        aria-label="Remover linha"
+                        className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
         </div>
       </div>
 
