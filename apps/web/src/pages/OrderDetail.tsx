@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
+import { AddressFields, BuyerFields, InvoiceFields, WeightFields } from '../components/OrderFormFields'
 import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
@@ -21,7 +22,6 @@ import {
   Select,
   Skeleton,
   TBody,
-  Textarea,
   THead,
   Table,
   TableShell,
@@ -155,6 +155,10 @@ export function OrderDetail() {
       exchangeRate: string
     }>
   >({})
+
+  function updateEditForm(patch: Partial<typeof editForm>) {
+    setEditForm((s) => ({ ...s, ...patch }))
+  }
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['order', id] })
@@ -419,71 +423,34 @@ export function OrderDetail() {
               <h2 className="text-heading mb-4 text-ink-900">Editar pedido</h2>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Pedido de compra">
-                    <Input
-                      value={editForm.purchaseOrder}
-                      onChange={(e) => setEditForm((s) => ({ ...s, purchaseOrder: e.target.value }))}
-                    />
-                  </Field>
-                  <Field label="E-mail do comprador">
-                    <Input
-                      type="email"
-                      value={editForm.orderedByEmail}
-                      onChange={(e) => setEditForm((s) => ({ ...s, orderedByEmail: e.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Data de expedição">
-                    <Input
-                      type="date"
-                      value={editForm.shipDate}
-                      onChange={(e) => setEditForm((s) => ({ ...s, shipDate: e.target.value }))}
-                    />
-                  </Field>
-                </div>
+                <BuyerFields
+                  value={{
+                    purchaseOrder: editForm.purchaseOrder ?? '',
+                    orderedByEmail: editForm.orderedByEmail ?? '',
+                    shipDate: editForm.shipDate ?? '',
+                  }}
+                  onChange={updateEditForm}
+                  variant="edit"
+                />
+
+                <AddressFields
+                  value={{
+                    billToText: editForm.billToText ?? '',
+                    shipToText: editForm.shipToText ?? '',
+                    shipToNote: editForm.shipToNote ?? '',
+                  }}
+                  onChange={updateEditForm}
+                  variant="edit"
+                />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Faturamento (Bill To)">
-                    <Textarea
-                      rows={5}
-                      value={editForm.billToText}
-                      onChange={(e) => setEditForm((s) => ({ ...s, billToText: e.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Entrega (Ship To)">
-                    <Textarea
-                      rows={5}
-                      value={editForm.shipToText}
-                      onChange={(e) => setEditForm((s) => ({ ...s, shipToText: e.target.value }))}
-                    />
-                  </Field>
-                </div>
-                <Field label="Observação de entrega (opcional)">
-                  <Input
-                    value={editForm.shipToNote}
-                    onChange={(e) => setEditForm((s) => ({ ...s, shipToNote: e.target.value }))}
+                  <WeightFields
+                    value={{
+                      netWeightKg: editForm.netWeightKg ?? '',
+                      grossWeightKg: editForm.grossWeightKg ?? '',
+                    }}
+                    onChange={updateEditForm}
                   />
-                </Field>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Peso líquido (kg)">
-                    <Input
-                      type="number"
-                      step="0.001"
-                      className="tabular"
-                      value={editForm.netWeightKg}
-                      onChange={(e) => setEditForm((s) => ({ ...s, netWeightKg: e.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Peso bruto (kg)">
-                    <Input
-                      type="number"
-                      step="0.001"
-                      className="tabular"
-                      value={editForm.grossWeightKg}
-                      onChange={(e) => setEditForm((s) => ({ ...s, grossWeightKg: e.target.value }))}
-                    />
-                  </Field>
                 </div>
 
                 <BoxAssignmentFields editor={boxEditor} items={order.quote.items} />
@@ -543,19 +510,10 @@ export function OrderDetail() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Número da NF">
-                    <Input
-                      value={editForm.nfNumber}
-                      onChange={(e) => setEditForm((s) => ({ ...s, nfNumber: e.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Emissão da NF">
-                    <Input
-                      type="date"
-                      value={editForm.nfDate}
-                      onChange={(e) => setEditForm((s) => ({ ...s, nfDate: e.target.value }))}
-                    />
-                  </Field>
+                  <InvoiceFields
+                    value={{ nfNumber: editForm.nfNumber ?? '', nfDate: editForm.nfDate ?? '' }}
+                    onChange={updateEditForm}
+                  />
                 </div>
 
                 {!isNational && (
