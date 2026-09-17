@@ -168,6 +168,14 @@ export function IconChevronRight(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconChevronLeft(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </Base>
+  )
+}
+
 export function IconSidebar(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

@@ -24,7 +24,7 @@ const DURATION_MS = 3800
 
 const toneStyles: Record<ToastTone, { icon: typeof IconCheckCircle; iconClass: string }> = {
   success: { icon: IconCheckCircle, iconClass: 'text-emerald-500' },
-  error: { icon: IconAlert, iconClass: 'text-brand-600' },
+  error: { icon: IconAlert, iconClass: 'text-danger-600' },
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {

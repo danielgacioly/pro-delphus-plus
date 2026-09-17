@@ -1,5 +1,7 @@
+import { forwardRef } from 'react'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
+import { IconChevronDown } from '../icons'
 
 /** Aparência compartilhada por todos os campos, para altura e foco consistentes. */
 const control =
@@ -34,7 +36,7 @@ export function Field({
       )}
       {children}
       {error ? (
-        <p className="mt-1.5 text-[12px] text-brand-600">{error}</p>
+        <p className="mt-1.5 text-[12px] text-danger-600">{error}</p>
       ) : (
         hint && <p className="mt-1.5 text-[12px] text-neutral-500">{hint}</p>
       )}
@@ -55,14 +57,17 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return <input className={cn(control, 'h-10 px-3', widthClass(className), className)} {...props} />
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      className={cn(control, 'resize-y px-3 py-2.5 leading-relaxed', widthClass(className), className)}
-      {...props}
-    />
-  )
-}
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ className, ...props }, ref) {
+    return (
+      <textarea
+        ref={ref}
+        className={cn(control, 'resize-y px-3 py-2.5 leading-relaxed', widthClass(className), className)}
+        {...props}
+      />
+    )
+  },
+)
 
 /**
  * `auto` encolhe o campo até o conteúdo — usado nas barras de filtro, onde um
@@ -82,18 +87,10 @@ export function Select({
       >
         {children}
       </select>
-      <svg
+      <IconChevronDown
         aria-hidden
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
         className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
+      />
     </div>
   )
 }

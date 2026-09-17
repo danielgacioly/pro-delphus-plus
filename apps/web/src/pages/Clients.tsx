@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO, ClientKind } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
@@ -9,6 +9,7 @@ import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { CLIENT_KIND_LABEL, ClientForm, type ClientFormValues } from '../components/ClientForm'
 import {
+  Alert,
   AnimatedNumber,
   Badge,
   Button,
@@ -153,6 +154,18 @@ export function Clients() {
   const [formError, setFormError] = useState<string | null>(null)
   const [deletingClient, setDeletingClient] = useState<ClientDTO | null>(null)
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('novo') === '1') {
+      setCreating(true)
+      setSearchParams((params) => {
+        params.delete('novo')
+        return params
+      }, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const createMutation = useMutation({
     mutationFn: async (values: ClientFormValues) => {
       const { data } = await api.post<{ client: ClientDTO }>('/clients', values)
@@ -255,9 +268,7 @@ export function Clients() {
 
       <div className="mt-5">
         {isError ? (
-          <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-            Não foi possível carregar os clientes.
-          </div>
+          <Alert tone="error">Não foi possível carregar os clientes.</Alert>
         ) : isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (

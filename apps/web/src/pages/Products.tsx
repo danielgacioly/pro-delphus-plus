@@ -9,6 +9,7 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { DropZone } from '../components/DropZone'
 import { localize, localizeSector } from '../lib/catalogTranslation'
 import {
+  Alert,
   Badge,
   Button,
   ButtonLink,
@@ -298,9 +299,7 @@ export function Products() {
       )}
 
       {isError && (
-        <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-          Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.
-        </div>
+        <Alert tone="error">Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.</Alert>
       )}
 
       {!isLoading && !isError && filteredProducts?.length === 0 && (

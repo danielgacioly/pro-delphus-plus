@@ -16,7 +16,9 @@ import {
 import { api, getErrorMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import {
+  Alert,
   BackLink,
+  Badge,
   Button,
   Card,
   Field,
@@ -290,8 +292,8 @@ export function NewQuote() {
         }}
       >
         {error && (
-          <div className="animate-fade-in mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-            {error}
+          <div className="mb-4">
+            <Alert tone="error">{error}</Alert>
           </div>
         )}
 
@@ -550,7 +552,16 @@ export function NewQuote() {
                       />
                     </Field>
                     <Field
-                      label="Preço customizado"
+                      label={
+                        <span className="inline-flex items-center gap-1.5">
+                          Preço customizado
+                          {item.unitPrice && (
+                            <Badge tone="brand" dot>
+                              Ativo
+                            </Badge>
+                          )}
+                        </span>
+                      }
                       hint="Opcional — sobrescreve o preço de tabela só neste item"
                       className="w-44 shrink-0"
                     >

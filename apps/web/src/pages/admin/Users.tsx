@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn'
 import { ResetPasswordModal } from '../../components/ResetPasswordModal'
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -193,7 +194,9 @@ export function AdminUsers() {
           >
             <h2 className="text-heading mb-4 text-ink-900">Criar conta diretamente</h2>
             {formError && (
-              <div className="mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{formError}</div>
+              <div className="mb-4">
+                <Alert tone="error">{formError}</Alert>
+              </div>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Nome">

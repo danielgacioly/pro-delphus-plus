@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
-import { Badge, Button } from '../components/ui'
+import { Alert, Badge, Button, Textarea } from '../components/ui'
 import { NeoAvatar, NeoMascot } from '../components/NeoMascot'
-import { IconAlert, IconArrowUp, IconCheckCircle } from '../components/icons'
+import { IconArrowUp, IconCheckCircle } from '../components/icons'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -280,12 +280,7 @@ export function Neo() {
               </div>
             )}
 
-            {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-2.5 text-[13px] text-brand-700">
-                <IconAlert className="h-4 w-4 shrink-0" />
-                {error}
-              </div>
-            )}
+            {error && <Alert tone="error">{error}</Alert>}
           </div>
 
           <div ref={bottomRef} />
@@ -293,19 +288,14 @@ export function Neo() {
 
         <div className="shrink-0 pb-6">
           <div className="flex items-end gap-2">
-            <textarea
+            <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
               placeholder="Pergunte alguma coisa ao NEO…"
-              className={cn(
-                'max-h-32 w-full flex-1 resize-none overflow-y-auto rounded-lg border border-neutral-200 bg-white px-4 py-2.5',
-                'text-[13.5px] leading-relaxed text-ink-900 shadow-xs placeholder:text-neutral-400',
-                'transition-[border-color,box-shadow] duration-150 ease-out hover:border-neutral-300',
-                'focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10',
-              )}
+              className="max-h-32 flex-1 resize-none overflow-y-auto px-4 text-[13.5px] leading-relaxed"
             />
             <button
               onClick={handleSend}

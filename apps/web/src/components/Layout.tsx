@@ -21,11 +21,13 @@ import {
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
 
+// Sem preferência salva ainda (primeira visita), o padrão é minimizada.
 function loadCollapsed(): boolean {
   try {
-    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
+    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    return stored === null ? true : stored === '1'
   } catch {
-    return false
+    return true
   }
 }
 
@@ -142,7 +144,7 @@ export function Layout() {
           >
             <IconSidebar className="h-[18px] w-[18px]" />
           </button>
-          <Link to="/" className={cn('lg:hidden', collapsed && 'lg:block')} aria-label="Início">
+          <Link to="/" className="lg:hidden" aria-label="Início">
             <img src={logo} alt="" className="h-8 w-auto" />
           </Link>
         </div>

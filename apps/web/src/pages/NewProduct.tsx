@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
 import { DropZone } from '../components/DropZone'
-import { BackLink, Button, Card, Page } from '../components/ui'
+import { Alert, BackLink, Button, Card, FormSection, Page } from '../components/ui'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -99,7 +99,9 @@ export function NewProduct() {
       </div>
 
       {error && (
-        <div className="animate-fade-in mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{error}</div>
+        <div className="mb-4">
+          <Alert tone="error">{error}</Alert>
+        </div>
       )}
 
       <Card className="p-6">
@@ -109,35 +111,33 @@ export function NewProduct() {
             createProduct.mutate()
           }}
         >
-          <div className="grid grid-cols-4 gap-x-4 gap-y-5">
-            <ProductFieldSet
-              value={form}
-              onChange={(patch) => setForm((s) => ({ ...s, ...patch }))}
-              sectors={sectors ?? []}
-            />
+          <ProductFieldSet
+            value={form}
+            onChange={(patch) => setForm((s) => ({ ...s, ...patch }))}
+            sectors={sectors ?? []}
+          />
 
-            <div className="text-eyebrow col-span-4 mt-3 border-t border-neutral-200/70 pt-5 text-neutral-400">
-              Arquivos (opcional)
+          <FormSection title="Arquivos (opcional)">
+            <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+              <FilePicker
+                label="Mídias"
+                accept="image/*"
+                hint="Arraste imagens"
+                files={files}
+                onAdd={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+                onClear={() => setFiles([])}
+              />
+
+              <FilePicker
+                label="Brochuras"
+                accept=".pdf,application/pdf"
+                hint="Arraste PDFs"
+                files={brochureFiles}
+                onAdd={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
+                onClear={() => setBrochureFiles([])}
+              />
             </div>
-
-            <FilePicker
-              label="Mídias"
-              accept="image/*"
-              hint="Arraste imagens"
-              files={files}
-              onAdd={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
-              onClear={() => setFiles([])}
-            />
-
-            <FilePicker
-              label="Brochuras"
-              accept=".pdf,application/pdf"
-              hint="Arraste PDFs"
-              files={brochureFiles}
-              onAdd={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
-              onClear={() => setBrochureFiles([])}
-            />
-          </div>
+          </FormSection>
 
           <div className="mt-6 flex justify-end gap-2 border-t border-neutral-200/70 pt-5">
             <Button type="button" onClick={() => navigate('/produtos')}>

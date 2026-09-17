@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '../../lib/cn'
+import { Spinner } from './Feedback'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
@@ -15,7 +16,7 @@ const variants: Record<Variant, string> = {
   secondary:
     'border border-neutral-200 bg-white text-ink-800 shadow-xs hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-sm',
   ghost: 'text-neutral-600 hover:bg-neutral-500/10 hover:text-ink-900',
-  danger: 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow-md',
+  danger: 'bg-danger-600 text-white shadow-sm hover:bg-danger-700 hover:shadow-md',
 }
 
 const sizes: Record<Size, string> = {
@@ -34,10 +35,23 @@ interface CommonProps {
 export function Button({
   variant = 'secondary',
   size = 'md',
+  isLoading = false,
   className,
+  disabled,
+  children,
   ...props
-}: CommonProps & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button className={cn(base, variants[variant], sizes[size], className)} {...props} />
+}: CommonProps & { isLoading?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={cn(base, variants[variant], sizes[size], className)}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
+      {...props}
+    >
+      {isLoading && <Spinner className="h-4 w-4" />}
+      {children}
+    </button>
+  )
 }
 
 /** Mesma aparência do Button, mas navega (react-router Link). */
@@ -66,9 +80,9 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-500',
-        'transition-[transform,background-color,color] duration-150 ease-out',
-        'hover:bg-neutral-500/10 hover:text-ink-900 active:scale-90',
+        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+        variants.ghost,
+        'transition-[transform,background-color,color] duration-150 ease-out active:scale-90',
         'disabled:pointer-events-none disabled:opacity-40',
         className,
       )}
