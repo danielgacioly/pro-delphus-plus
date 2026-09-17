@@ -1,7 +1,11 @@
-import type { ComponentType, SVGProps } from 'react'
+import { useMemo, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@prodelphusplus/shared'
+import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { Page, Section, ButtonLink } from '../components/ui'
+import { cn } from '../lib/cn'
+import { Page, Section, ButtonLink, Skeleton } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
   IconBoard,
@@ -66,6 +70,18 @@ const secondaryShortcuts: Shortcut[] = [
   },
 ]
 
+const currencySymbol: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
+
+async function fetchQuotes() {
+  const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
+  return data.quotes
+}
+
+async function fetchOrders() {
+  const { data } = await api.get<{ orders: OrderDTO[] }>('/orders')
+  return data.orders
+}
+
 function greeting() {
   const hour = new Date().getHours()
   if (hour < 12) return 'Bom dia'
@@ -73,16 +89,20 @@ function greeting() {
   return 'Boa noite'
 }
 
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
 function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
   const { to, title, description, icon: Icon } = shortcut
   return (
     <Link
       to={to}
-      className="group flex flex-col rounded-2xl border border-black/[0.06] bg-white p-5 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
+      className="group flex flex-col rounded-2xl border border-black/[0.06] bg-white p-4 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
     >
-      <Icon className="h-[22px] w-[22px] text-brand-600" />
-      <div className="pt-7">
-        <h3 className="flex items-center gap-1 text-[17px] font-semibold tracking-[-0.022em] text-ink-900">
+      <Icon className="h-5 w-5 text-brand-600" />
+      <div className="pt-5">
+        <h3 className="flex items-center gap-1 text-[16px] font-semibold tracking-[-0.02em] text-ink-900">
           {title}
           <IconChevronRight
             className="h-3.5 w-3.5 text-neutral-400 transition-transform duration-150 ease-out group-hover:translate-x-0.5"
@@ -95,37 +115,179 @@ function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
   )
 }
 
+/** Uma coluna do painel do mês: valor tabular grande, rótulo discreto embaixo. */
+function MonthStat({
+  value,
+  label,
+  sub,
+  divider,
+  className,
+}: {
+  value: ReactNode
+  label: string
+  sub?: string
+  divider?: boolean
+  className?: string
+}) {
+  return (
+    // O traço separador some quando as colunas empilham no celular.
+    <div className={cn('min-w-0', divider && 'sm:border-l sm:border-black/[0.07] sm:pl-4', className)}>
+      <p className="tabular truncate text-[19px] leading-tight font-semibold tracking-[-0.02em] text-ink-900">{value}</p>
+      <p className="mt-0.5 truncate text-[12.5px] text-neutral-500">{label}</p>
+      {sub && <p className="tabular truncate text-[12px] text-neutral-400">{sub}</p>}
+    </div>
+  )
+}
+
+/** Linha de lista de atividade: identificador + cliente, valor e data à direita. */
+function ActivityRow({
+  to,
+  title,
+  subtitle,
+  amount,
+  date,
+  first,
+}: {
+  to: string
+  title: string
+  subtitle: string
+  amount: string
+  date: string
+  first: boolean
+}) {
+  return (
+    <Link to={to} className="relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]">
+      {!first && <span aria-hidden className="absolute top-0 right-0 left-4 h-px bg-black/[0.06]" />}
+      <span className="tabular shrink-0 text-[13px] font-medium text-ink-900">{title}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-500">{subtitle}</span>
+      <span className="tabular shrink-0 text-[13px] text-ink-800">{amount}</span>
+      <span className="tabular w-10 shrink-0 text-right text-[12px] text-neutral-400">{date}</span>
+    </Link>
+  )
+}
+
+function ActivityList({ title, to, empty, children }: { title: string; to: string; empty: boolean; children: ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
+      <div className="flex h-10 items-center justify-between border-b border-black/[0.06] px-4">
+        <h3 className="text-[13px] font-semibold text-ink-900">{title}</h3>
+        <Link to={to} className="text-[12.5px] text-brand-600 hover:text-brand-700">
+          Ver todos
+        </Link>
+      </div>
+      {empty ? <p className="px-4 py-5 text-[13px] text-neutral-400">Nada por aqui ainda.</p> : children}
+    </div>
+  )
+}
+
 export function Home() {
   const { user } = useAuth()
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
   const isAdmin = user?.role === 'ADMIN'
 
+  const { data: quotes, isLoading: loadingQuotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
+  const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
+  const loading = loadingQuotes || loadingOrders
+
+  const myQuotes = useMemo(
+    () => (quotes ?? []).filter((q) => q.createdBy.id === user?.id),
+    [quotes, user?.id],
+  )
+  const myOrders = useMemo(
+    () => (orders ?? []).filter((o) => o.createdBy.id === user?.id),
+    [orders, user?.id],
+  )
+
+  const month = useMemo(() => {
+    const start = new Date()
+    start.setDate(1)
+    start.setHours(0, 0, 0, 0)
+    const since = (iso: string) => new Date(iso).getTime() >= start.getTime()
+
+    const ordersOfMonth = myOrders.filter((o) => since(o.createdAt))
+    // O valor do pedido vive no orçamento vinculado; moedas não se somam entre
+    // si, então cada uma vira uma linha própria (maior primeiro).
+    const byCurrency = new Map<string, number>()
+    for (const order of ordersOfMonth) {
+      const currency = order.quote.currency
+      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + Number(order.quote.total))
+    }
+    const sales = [...byCurrency.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([currency, total]) => `${currencySymbol[currency] ?? currency} ${formatAmount(total)}`)
+
+    return {
+      quotes: myQuotes.filter((q) => since(q.createdAt)).length,
+      orders: ordersOfMonth.length,
+      sales,
+      label: new Date().toLocaleDateString('pt-BR', { month: 'long' }),
+    }
+  }, [myQuotes, myOrders])
+
+  const recentQuotes = useMemo(
+    () => [...myQuotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4),
+    [myQuotes],
+  )
+  const recentOrders = useMemo(
+    () => [...myOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4),
+    [myOrders],
+  )
+
   return (
     <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
-      <div className="-mt-2 flex flex-wrap gap-2">
-        <ButtonLink to="/orcamentos/novo" variant="primary" size="lg">
-          <IconPlus className="h-4 w-4" strokeWidth={2} />
-          Novo Orçamento
-        </ButtonLink>
-        <ButtonLink to="/pedidos/novo" size="lg">
-          <IconPlus className="h-4 w-4 text-neutral-500" strokeWidth={2} />
-          Novo Pedido
-        </ButtonLink>
-        <ButtonLink to="/clientes?novo=1" size="lg">
-          <IconPlus className="h-4 w-4 text-neutral-500" strokeWidth={2} />
-          Novo Cliente
-        </ButtonLink>
-        {isAdmin && (
-          <ButtonLink to="/produtos/novo" size="lg">
-            <IconPlus className="h-4 w-4 text-neutral-500" strokeWidth={2} />
-            Novo Produto
+      {/* Ações em 2×2 à esquerda e o resumo do mês ocupando a direita: a linha
+          fica cheia sem inventar conteúdo, e nenhuma das duas peças estica. */}
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,330px)_1fr]">
+        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+          <ButtonLink to="/orcamentos/novo" variant="primary" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
+            <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
+            Novo Orçamento
           </ButtonLink>
-        )}
+          <ButtonLink to="/pedidos/novo" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
+            <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+            Novo Pedido
+          </ButtonLink>
+          <ButtonLink to="/clientes?novo=1" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
+            <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+            Novo Cliente
+          </ButtonLink>
+          {isAdmin && (
+            <ButtonLink to="/produtos/novo" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
+              <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+              Novo Produto
+            </ButtonLink>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+          <p className="text-[13px] font-medium text-neutral-500">
+            Em {month.label}, você fez
+          </p>
+          {loading ? (
+            <div className="mt-3 flex gap-10">
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-24" />
+            </div>
+          ) : (
+            <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-[auto_auto_minmax(0,1fr)]">
+              <MonthStat value={month.quotes} label="orçamentos" />
+              <MonthStat value={month.orders} label="pedidos" divider />
+              <MonthStat
+                value={month.sales[0] ?? '—'}
+                label="em vendas"
+                sub={month.sales.length > 1 ? `+ ${month.sales.slice(1).join(' · ')}` : undefined}
+                divider
+                className="col-span-2 sm:col-span-1"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <Link
         to="/neo"
-        className="group mt-7 flex flex-col items-start gap-4 rounded-2xl bg-ink-900 py-4 pr-4 pl-4 text-white transition-colors duration-150 ease-out hover:bg-ink-800 sm:flex-row sm:items-center sm:justify-between sm:pl-5"
+        className="group mt-4 flex flex-col items-start gap-4 rounded-2xl bg-ink-900 p-4 text-white transition-colors duration-150 ease-out hover:bg-ink-800 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex items-center gap-3.5">
           <NeoAvatar className="h-10 w-10 shrink-0" />
@@ -142,7 +304,7 @@ export function Home() {
         </span>
       </Link>
 
-      <Section title="Principal" className="mt-12">
+      <Section title="Principal" className="mt-8">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {primaryShortcuts.map((shortcut) => (
             <PrimaryTile key={shortcut.to} shortcut={shortcut} />
@@ -150,13 +312,49 @@ export function Home() {
         </div>
       </Section>
 
-      <Section title="Mais ferramentas" className="mt-10">
+      <Section title="Minha atividade recente" className="mt-8">
+        <div className="grid gap-3 lg:grid-cols-2">
+          <ActivityList title="Orçamentos" to="/orcamentos" empty={!loading && recentQuotes.length === 0}>
+            {loading
+              ? <div className="space-y-2 px-4 py-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-4" />)}</div>
+              : recentQuotes.map((q, i) => (
+                  <ActivityRow
+                    key={q.id}
+                    to={`/orcamentos/${q.id}/editar`}
+                    title={q.quoteNumber}
+                    subtitle={q.clientName}
+                    amount={`${currencySymbol[q.currency] ?? q.currency} ${formatAmount(q.total)}`}
+                    date={shortDate(q.createdAt)}
+                    first={i === 0}
+                  />
+                ))}
+          </ActivityList>
+
+          <ActivityList title="Pedidos" to="/pedidos" empty={!loading && recentOrders.length === 0}>
+            {loading
+              ? <div className="space-y-2 px-4 py-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-4" />)}</div>
+              : recentOrders.map((o, i) => (
+                  <ActivityRow
+                    key={o.id}
+                    to={`/pedidos/${o.id}`}
+                    title={`#${formatOrderNumber(o.orderNumber)}`}
+                    subtitle={o.quote.clientName}
+                    amount={`${currencySymbol[o.quote.currency] ?? o.quote.currency} ${formatAmount(o.quote.total)}`}
+                    date={shortDate(o.createdAt)}
+                    first={i === 0}
+                  />
+                ))}
+          </ActivityList>
+        </div>
+      </Section>
+
+      <Section title="Mais ferramentas" className="mt-8">
         <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
           {secondaryShortcuts.map(({ to, title, description, icon: Icon }, i) => (
             <Link
               key={to}
               to={to}
-              className="group relative flex h-12 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]"
+              className="group relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]"
             >
               {/* Separador recuado até o texto, como nas listas agrupadas do macOS. */}
               {i > 0 && <span aria-hidden className="absolute top-0 right-0 left-11 h-px bg-black/[0.06]" />}

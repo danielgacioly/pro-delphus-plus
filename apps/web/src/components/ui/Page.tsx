@@ -86,7 +86,7 @@ export function Page({
       </header>
 
       <div className={cn(container, 'px-6 pb-24 sm:px-10')}>
-        <div className="pt-2 pb-8">
+        <div className="pt-1.5 pb-6">
           {back && (
             <div className="-mt-1 mb-1.5">
               <BackLink to={back.to}>{back.label}</BackLink>
@@ -114,7 +114,7 @@ export function Section({
   className?: string
 }) {
   return (
-    <section className={cn('mt-11 first:mt-0', className)}>
+    <section className={cn('mt-9 first:mt-0', className)}>
       {(title || action) && (
         <div className="mb-3 flex items-end justify-between gap-4">
           {title && <h2 className="text-heading text-ink-900">{title}</h2>}
