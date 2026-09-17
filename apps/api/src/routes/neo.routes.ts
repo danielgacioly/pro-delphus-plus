@@ -13,7 +13,7 @@ import { env, IS_PRODUCTION } from '../lib/env.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { buildNeoSystemInstruction } from '../lib/neoKnowledge.js'
-import { toPublicPendingAction, getPendingAction, discardPendingAction } from '../lib/neoPendingActions.js'
+import { toPublicPendingAction, getPendingAction, discardPendingAction, redactInternalIds } from '../lib/neoPendingActions.js'
 import {
   buscarProdutos,
   listarClientes,
@@ -426,7 +426,7 @@ neoRouter.post(
 
       const calls = response.functionCalls ?? []
       if (calls.length === 0) {
-        res.json({ reply: response.text ?? '', pendingAction })
+        res.json({ reply: redactInternalIds(response.text ?? ''), pendingAction })
         return
       }
 
@@ -465,7 +465,7 @@ neoRouter.post(
       ],
       config: { systemInstruction: buildNeoSystemInstruction() },
     })
-    res.json({ reply: finalResponse.text ?? '', pendingAction })
+    res.json({ reply: redactInternalIds(finalResponse.text ?? ''), pendingAction })
   }),
 )
 

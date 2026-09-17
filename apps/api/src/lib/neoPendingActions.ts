@@ -39,6 +39,18 @@ export function discardPendingAction(id: string): void {
   store.delete(id)
 }
 
+// O NEO já é instruído a nunca escrever um id interno na resposta, mas isso é
+// texto de modelo — não dá pra confiar só na instrução. Riscado aqui, no
+// servidor, antes de qualquer texto (resposta do chat ou resumo do cartão de
+// confirmação) sair pra tela. Só o texto passa por isto — `action.id` (o id
+// da própria pending action, que o front usa pra confirmar/cancelar) e o
+// `payload` (ids reais que a confirmação de fato precisa) não são tocados.
+const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
+
+export function redactInternalIds(text: string): string {
+  return text.replace(UUID_PATTERN, '(id interno)')
+}
+
 export function toPublicPendingAction(action: PendingAction) {
-  return { id: action.id, kind: action.kind, summary: action.summary, payload: action.payload }
+  return { id: action.id, kind: action.kind, summary: redactInternalIds(action.summary), payload: action.payload }
 }
