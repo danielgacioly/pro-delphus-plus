@@ -6,7 +6,7 @@ import { api, getErrorMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
-import { BackLink, Button, Card, Field, FormSection, Input, Page, Select, Textarea } from '../components/ui'
+import { Alert, BackLink, Button, Card, Field, FormSection, Input, Page, Select, Textarea } from '../components/ui'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -192,15 +192,19 @@ export function NewOrder() {
       </div>
 
       {duplicateFrom && (
-        <div className="animate-fade-in mb-4 rounded-xl bg-amber-500/12 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
-          {sourceOrder
-            ? `Campos preenchidos a partir do pedido #${formatOrderNumber(sourceOrder.orderNumber)}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
-            : 'Carregando dados do pedido a duplicar…'}
+        <div className="mb-4">
+          <Alert tone="warning">
+            {sourceOrder
+              ? `Campos preenchidos a partir do pedido #${formatOrderNumber(sourceOrder.orderNumber)}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
+              : 'Carregando dados do pedido a duplicar…'}
+          </Alert>
         </div>
       )}
 
       {error && (
-        <div className="animate-fade-in mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{error}</div>
+        <div className="mb-4">
+          <Alert tone="error">{error}</Alert>
+        </div>
       )}
 
       <form

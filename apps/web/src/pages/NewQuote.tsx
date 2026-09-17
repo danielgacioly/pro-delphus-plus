@@ -16,6 +16,7 @@ import {
 import { api, getErrorMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import {
+  Alert,
   BackLink,
   Button,
   Card,
@@ -290,8 +291,8 @@ export function NewQuote() {
         }}
       >
         {error && (
-          <div className="animate-fade-in mb-4 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-            {error}
+          <div className="mb-4">
+            <Alert tone="error">{error}</Alert>
           </div>
         )}
 
