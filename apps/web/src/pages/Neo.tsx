@@ -9,7 +9,7 @@ interface ChatMessage {
   role: 'user' | 'model'
   text: string
   // Resultado de um clique em Confirmar/Cancelar. Aparece como aviso, não como
-  // bolha, mas vai no histórico: sem isso o Neo não sabia que o orçamento foi
+  // bolha, mas vai no histórico: sem isso o NEO não sabia que o orçamento foi
   // criado (nem o número dele) e não conseguia seguir pro pedido.
   event?: 'done' | 'cancelled'
 }
@@ -164,7 +164,7 @@ export function Neo() {
       setMessages((prev) => [...prev, { role: 'model', text: describeConfirmResult(pending.kind, result), event: 'done' }])
       setPending(null)
     } catch (err) {
-      setError(getErrorMessage(err, 'Não deu pra confirmar agora. Tenta de novo ou peça pro Neo montar de novo.'))
+      setError(getErrorMessage(err, 'Não deu pra confirmar agora. Tenta de novo ou peça pro NEO montar de novo.'))
     } finally {
       setLoading(false)
     }
@@ -202,7 +202,7 @@ export function Neo() {
     <div className="flex h-screen flex-col overflow-hidden">
       <header className="shrink-0 border-b border-neutral-200/70 px-6 pt-8 pb-6 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3.5">
-          {/* Só respira enquanto o Neo está pensando: o movimento vira sinal de
+          {/* Só respira enquanto o NEO está pensando: o movimento vira sinal de
               estado, não enfeite se mexendo o tempo todo. */}
           <NeoAvatar thinking={loading} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
@@ -258,10 +258,10 @@ export function Neo() {
             )}
 
             {loading && (
-              <div className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400 [animation-delay:-0.3s]" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400 [animation-delay:-0.15s]" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400" />
+              <div className="animate-neo-float flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
               </div>
             )}
 

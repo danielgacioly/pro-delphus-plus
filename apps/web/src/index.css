@@ -225,6 +225,18 @@ h3 {
   }
 }
 
+/* Balão de "digitando" do NEO: flutua devagar pra cima e pra baixo, em vez
+   de piscar — leitura mais "vivo, pensando" do que "carregando". */
+@keyframes neo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 150% 0;
@@ -248,6 +260,10 @@ h3 {
 
 .animate-neo-breathe {
   animation: neo-breathe 1.5s ease-in-out infinite;
+}
+
+.animate-neo-float {
+  animation: neo-float 1.8s ease-in-out infinite;
 }
 
 .skeleton {

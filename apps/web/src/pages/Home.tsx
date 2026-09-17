@@ -132,7 +132,7 @@ export function Home() {
   const isAdmin = user?.role === 'ADMIN'
 
   return (
-    <Page title={`${greeting()}, ${firstName}.`} description="O que você deseja fazer hoje?">
+    <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
       <div className="flex flex-wrap gap-3">
         <ButtonLink to="/orcamentos/novo" variant="primary" size="lg">
           <IconPlus className="h-4 w-4" />
@@ -165,9 +165,9 @@ export function Home() {
         <div className="flex items-center gap-4">
           <NeoAvatar className="h-14 w-14 shrink-0 ring-2 ring-white/15" />
           <div>
-            <h3 className="text-heading text-white">Converse com o Neo</h3>
+            <h3 className="text-heading text-white">Vamos bater um papo!</h3>
             <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-              Pergunte sobre preços e produtos, ou peça para montar um orçamento por você.
+              Pergunte ao NEO sobre preços, clientes e produtos, ou peça para montar um orçamento ou um pedido por você.
             </p>
           </div>
         </div>

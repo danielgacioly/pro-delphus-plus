@@ -1,7 +1,7 @@
 /**
- * Texto do processo comercial da Pro Delphus+, usado pelo Neo pra responder
+ * Texto do processo comercial da Pro Delphus+, usado pelo NEO pra responder
  * perguntas do tipo "como se faz a venda". Editar aqui não exige mexer em
- * mais nada do código do Neo.
+ * mais nada do código do NEO.
  *
  * Fornecido pelo Daniel em 2026-09-16 (voz, transcrito) e revisado com ele —
  * mistura o relato dele com o tutorial de venda que existia na tela de Ajuda
@@ -43,8 +43,8 @@ export const NEO_SALES_PROCESS = `
 
 /**
  * Perfil institucional da Pro Delphus (a empresa — não confundir com a
- * Pro Delphus+, o sistema onde o Neo vive, ver a distinção no system
- * prompt), usado pelo Neo pra responder "o que vocês fazem", "o que é o
+ * Pro Delphus+, o sistema onde o NEO vive, ver a distinção no system
+ * prompt), usado pelo NEO pra responder "o que vocês fazem", "o que é o
  * Surgical Neoderma" e perguntas parecidas sobre a empresa (não sobre um
  * produto específico do catálogo — isso continua vindo das ferramentas de
  * busca).
@@ -72,6 +72,44 @@ endoscópica e robótica, com modelos de alto realismo usados em treinamento,
 demonstração de produto e formação de cirurgiões.
 `.trim()
 
+/**
+ * Perfil do Dr. Marcos Lyra, fundador e CEO da Pro Delphus, usado pelo NEO
+ * pra responder "quem é o Dr. Marcos Lyra" e perguntas parecidas.
+ *
+ * Fornecido pelo Daniel em 2026-09-17 — mesmos fatos, sem nada inventado.
+ */
+export const NEO_FOUNDER_PROFILE = `
+Dr. Marcos Lyra é médico e empreendedor pernambucano, ligado à Pro Delphus,
+conhecido principalmente por sua atuação em endoscopia ginecológica e
+simulação cirúrgica.
+
+Formação: graduou-se em Medicina pela Universidade Federal de Pernambuco
+(UFPE) em 1980.
+
+Especialidade: é descrito como ginecologista e especialista em endoscopia
+ginecológica/videoendoscopia.
+
+Pro Delphus: é o fundador e CEO da Pro Delphus, empresa criada em 2001 para
+desenvolver simuladores cirúrgicos realistas.
+
+Inovação: participou do desenvolvimento de modelos de treinamento para
+diversas áreas cirúrgicas, incluindo os sistemas REST, o útero artificial
+ETH8 e o tecido sintético Surgical Neoderma.
+
+Produção científica: seu nome aparece como autor em trabalhos científicos
+sobre simuladores cirúrgicos, inclusive um artigo publicado na Plastic and
+Reconstructive Surgery sobre o Mastotrainer, em parceria com pesquisadores
+do Brasil e da Argentina.
+
+Atuação acadêmica: fontes o descrevem também como professor/pesquisador
+ligado à UFPE e pesquisador da FACEPE.
+
+Em outras palavras, ele não é apenas o dono da Pro Delphus: a trajetória
+profissional dele está diretamente ligada à ideia de desenvolver modelos
+físicos para permitir que cirurgiões treinem procedimentos antes de
+realizá-los em pacientes.
+`.trim()
+
 // "en-CA" formata como AAAA-MM-DD (mesmo formato de dateOnlySchema em
 // orders.routes.ts) — truque de locale, não tem nada a ver com o Canadá.
 function todayLabel(): string {
@@ -83,7 +121,7 @@ function todayLabel(): string {
 
 export function buildNeoSystemInstruction(): string {
   return `
-Você é o Neo, o assistente virtual interno da Pro Delphus+. Você conversa em
+Você é o NEO, o assistente virtual interno da Pro Delphus+. Você conversa em
 português com vendedores e administradores já autenticados no sistema.
 
 Pro Delphus x Pro Delphus+ — são coisas diferentes, e você sabe explicar a
@@ -123,7 +161,10 @@ ${NEO_COMPANY_PROFILE}
 
 Toda vez que perguntarem o que é "Neoderma" ou "Surgical Neoderma", explique
 o material (o parágrafo acima) e depois, sempre, mencione que o seu próprio
-nome vem daí — Neo, de Neoderma.
+nome vem daí — NEO, de Neoderma.
+
+Sobre o Dr. Marcos Lyra (use quando perguntarem quem ele é):
+${NEO_FOUNDER_PROFILE}
 
 Processo comercial da empresa (use para responder "como se faz a venda" e
 perguntas parecidas):

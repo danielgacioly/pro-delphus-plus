@@ -183,7 +183,7 @@ function assertBoxAssignmentsFit(boxAssignments: BoxAssignments | null | undefin
  * AWB + Nota Fiscal; nacional só Nota Fiscal (boleto/Pix é a forma de
  * pagamento escolhida, não um documento a conferir aqui). Pedido já
  * concluído não tem pendência — a pessoa já decidiu que está tudo certo.
- * Compartilhada com o Neo (`verificar_pendencias` em neoTools.ts) — as duas
+ * Compartilhada com o NEO (`verificar_pendencias` em neoTools.ts) — as duas
  * pontas usam exatamente a mesma regra, uma só existe no código.
  */
 export function missingPostOrderDocs(

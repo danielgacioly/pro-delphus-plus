@@ -222,7 +222,7 @@ interface CriarTarefaArgs {
 }
 
 /**
- * Única escrita do Neo que não passa por prévia+confirmação (ver a exceção
+ * Única escrita do NEO que não passa por prévia+confirmação (ver a exceção
  * na regra inegociável em neoKnowledge.ts): é uma tarefa pessoal no quadro
  * de quem está conversando, não um documento comercial — baixo risco,
  * reversível na hora pela própria pessoa (editar/apagar na tela).
@@ -371,7 +371,7 @@ function money(currency: string, value: number) {
 }
 
 // O schema de orçamento tem defaults pensados pro formulário (INTERNATIONAL,
-// USD, PT, FINAL). Pro Neo, cair num default desses é exatamente o "chute"
+// USD, PT, FINAL). Pro NEO, cair num default desses é exatamente o "chute"
 // que a regra proíbe — e o modelo lite escorrega nisso com mais facilidade que
 // o flash. Então as decisões que mudam preço/documento são exigidas aqui, e a
 // recusa volta pro modelo como instrução de perguntar.
@@ -420,7 +420,7 @@ export async function proporEdicaoOrcamento(args: { orcamentoId: string } & Crea
   missingQuoteDecisions(rest)
 
   // O aviso de "pedido concluído vinculado" mora na rota PATCH /quotes/:id, e o
-  // Neo chama `updateQuoteRecord` direto — sem isto ele editaria os valores de
+  // NEO chama `updateQuoteRecord` direto — sem isto ele editaria os valores de
   // um pedido já concluído sem ninguém ser avisado.
   const completed = await completedOrdersFor(orcamentoId)
   const numbers = completed.map((o) => o.orderNumber).join(', ')
@@ -582,7 +582,7 @@ export async function proporPedido(
   // ao orçamento quando existirem — isso é dado real, não "chute" (ver
   // regra em neoKnowledge.ts). Sem cliente vinculado ou sem esses campos
   // preenchidos no cadastro, `orderFieldsSchema.parse` abaixo falha por
-  // campo obrigatório ausente, e o Neo (instruído pelo system prompt) deve
+  // campo obrigatório ausente, e o NEO (instruído pelo system prompt) deve
   // perguntar antes de tentar de novo.
   const quote = await prisma.quote.findUnique({
     where: { id: args.quoteId },

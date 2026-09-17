@@ -30,7 +30,7 @@ O que cada área do sistema faz e as regras de negócio por trás dela.
 
 - Cadastro com tipo (**Pessoa física**, **Instituição** ou **Distribuidor**), instituição/hospital vinculado, contatos, CNPJ/Tax ID, site e endereço.
 - Endereço de cobrança e de entrega guardados como texto pronto (`billToText`/`shipToText`) — evita redigitar isso a cada pedido de exportação; é o que alimenta o Invoice e a Packing List automaticamente.
-- Setores de interesse do cliente, usados para casar com o catálogo — inclusive pelo Neo, ao buscar produtos "pra essa área".
+- Setores de interesse do cliente, usados para casar com o catálogo — inclusive pelo NEO, ao buscar produtos "pra essa área".
 - Marcação manual de **"em atendimento"**, independente do cadastro estar ativo — é o sinalizador de quem está sendo trabalhado agora comercialmente.
 - Ficha do cliente mostra todo o histórico: orçamentos e pedidos gerados, total cotado e data do último orçamento.
 - Cliente com pelo menos um orçamento não pode ser excluído de verdade — é desativado, mantendo o histórico navegável; só quem nunca gerou orçamento pode ser removido por completo.
@@ -85,7 +85,7 @@ Painel de análise comercial, calculado sobre todos os pedidos e orçamentos:
 
 - Chat interno (Google Gemini) que responde em português sobre o catálogo: produtos por setor — inclusive setores correlatos, decidido pelo próprio modelo —, preços em qualquer moeda, comparação de mais caro/mais barato/dentro de um teto, situação de clientes ("em atendimento" ou não).
 - Cria e edita **orçamentos**, **pedidos** e **clientes** — mas nunca grava nada sozinho: toda ação de escrita vira um cartão de prévia (com os valores já calculados) que só é efetivado com um clique explícito de confirmação.
-- Regra central, imposta pela API (não só pedida no texto do modelo): moeda, idioma, tipo de preço, peso por item, divisão por caixa e todo campo que muda o total de um documento têm que vir da pessoa — o Neo nunca assume um valor sozinho, sempre pergunta.
+- Regra central, imposta pela API (não só pedida no texto do modelo): moeda, idioma, tipo de preço, peso por item, divisão por caixa e todo campo que muda o total de um documento têm que vir da pessoa — o NEO nunca assume um valor sozinho, sempre pergunta.
 - A conversa persiste durante a sessão do navegador: sair da tela e voltar mantém o histórico; fechar o navegador (ou clicar em "Nova conversa") começa do zero.
 
 ### Contas e permissões

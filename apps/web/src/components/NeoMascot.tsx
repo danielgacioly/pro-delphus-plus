@@ -4,7 +4,7 @@ import avatar from '../assets/neo-avatar.png'
 import mascote from '../assets/neo-mascote.mp4'
 
 /**
- * Retrato do Neo, já recortado no traço do rosto: a borda desenhada é a
+ * Retrato do NEO, já recortado no traço do rosto: a borda desenhada é a
  * própria borda do círculo, então não precisa de moldura por CSS.
  * Enquanto ele pensa, o avatar respira — é o sinal de "estou trabalhando".
  */
@@ -12,21 +12,21 @@ export function NeoAvatar({ thinking = false, className }: { thinking?: boolean;
   return (
     <img
       src={avatar}
-      alt="Neo"
+      alt="NEO"
       className={cn('shrink-0 rounded-full object-cover', thinking && 'animate-neo-breathe', className)}
     />
   )
 }
 
 /**
- * O vídeo é 16:9 com fundo branco e o Neo ocupando só a faixa central do
+ * O vídeo é 16:9 com fundo branco e o NEO ocupando só a faixa central do
  * quadro. Num container quadrado o `object-cover` já descarta as laterais
  * (sobra o quadrado central do vídeo); o transform enquadra o corpo inteiro
  * dentro desse quadrado. Valores medidos no próprio arquivo.
  */
 const FRAMING = 'scale(1.2) translate(-3.5%, -6.1%)'
 
-/** Quadro em que o Neo está de frente e sorrindo — é como ele fica parado. */
+/** Quadro em que o NEO está de frente e sorrindo — é como ele fica parado. */
 const STILL_TIME = 2.4
 
 function usePrefersReducedMotion() {

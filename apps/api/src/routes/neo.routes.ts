@@ -64,9 +64,9 @@ async function generateNeoContent(params: GenerateContentParameters) {
       }
       console.error('[neo] falha ao chamar o Gemini:', err)
       if (err instanceof ApiError && err.status === 429) {
-        throw new HttpError(503, 'O Neo atingiu o limite de uso por agora. Tenta de novo daqui a pouco.')
+        throw new HttpError(503, 'O NEO atingiu o limite de uso por agora. Tenta de novo daqui a pouco.')
       }
-      throw new HttpError(502, 'O Neo não conseguiu responder agora. Tenta de novo em instantes.')
+      throw new HttpError(502, 'O NEO não conseguiu responder agora. Tenta de novo em instantes.')
     }
   }
 }
@@ -473,7 +473,7 @@ neoRouter.post(
   '/actions/:id/confirm',
   asyncHandler(async (req, res) => {
     const action = getPendingAction(req.params.id, req.user!.id)
-    if (!action) throw new HttpError(404, 'Essa ação expirou ou não existe mais. Peça pro Neo montar de novo.')
+    if (!action) throw new HttpError(404, 'Essa ação expirou ou não existe mais. Peça pro NEO montar de novo.')
 
     switch (action.kind) {
       case 'orcamento_criar': {
