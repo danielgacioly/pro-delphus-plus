@@ -2,19 +2,16 @@ import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
-import { Page, Section, ButtonLink } from '../components/ui'
+import { Page, ButtonLink } from '../components/ui'
 import {
   IconBoard,
   IconBox,
-  IconChart,
   IconChevronRight,
   IconContacts,
   IconBot,
-  IconLayers,
   IconQuote,
   IconTag,
   IconTruck,
-  IconUsers,
 } from '../components/icons'
 
 interface Shortcut {
@@ -61,12 +58,6 @@ const shortcuts: Shortcut[] = [
     description: 'Invoice, Packing List e documentos de exportação.',
     icon: IconTruck,
   },
-]
-
-const adminShortcuts: Shortcut[] = [
-  { to: '/admin/contas', title: 'Contas', description: 'Aprove cadastros e gerencie o acesso.', icon: IconUsers },
-  { to: '/admin/setores', title: 'Setores', description: 'Crie, renomeie e exclua setores do catálogo.', icon: IconLayers },
-  { to: '/admin/metricas', title: 'Métricas', description: 'Vendas, status dos pedidos e mais vendidos.', icon: IconChart },
 ]
 
 function greeting() {
@@ -128,16 +119,6 @@ export function Home() {
           <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" index={i} />
         ))}
       </div>
-
-      {user?.role === 'ADMIN' && (
-        <Section title="Administração">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {adminShortcuts.map((shortcut, i) => (
-              <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="neutral" index={i} />
-            ))}
-          </div>
-        </Section>
-      )}
     </Page>
   )
 }
