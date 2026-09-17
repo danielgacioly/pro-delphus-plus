@@ -235,54 +235,27 @@ export function Home() {
 
   return (
     <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
-      {/* Ações em 2×2 à esquerda e o resumo do mês ocupando a direita: a linha
-          fica cheia sem inventar conteúdo, e nenhuma das duas peças estica. */}
-      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,330px)_1fr]">
-        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-          <ButtonLink to="/orcamentos/novo" variant="primary" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
-            <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
-            Novo Orçamento
-          </ButtonLink>
-          <ButtonLink to="/pedidos/novo" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
+      {/* Duas colunas na largura inteira: cada botão bate com metade do card do
+          NEO logo abaixo, mantendo a mesma grade do resto da página. */}
+      <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+        <ButtonLink to="/orcamentos/novo" variant="primary" size="lg" className="w-full justify-start">
+          <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
+          Novo Orçamento
+        </ButtonLink>
+        <ButtonLink to="/pedidos/novo" size="lg" className="w-full justify-start">
+          <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+          Novo Pedido
+        </ButtonLink>
+        <ButtonLink to="/clientes?novo=1" size="lg" className="w-full justify-start">
+          <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+          Novo Cliente
+        </ButtonLink>
+        {isAdmin && (
+          <ButtonLink to="/produtos/novo" size="lg" className="w-full justify-start">
             <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-            Novo Pedido
+            Novo Produto
           </ButtonLink>
-          <ButtonLink to="/clientes?novo=1" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
-            <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-            Novo Cliente
-          </ButtonLink>
-          {isAdmin && (
-            <ButtonLink to="/produtos/novo" size="lg" className="w-full justify-start overflow-hidden px-2.5 text-[13px] sm:px-4 sm:text-[14px]">
-              <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-              Novo Produto
-            </ButtonLink>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
-          <p className="text-[13px] font-medium text-neutral-500">
-            Em {month.label}, você fez
-          </p>
-          {loading ? (
-            <div className="mt-3 flex gap-10">
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-8 w-24" />
-            </div>
-          ) : (
-            <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-[auto_auto_minmax(0,1fr)]">
-              <MonthStat value={month.quotes} label="orçamentos" />
-              <MonthStat value={month.orders} label="pedidos" divider />
-              <MonthStat
-                value={month.sales[0] ?? '—'}
-                label="em vendas"
-                sub={month.sales.length > 1 ? `+ ${month.sales.slice(1).join(' · ')}` : undefined}
-                divider
-                className="col-span-2 sm:col-span-1"
-              />
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <Link
@@ -313,6 +286,29 @@ export function Home() {
       </Section>
 
       <Section title="Minha atividade recente" className="mt-8">
+        <div className="mb-3 rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+          <p className="text-[13px] font-medium text-neutral-500">Em {month.label}, você fez</p>
+          {loading ? (
+            <div className="mt-3 flex gap-10">
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-24" />
+            </div>
+          ) : (
+            <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <MonthStat value={month.quotes} label="orçamentos" />
+              <MonthStat value={month.orders} label="pedidos" divider />
+              <MonthStat
+                value={month.sales[0] ?? '—'}
+                label="em vendas"
+                sub={month.sales.length > 1 ? `+ ${month.sales.slice(1).join(' · ')}` : undefined}
+                divider
+                className="col-span-2 sm:col-span-1"
+              />
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-2">
           <ActivityList title="Orçamentos" to="/orcamentos" empty={!loading && recentQuotes.length === 0}>
             {loading
