@@ -1,21 +1,46 @@
 // Câmbio diário via AwesomeAPI (grátis, sem chave), usado como ponto de
 // partida pro documento de exportação — sempre editável antes de salvar.
 // A API aceita qualquer par tipo "USD-BRL"/"EUR-BRL" no mesmo endpoint.
-const cache = new Map<string, { rate: number; fetchedAt: number }>()
+export interface PairQuote {
+  /** Cotação de compra (bid), em reais. */
+  rate: number
+  /** Variação percentual do dia, como a própria API devolve (ex.: -0.42). */
+  pctChange: number
+  /** Momento da cotação, ISO. */
+  updatedAt: string
+}
+
+const cache = new Map<string, { quote: PairQuote; fetchedAt: number }>()
 const CACHE_MS = 5 * 60 * 1000
 
-async function fetchPairRate(pair: string): Promise<number> {
+export async function fetchPairQuote(pair: string): Promise<PairQuote> {
   const cached = cache.get(pair)
-  if (cached && Date.now() - cached.fetchedAt < CACHE_MS) return cached.rate
+  if (cached && Date.now() - cached.fetchedAt < CACHE_MS) return cached.quote
 
   const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${pair}`, { signal: AbortSignal.timeout(5000) })
   if (!res.ok) throw new Error(`Falha ao buscar câmbio: ${res.status}`)
-  const data = (await res.json()) as Record<string, { bid?: string } | undefined>
-  const rate = Number(data[pair.replace('-', '')]?.bid)
+  const data = (await res.json()) as Record<
+    string,
+    { bid?: string; pctChange?: string; timestamp?: string } | undefined
+  >
+  const entry = data[pair.replace('-', '')]
+  const rate = Number(entry?.bid)
   if (!rate || Number.isNaN(rate)) throw new Error('Câmbio inválido retornado pela API')
 
-  cache.set(pair, { rate, fetchedAt: Date.now() })
-  return rate
+  // timestamp vem em segundos; sem ele, "agora" é a melhor aproximação.
+  const seconds = Number(entry?.timestamp)
+  const quote: PairQuote = {
+    rate,
+    pctChange: Number(entry?.pctChange) || 0,
+    updatedAt: (Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date()).toISOString(),
+  }
+
+  cache.set(pair, { quote, fetchedAt: Date.now() })
+  return quote
+}
+
+async function fetchPairRate(pair: string): Promise<number> {
+  return (await fetchPairQuote(pair)).rate
 }
 
 export async function fetchUsdBrlRate(): Promise<number> {

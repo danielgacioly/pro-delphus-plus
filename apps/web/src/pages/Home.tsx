@@ -72,6 +72,31 @@ const secondaryShortcuts: Shortcut[] = [
 
 const currencySymbol: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
 
+/** Última palavra do rótulo "em vendas em …", que troca junto com o valor. */
+const currencyPlural: Record<string, string> = { BRL: 'reais', USD: 'dólares', EUR: 'euros' }
+
+interface MonthSale {
+  currency: string
+  amount: string
+}
+
+interface ExchangeRate {
+  pair: string
+  rate: number
+  pctChange: number
+  updatedAt: string
+}
+
+const PAIR_LABEL: Record<string, { name: string; symbol: string }> = {
+  'USD-BRL': { name: 'Dólar', symbol: 'US$' },
+  'EUR-BRL': { name: 'Euro', symbol: '€' },
+}
+
+async function fetchRates() {
+  const { data } = await api.get<{ rates: ExchangeRate[] }>('/exchange-rates')
+  return data.rates
+}
+
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
   return data.quotes
@@ -115,23 +140,18 @@ function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
   )
 }
 
+const statValue = 'tabular truncate text-[24px] leading-tight font-semibold tracking-[-0.02em] text-ink-900'
+const statLabel = 'truncate text-[13px] text-neutral-500'
+const statColumn = (divider?: boolean, className?: string) =>
+  // O traço separador some quando as colunas empilham no celular.
+  cn('min-w-0', divider && 'sm:border-l sm:border-black/[0.07] sm:pl-4', className)
+
 /** Uma coluna do painel do mês: valor tabular grande, rótulo discreto embaixo. */
-function MonthStat({
-  value,
-  label,
-  divider,
-  className,
-}: {
-  value: ReactNode
-  label: string
-  divider?: boolean
-  className?: string
-}) {
+function MonthStat({ value, label, divider }: { value: ReactNode; label: string; divider?: boolean }) {
   return (
-    // O traço separador some quando as colunas empilham no celular.
-    <div className={cn('min-w-0', divider && 'sm:border-l sm:border-black/[0.07] sm:pl-4', className)}>
-      <p className="tabular truncate text-[19px] leading-tight font-semibold tracking-[-0.02em] text-ink-900">{value}</p>
-      <p className="mt-0.5 truncate text-[12.5px] text-neutral-500">{label}</p>
+    <div className={statColumn(divider)}>
+      <p className={statValue}>{value}</p>
+      <p className={cn('mt-0.5', statLabel)}>{label}</p>
     </div>
   )
 }
@@ -139,27 +159,61 @@ function MonthStat({
 const CYCLE_MS = 3800
 
 /**
- * Moedas não se somam, então o total do mês roda entre elas: cada valor sobe
- * para o lugar do anterior. Com uma moeda só, fica parado.
+ * Moedas não se somam, então o total do mês roda entre elas: o valor e a última
+ * palavra do rótulo ("…em reais") trocam juntos. Com uma moeda só, fica parado.
  */
-function CyclingValue({ values }: { values: string[] }) {
+function SalesStat({ sales, divider, className }: { sales: MonthSale[]; divider?: boolean; className?: string }) {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
     setIndex(0)
-    if (values.length < 2) return
-    const id = setInterval(() => setIndex((i) => (i + 1) % values.length), CYCLE_MS)
+    if (sales.length < 2) return
+    const id = setInterval(() => setIndex((i) => (i + 1) % sales.length), CYCLE_MS)
     return () => clearInterval(id)
-  }, [values])
+  }, [sales])
 
-  if (values.length === 0) return <>—</>
+  const current = sales[index] ?? sales[0]
 
   return (
-    <span className="block overflow-hidden">
-      <span key={index} className="animate-value-roll block truncate">
-        {values[index] ?? values[0]}
-      </span>
-    </span>
+    <div className={statColumn(divider, className)}>
+      <div className="overflow-hidden">
+        <p key={index} className={cn('animate-value-roll', statValue)}>
+          {current ? current.amount : '—'}
+        </p>
+      </div>
+      <p className={cn('mt-0.5', statLabel)}>
+        em vendas
+        {current && (
+          <>
+            {' em '}
+            {/* Só a última palavra troca junto com o valor. */}
+            <span key={index} className="animate-value-roll inline-block">
+              {currencyPlural[current.currency] ?? current.currency}
+            </span>
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
+
+/** Cotação do dia de uma moeda, com a variação em relação ao fechamento anterior. */
+function RateRow({ pair, rate, pctChange }: ExchangeRate) {
+  const label = PAIR_LABEL[pair] ?? { name: pair, symbol: '' }
+  const up = pctChange >= 0
+  return (
+    <div className="min-w-0">
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[13px] font-medium text-ink-900">{label.name}</span>
+        <span className="text-[11.5px] text-neutral-400">{label.symbol}</span>
+      </div>
+      <p className="tabular mt-0.5 truncate text-[17px] leading-tight font-semibold tracking-[-0.02em] text-ink-900 sm:text-[22px]">
+        R$ {rate.toFixed(4).replace('.', ',')}
+      </p>
+      <p className={cn('tabular mt-0.5 text-[12px]', up ? 'text-emerald-600' : 'text-danger-600')}>
+        {up ? '▲' : '▼'} {Math.abs(pctChange).toFixed(2).replace('.', ',')}% hoje
+      </p>
+    </div>
   )
 }
 
@@ -216,6 +270,19 @@ export function Home() {
   const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
   const loading = loadingQuotes || loadingOrders
 
+  // A API já guarda a cotação por 5 min; aqui só evitamos refazer a chamada a
+  // cada volta para o Início, e uma falha não vira tentativa infinita.
+  const { data: rates, isLoading: loadingRates } = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: fetchRates,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+  const ratesUpdatedAt = rates?.[0]
+    ? new Date(rates[0].updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : null
+
   const myQuotes = useMemo(
     () => (quotes ?? []).filter((q) => q.createdBy.id === user?.id),
     [quotes, user?.id],
@@ -239,9 +306,12 @@ export function Home() {
       const currency = order.quote.currency
       byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + Number(order.quote.total))
     }
-    const sales = [...byCurrency.entries()]
+    const sales: MonthSale[] = [...byCurrency.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([currency, total]) => `${currencySymbol[currency] ?? currency} ${formatAmount(total)}`)
+      .map(([currency, total]) => ({
+        currency,
+        amount: `${currencySymbol[currency] ?? currency} ${formatAmount(total)}`,
+      }))
 
     return {
       quotes: myQuotes.filter((q) => since(q.createdAt)).length,
@@ -262,27 +332,53 @@ export function Home() {
 
   return (
     <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
-      {/* Duas colunas na largura inteira: cada botão bate com metade do card do
-          NEO logo abaixo, mantendo a mesma grade do resto da página. */}
-      <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-        <ButtonLink to="/orcamentos/novo" variant="primary" size="lg" className="w-full justify-start">
-          <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
-          Novo Orçamento
-        </ButtonLink>
-        <ButtonLink to="/pedidos/novo" variant="primary" size="lg" className="w-full justify-start">
-          <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
-          Novo Pedido
-        </ButtonLink>
-        <ButtonLink to="/clientes?novo=1" size="lg" className="w-full justify-start">
-          <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-          Novo Cliente
-        </ButtonLink>
-        {isAdmin && (
-          <ButtonLink to="/produtos/novo" size="lg" className="w-full justify-start">
-            <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-            Novo Produto
+      {/* Metade esquerda: ações. Metade direita: câmbio do dia. Juntas ocupam a
+          mesma largura do card do NEO logo abaixo. */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+          <ButtonLink to="/orcamentos/novo" variant="primary" size="lg" className="h-full min-h-9 w-full justify-start">
+            <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
+            Novo Orçamento
           </ButtonLink>
-        )}
+          <ButtonLink to="/pedidos/novo" variant="primary" size="lg" className="h-full min-h-9 w-full justify-start">
+            <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
+            Novo Pedido
+          </ButtonLink>
+          <ButtonLink to="/clientes?novo=1" size="lg" className="h-full min-h-9 w-full justify-start">
+            <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+            Novo Cliente
+          </ButtonLink>
+          {isAdmin && (
+            <ButtonLink to="/produtos/novo" size="lg" className="h-full min-h-9 w-full justify-start">
+              <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+              Novo Produto
+            </ButtonLink>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[13px] font-medium text-neutral-500">Câmbio de hoje</p>
+            {ratesUpdatedAt && <p className="text-[11.5px] text-neutral-400">{ratesUpdatedAt}</p>}
+          </div>
+          {rates && rates.length > 0 ? (
+            <div className="mt-2 grid grid-cols-2 gap-x-3 sm:gap-x-4">
+              {rates.map((rate, i) => (
+                <div key={rate.pair} className={i > 0 ? 'border-l border-black/[0.07] pl-3 sm:pl-4' : undefined}>
+                  <RateRow {...rate} />
+                </div>
+              ))}
+            </div>
+          ) : loadingRates ? (
+            <div className="mt-3 grid grid-cols-2 gap-x-4">
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+            </div>
+          ) : (
+            // Fonte pública fora do ar não pode deixar um buraco na tela.
+            <p className="mt-3 text-[13px] text-neutral-400">Cotação indisponível no momento.</p>
+          )}
+        </div>
       </div>
 
       <Link
@@ -325,12 +421,7 @@ export function Home() {
             <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <MonthStat value={month.quotes} label="orçamentos" />
               <MonthStat value={month.orders} label="pedidos" divider />
-              <MonthStat
-                value={<CyclingValue values={month.sales} />}
-                label="em vendas"
-                divider
-                className="col-span-2 sm:col-span-1"
-              />
+              <SalesStat sales={month.sales} divider className="col-span-2 sm:col-span-1" />
             </div>
           )}
         </div>
