@@ -16,15 +16,12 @@ interface ItemLike {
 export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEditor; items: ItemLike[] }) {
   if (items.length === 0) return null
 
-  // O Packing List é montado só a partir destas linhas, enquanto o Invoice sai
-  // do orçamento — se as duas contas não baterem, o cliente recebe uma caixa
-  // declarando menos (ou mais) do que a fatura cobra, e nada avisava. Linha sem
-  // nome é descartada na hora de salvar, então também não conta como alocada.
-  const expectedQty = items.reduce((sum, item) => sum + item.quantity, 0)
+  // Linha sem nome é descartada na hora de salvar, então também não conta como
+  // alocada — mas uma linha nomeada pode legitimamente representar um
+  // componente separado (ex.: dividir 1 unidade em várias peças), então a
+  // soma de quantidades por linha não precisa bater com a do orçamento.
   const namedLines = editor.boxLines.filter((l) => l.label.trim())
-  const allocatedQty = namedLines.reduce((sum, l) => sum + (l.quantity || 0), 0)
   const unnamedCount = editor.boxLines.length - namedLines.length
-  const mismatch = allocatedQty !== expectedQty
 
   return (
     <>
@@ -55,26 +52,13 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
           para desmembrar a linha em partes que podem ser renomeadas e realocadas.
         </p>
 
-        <div
-          className={`mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-3 py-2 text-[12.5px] ${
-            mismatch || unnamedCount > 0 ? 'bg-brand-50 text-brand-700' : 'bg-white text-neutral-500'
-          }`}
-        >
-          <span className="tabular font-semibold">
-            {allocatedQty} de {expectedQty} {expectedQty === 1 ? 'unidade alocada' : 'unidades alocadas'}
-          </span>
-          {mismatch && (
+        {unnamedCount > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-brand-50 px-3 py-2 text-[12.5px] text-brand-700">
             <span>
-              — o Packing List vai declarar {allocatedQty > expectedQty ? 'mais' : 'menos'} do que o orçamento cobra.
-            </span>
-          )}
-          {unnamedCount > 0 && (
-            <span>
-              {mismatch ? ' ' : '— '}
               {unnamedCount === 1 ? '1 linha sem nome será descartada' : `${unnamedCount} linhas sem nome serão descartadas`}.
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto rounded-lg border border-neutral-200/70 bg-white">
           <Table>

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO, ClientKind } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
@@ -153,6 +153,18 @@ export function Clients() {
   const [creating, setCreating] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [deletingClient, setDeletingClient] = useState<ClientDTO | null>(null)
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('novo') === '1') {
+      setCreating(true)
+      setSearchParams((params) => {
+        params.delete('novo')
+        return params
+      }, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const createMutation = useMutation({
     mutationFn: async (values: ClientFormValues) => {
