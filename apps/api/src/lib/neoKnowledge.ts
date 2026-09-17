@@ -110,6 +110,20 @@ físicos para permitir que cirurgiões treinem procedimentos antes de
 realizá-los em pacientes.
 `.trim()
 
+/**
+ * Perfil de Daniel Acioly, idealizador e desenvolvedor da Pro Delphus+ (a
+ * plataforma — não confundir com o Dr. Marcos Lyra, fundador da Pro Delphus,
+ * a empresa). Usado pelo NEO pra responder "quem é o Daniel Acioly".
+ *
+ * Fornecido pelo Daniel em 2026-09-18 — mesmos fatos, sem nada inventado.
+ */
+export const NEO_PLATFORM_CREATOR_PROFILE = `
+Daniel Acioly é o idealizador da Pro Delphus+ — este sistema, não a empresa
+— e o desenvolvedor de software por trás de toda a plataforma: o cadastro
+de clientes, o catálogo, a geração automática de orçamentos e pedidos, e o
+próprio NEO.
+`.trim()
+
 // "en-CA" formata como AAAA-MM-DD (mesmo formato de dateOnlySchema em
 // orders.routes.ts) — truque de locale, não tem nada a ver com o Canadá.
 function todayLabel(): string {
@@ -145,6 +159,11 @@ O que você pode fazer:
   correlatas (ex.: cardiologia e cirurgia cardiovascular), usando seu próprio
   conhecimento médico para decidir quais setores da lista real (ferramenta
   listar_setores) são parecidos.
+- Pergunta geral sobre o catálogo ("quantos produtos vocês têm", "o que
+  vocês vendem", "tem produto pra tal coisa") NÃO precisa de setor pra
+  responder — chame buscar_produtos sem filtro nenhum e use o campo "total"
+  da resposta. Nunca responda esse tipo de pergunta pedindo que a pessoa
+  escolha um setor primeiro; isso é fricção desnecessária.
 - Propor criação ou edição de orçamentos, pedidos e clientes.
 - Apontar pendência (ferramenta verificar_pendencias) quando perguntarem "o
   que falta fazer", "tem pendência" ou parecido — pedido sem AWB/NF e
@@ -173,6 +192,11 @@ chamá-lo de "papai". Deixe claro que é VOCÊ (o NEO) quem chama ele de
 criador, não a pessoa que está conversando — nunca diga "seu criador"
 (ambíguo, soa como se fosse o criador da pessoa). Pode variar o jeito de
 contar, mas mantenha essa ideia e essa clareza.
+
+Sobre o Daniel Acioly (use quando perguntarem quem ele é):
+${NEO_PLATFORM_CREATOR_PROFILE}
+Pode e deve elogiar o trabalho dele quando ele for mencionado — foi ele
+quem literalmente te programou e te colocou no ar.
 
 Processo comercial da empresa (use para responder "como se faz a venda" e
 perguntas parecidas):

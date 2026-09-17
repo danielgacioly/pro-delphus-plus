@@ -90,34 +90,43 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
     return { produtos: [], aviso: `Nenhum destes setores existe: ${notFound.join(', ')}. Use os nomes de listar_setores.` }
   }
   const limite = Math.min(Math.max(args.limite ?? PRODUCT_LIMIT, 1), PRODUCT_LIMIT)
-  const products = await prisma.product.findMany({
-    where: {
-      active: true,
-      AND: [
-        setores.length > 0 ? { sectors: { hasSome: setores } } : {},
-        texto
-          ? {
-              OR: [
-                { name: { contains: texto, mode: 'insensitive' } },
-                { description: { contains: texto, mode: 'insensitive' } },
-                { descriptionPt: { contains: texto, mode: 'insensitive' } },
-              ],
-            }
-          : {},
-        // Produto sem preço na moeda pedida não pode entrar num ranking de
-        // preço: apareceria como "mais barato" por não ter valor nenhum.
-        porPreco ? { [coluna]: { not: null } } : {},
-        precoMin !== undefined ? { [coluna]: { gte: precoMin } } : {},
-        precoMax !== undefined ? { [coluna]: { lte: precoMax } } : {},
-      ],
-    },
-    take: limite + 1,
-    orderBy: ordenar === 'nome' ? { name: 'asc' } : { [coluna]: ordenar === 'preco_desc' ? 'desc' : 'asc' },
-  })
+  const where = {
+    active: true,
+    AND: [
+      setores.length > 0 ? { sectors: { hasSome: setores } } : {},
+      texto
+        ? {
+            OR: [
+              { name: { contains: texto, mode: 'insensitive' as const } },
+              { description: { contains: texto, mode: 'insensitive' as const } },
+              { descriptionPt: { contains: texto, mode: 'insensitive' as const } },
+            ],
+          }
+        : {},
+      // Produto sem preço na moeda pedida não pode entrar num ranking de
+      // preço: apareceria como "mais barato" por não ter valor nenhum.
+      porPreco ? { [coluna]: { not: null } } : {},
+      precoMin !== undefined ? { [coluna]: { gte: precoMin } } : {},
+      precoMax !== undefined ? { [coluna]: { lte: precoMax } } : {},
+    ],
+  }
+  // `total` é a contagem real, sem o corte de `limite` — sem isto, "quantos
+  // produtos vocês têm" era impossível de responder direito: a lista sempre
+  // vinha cortada em 30, e não tinha como o modelo saber se aqueles 30 eram
+  // o catálogo inteiro ou uma fração dele.
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      take: limite,
+      orderBy: ordenar === 'nome' ? { name: 'asc' } : { [coluna]: ordenar === 'preco_desc' ? 'desc' : 'asc' },
+    }),
+    prisma.product.count({ where }),
+  ])
   return {
+    total,
     ...(porPreco && { criterio: `preços em ${moeda}${ordenar === 'preco_desc' ? ', do mais caro' : ordenar === 'preco_asc' ? ', do mais barato' : ''}` }),
-    produtos: products.slice(0, limite).map(productSummary),
-    ...(products.length > limite && { aviso: `Lista cortada em ${limite} — refine com texto, setor ou limite.` }),
+    produtos: products.map(productSummary),
+    ...(total > limite && { aviso: `${total} produto(s) no total, mostrando os ${limite} primeiros — refine com texto, setor ou limite pra ver outros, mas 'total' já é a contagem real.` }),
     ...(notFound.length > 0 && { setoresNaoEncontrados: notFound }),
   }
 }

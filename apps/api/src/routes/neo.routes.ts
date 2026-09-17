@@ -89,7 +89,7 @@ const readTools: FunctionDeclaration[] = [
   {
     name: 'buscar_produtos',
     description:
-      'Busca produtos ativos do catálogo por setor(es) e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo, setores e todos os preços.',
+      'Busca produtos ativos do catálogo por setor(es) e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo, setores e todos os preços. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total".',
     parameters: {
       type: Type.OBJECT,
       properties: {
