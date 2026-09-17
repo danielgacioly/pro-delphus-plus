@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import sharp from 'sharp'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { Prisma } from '../../generated/prisma/client.js'
@@ -33,12 +34,44 @@ const MIME_BY_EXT: Record<string, string> = {
   '.svg': 'image/svg+xml',
 }
 
+// sharp lê estes formatos rasterizados; SVG (e o fallback application/octet-
+// stream de algo fora do mapa acima) fica fora — não faz sentido reamostrar
+// vetor, e um arquivo de tipo desconhecido pode nem ser imagem de verdade.
+const RESIZABLE_MIME = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+
+// A foto de item e a assinatura do usuário são embutidas por INTEIRO em todo
+// PDF/XLSX de orçamento gerado — a cada geração, de novo. O original enviado
+// (foto de celular: alguns MB) nunca aparece maior que 56px no PDF ou 40px no
+// XLSX (ver pdf.ts/xlsx.ts), então guardar essa resolução ali é desperdício
+// puro que se multiplica por orçamento. 400px cobre até uma tela retina com
+// folga; o arquivo original em si (usado no catálogo) não é tocado.
+const MAX_EMBED_DIMENSION = 400
+
 async function photoToDataUri(url: string | undefined): Promise<string | null> {
   if (!url) return null
   try {
     const filePath = path.join(path.resolve(env.UPLOADS_DIR), storageFilename(url))
     const buffer = await fs.readFile(filePath)
     const mime = MIME_BY_EXT[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream'
+
+    if (RESIZABLE_MIME.has(mime)) {
+      try {
+        const resized = await sharp(buffer)
+          .resize({
+            width: MAX_EMBED_DIMENSION,
+            height: MAX_EMBED_DIMENSION,
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .toBuffer()
+        return `data:${mime};base64,${resized.toString('base64')}`
+      } catch {
+        // Arquivo no formato certo mas que o sharp não conseguiu processar
+        // (corrompido, variante exótica) — cai pro original em vez de perder
+        // a foto no orçamento.
+      }
+    }
+
     return `data:${mime};base64,${buffer.toString('base64')}`
   } catch {
     return null
