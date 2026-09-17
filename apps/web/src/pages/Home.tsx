@@ -1,11 +1,11 @@
-import { useMemo, type ComponentType, type ReactNode, type SVGProps } from 'react'
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
-import { Page, Section, ButtonLink, Skeleton } from '../components/ui'
+import { Badge, ButtonLink, Page, Section, Skeleton } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
   IconBoard,
@@ -119,13 +119,11 @@ function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
 function MonthStat({
   value,
   label,
-  sub,
   divider,
   className,
 }: {
   value: ReactNode
   label: string
-  sub?: string
   divider?: boolean
   className?: string
 }) {
@@ -134,8 +132,34 @@ function MonthStat({
     <div className={cn('min-w-0', divider && 'sm:border-l sm:border-black/[0.07] sm:pl-4', className)}>
       <p className="tabular truncate text-[19px] leading-tight font-semibold tracking-[-0.02em] text-ink-900">{value}</p>
       <p className="mt-0.5 truncate text-[12.5px] text-neutral-500">{label}</p>
-      {sub && <p className="tabular truncate text-[12px] text-neutral-400">{sub}</p>}
     </div>
+  )
+}
+
+const CYCLE_MS = 3800
+
+/**
+ * Moedas não se somam, então o total do mês roda entre elas: cada valor sobe
+ * para o lugar do anterior. Com uma moeda só, fica parado.
+ */
+function CyclingValue({ values }: { values: string[] }) {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    setIndex(0)
+    if (values.length < 2) return
+    const id = setInterval(() => setIndex((i) => (i + 1) % values.length), CYCLE_MS)
+    return () => clearInterval(id)
+  }, [values])
+
+  if (values.length === 0) return <>—</>
+
+  return (
+    <span className="block overflow-hidden">
+      <span key={index} className="animate-value-roll block truncate">
+        {values[index] ?? values[0]}
+      </span>
+    </span>
   )
 }
 
@@ -144,6 +168,7 @@ function ActivityRow({
   to,
   title,
   subtitle,
+  status,
   amount,
   date,
   first,
@@ -151,6 +176,7 @@ function ActivityRow({
   to: string
   title: string
   subtitle: string
+  status?: ReactNode
   amount: string
   date: string
   first: boolean
@@ -160,6 +186,7 @@ function ActivityRow({
       {!first && <span aria-hidden className="absolute top-0 right-0 left-4 h-px bg-black/[0.06]" />}
       <span className="tabular shrink-0 text-[13px] font-medium text-ink-900">{title}</span>
       <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-500">{subtitle}</span>
+      {status && <span className="shrink-0">{status}</span>}
       <span className="tabular shrink-0 text-[13px] text-ink-800">{amount}</span>
       <span className="tabular w-10 shrink-0 text-right text-[12px] text-neutral-400">{date}</span>
     </Link>
@@ -242,8 +269,8 @@ export function Home() {
           <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
           Novo Orçamento
         </ButtonLink>
-        <ButtonLink to="/pedidos/novo" size="lg" className="w-full justify-start">
-          <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
+        <ButtonLink to="/pedidos/novo" variant="primary" size="lg" className="w-full justify-start">
+          <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
           Novo Pedido
         </ButtonLink>
         <ButtonLink to="/clientes?novo=1" size="lg" className="w-full justify-start">
@@ -299,9 +326,8 @@ export function Home() {
               <MonthStat value={month.quotes} label="orçamentos" />
               <MonthStat value={month.orders} label="pedidos" divider />
               <MonthStat
-                value={month.sales[0] ?? '—'}
+                value={<CyclingValue values={month.sales} />}
                 label="em vendas"
-                sub={month.sales.length > 1 ? `+ ${month.sales.slice(1).join(' · ')}` : undefined}
                 divider
                 className="col-span-2 sm:col-span-1"
               />
@@ -309,7 +335,7 @@ export function Home() {
           )}
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-3 xl:grid-cols-2">
           <ActivityList title="Orçamentos" to="/orcamentos" empty={!loading && recentQuotes.length === 0}>
             {loading
               ? <div className="space-y-2 px-4 py-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-4" />)}</div>
@@ -335,6 +361,11 @@ export function Home() {
                     to={`/pedidos/${o.id}`}
                     title={`#${formatOrderNumber(o.orderNumber)}`}
                     subtitle={o.quote.clientName}
+                    status={
+                      <Badge tone={o.status === 'COMPLETED' ? 'success' : 'warning'} dot>
+                        {o.status === 'COMPLETED' ? 'Concluído' : 'Pendente'}
+                      </Badge>
+                    }
                     amount={`${currencySymbol[o.quote.currency] ?? o.quote.currency} ${formatAmount(o.quote.total)}`}
                     date={shortDate(o.createdAt)}
                     first={i === 0}
