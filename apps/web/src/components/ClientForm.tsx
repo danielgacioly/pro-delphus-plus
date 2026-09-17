@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { ClientDTO, ClientKind, ClientPrefix } from '@prodelphusplus/shared'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Alert, Button, Field, Input, Select, Textarea } from './ui'
 
 export interface ClientFormValues {
   kind: ClientKind
@@ -227,7 +227,7 @@ export function ClientForm({
         )}
       </div>
 
-      {error && <p className="rounded-lg bg-brand-50 px-3 py-2 text-[13px] text-brand-700">{error}</p>}
+      {error && <Alert tone="error">{error}</Alert>}
 
       <div className="flex justify-end gap-2">
         {onCancel && (

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../../lib/api'
-import { BackLink, Button, Card, Field, Input, Page } from '../../components/ui'
+import { Alert, BackLink, Button, Card, Field, Input, Page } from '../../components/ui'
 
 export function NewSector() {
   const navigate = useNavigate()
@@ -41,7 +41,7 @@ export function NewSector() {
           }}
           className="space-y-4"
         >
-          {error && <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">{error}</div>}
+          {error && <Alert tone="error">{error}</Alert>}
 
           <Field label="Nome do setor (inglês)">
             <Input autoFocus required placeholder="ex: Spine" value={name} onChange={(e) => setName(e.target.value)} />

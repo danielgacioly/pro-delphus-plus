@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
-import { Badge, Button } from '../components/ui'
+import { Alert, Badge, Button } from '../components/ui'
 import { NeoAvatar, NeoMascot } from '../components/NeoMascot'
-import { IconAlert, IconArrowUp, IconCheckCircle } from '../components/icons'
+import { IconArrowUp, IconCheckCircle } from '../components/icons'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -280,12 +280,7 @@ export function Neo() {
               </div>
             )}
 
-            {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-2.5 text-[13px] text-brand-700">
-                <IconAlert className="h-4 w-4 shrink-0" />
-                {error}
-              </div>
-            )}
+            {error && <Alert tone="error">{error}</Alert>}
           </div>
 
           <div ref={bottomRef} />

@@ -4,6 +4,7 @@ import type { SectorDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage as extractError } from '../../lib/api'
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
 import {
+  Alert,
   Button,
   ButtonLink,
   EmptyState,
@@ -21,7 +22,7 @@ import {
   Toolbar,
   Tr,
 } from '../../components/ui'
-import { IconAlert, IconLayers, IconPlus } from '../../components/icons'
+import { IconLayers, IconPlus } from '../../components/icons'
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: SectorDTO[] }>('/sectors')
@@ -103,9 +104,8 @@ export function AdminSectors() {
       }
     >
       {error && (
-        <div className="animate-fade-in mb-4 flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-          <IconAlert className="h-4 w-4 shrink-0" />
-          {error}
+        <div className="mb-4">
+          <Alert tone="error">{error}</Alert>
         </div>
       )}
 

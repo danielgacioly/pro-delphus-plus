@@ -16,6 +16,7 @@ import { cn } from '../lib/cn'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { Modal } from '../components/Modal'
 import {
+  Alert,
   Button,
   EmptyState,
   Field,
@@ -539,16 +540,21 @@ export function MyDesk() {
       <h2 className="text-eyebrow mb-3.5 text-neutral-400">Mural de tarefas</h2>
 
       {columnError && (
-        <div className="animate-fade-in mb-4 flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-          <IconAlert className="h-4 w-4 shrink-0" />
-          {columnError}
-          <button
-            type="button"
-            onClick={() => setColumnError(null)}
-            className="ml-auto shrink-0 text-[12px] font-semibold hover:underline"
+        <div className="mb-4">
+          <Alert
+            tone="error"
+            action={
+              <button
+                type="button"
+                onClick={() => setColumnError(null)}
+                className="text-[12px] font-semibold hover:underline"
+              >
+                Fechar
+              </button>
+            }
           >
-            Fechar
-          </button>
+            {columnError}
+          </Alert>
         </div>
       )}
 

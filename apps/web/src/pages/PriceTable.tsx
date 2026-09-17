@@ -7,8 +7,8 @@ import { useAuth } from '../context/AuthContext'
 import { localize, localizeSector } from '../lib/catalogTranslation'
 import { useClickOutside } from '../lib/useClickOutside'
 import { cn } from '../lib/cn'
-import { Button, EmptyState, Page, SearchField, Skeleton, Toolbar } from '../components/ui'
-import { IconAlert, IconSliders } from '../components/icons'
+import { Alert, Button, EmptyState, Page, SearchField, Skeleton, Toolbar } from '../components/ui'
+import { IconSliders } from '../components/icons'
 
 async function fetchProducts(search: string) {
   const { data } = await api.get<{ products: ProductDTO[] }>('/products', {
@@ -237,19 +237,17 @@ export function PriceTable() {
       </Toolbar>
 
       {priceColumnCount === 0 && (
-        <div className="mb-5 flex items-center gap-2 rounded-xl bg-amber-500/12 px-4 py-3 text-[13px] text-amber-800">
-          <IconAlert className="h-4 w-4 shrink-0" />
-          Selecione ao menos uma coluna de preço para visualizar os valores.
+        <div className="mb-5">
+          <Alert tone="warning">Selecione ao menos uma coluna de preço para visualizar os valores.</Alert>
         </div>
       )}
 
       {isLoading && <SkeletonGroup />}
 
       {isError && (
-        <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-          <IconAlert className="h-4 w-4 shrink-0" />
+        <Alert tone="error">
           Não foi possível carregar a tabela de preços. Verifique sua conexão e tente novamente.
-        </div>
+        </Alert>
       )}
 
       {!isLoading && !isError && (
