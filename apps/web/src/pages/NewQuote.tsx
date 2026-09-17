@@ -18,6 +18,7 @@ import { useToast } from '../context/ToastContext'
 import {
   Alert,
   BackLink,
+  Badge,
   Button,
   Card,
   Field,
@@ -551,7 +552,16 @@ export function NewQuote() {
                       />
                     </Field>
                     <Field
-                      label="Preço customizado"
+                      label={
+                        <span className="inline-flex items-center gap-1.5">
+                          Preço customizado
+                          {item.unitPrice && (
+                            <Badge tone="brand" dot>
+                              Ativo
+                            </Badge>
+                          )}
+                        </span>
+                      }
                       hint="Opcional — sobrescreve o preço de tabela só neste item"
                       className="w-44 shrink-0"
                     >
