@@ -147,13 +147,17 @@ clientsRouter.get(
   }),
 )
 
+export async function createClientRecord(data: z.infer<typeof clientBodySchema>, createdById: string) {
+  const normalized = normalize(clientBodySchema.parse(data))
+  return prisma.client.create({
+    data: { ...normalized, kind: normalized.kind ?? 'INDIVIDUAL', prefix: normalized.prefix ?? 'NONE', createdById },
+  })
+}
+
 clientsRouter.post(
   '/',
   asyncHandler(async (req, res) => {
-    const data = normalize(clientBodySchema.parse(req.body))
-    const client = await prisma.client.create({
-      data: { ...data, kind: data.kind ?? 'INDIVIDUAL', prefix: data.prefix ?? 'NONE', createdById: req.user!.id },
-    })
+    const client = await createClientRecord(req.body, req.user!.id)
     res.status(201).json({ client: toClientDTO(client) })
   }),
 )

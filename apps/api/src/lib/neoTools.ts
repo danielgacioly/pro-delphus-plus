@@ -457,6 +457,8 @@ const FIELD_LABEL: Record<string, string> = {
   billToText: 'Endereço de cobrança',
   shipToText: 'Endereço de entrega',
   inService: 'Em atendimento',
+  sectors: 'Setores de interesse',
+  kind: 'Tipo',
   notes: 'Observações',
   orderedByEmail: 'E-mail do pedido',
   packageCount: 'Caixas',
@@ -480,6 +482,7 @@ function describeChanges(fields: Record<string, unknown>) {
       const value =
         typeof v === 'boolean' ? (v ? 'Sim' : 'Não')
         : v instanceof Date ? formatDate(v)
+        : Array.isArray(v) ? v.join(', ')
         : k === 'prepaymentBy' ? PREPAYMENT_LABEL[String(v)]
         : v === '' ? '(em branco)'
         : String(v)
@@ -729,6 +732,26 @@ export async function proporEdicaoPedido(
   ]
   const summary = [`Edição do pedido ${order.orderNumber}`, ...(changes.length ? changes : ['(nenhum campo alterado)'])].join('\n')
   const pendingAction = createPendingAction('pedido_editar', summary, { pedidoId, data }, userId)
+  return { pendingAction, summaryForModel: summary }
+}
+
+export async function proporCliente(args: Record<string, unknown>, userId: string) {
+  const parsed = clientBodySchema.parse(args)
+  // Setor de interesse precisa bater com o nome canônico do catálogo — senão
+  // "Laparoscopia" (o que o modelo digitou) nunca casa com "Laparoscopy" (o
+  // que fica em Product.sectors), e o cruzamento cliente↔produto quebra
+  // silenciosamente.
+  let data = parsed
+  if (parsed.sectors?.length) {
+    const { names, notFound } = await resolveSectorNames(parsed.sectors)
+    if (notFound.length > 0) {
+      throw new HttpError(400, `Estes setores não existem no catálogo: ${notFound.join(', ')}. Use os nomes de listar_setores.`)
+    }
+    data = { ...parsed, sectors: names }
+  }
+  const changes = describeChanges(data)
+  const summary = ['Novo cliente', ...(changes.length ? changes : [`• Nome: ${data.name}`])].join('\n')
+  const pendingAction = createPendingAction('cliente_criar', summary, data, userId)
   return { pendingAction, summaryForModel: summary }
 }
 

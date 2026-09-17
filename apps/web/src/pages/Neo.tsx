@@ -21,7 +21,7 @@ type ConfirmResult =
 
 interface PendingAction {
   id: string
-  kind: 'orcamento_criar' | 'orcamento_editar' | 'pedido_criar' | 'pedido_editar' | 'cliente_editar'
+  kind: 'orcamento_criar' | 'orcamento_editar' | 'pedido_criar' | 'pedido_editar' | 'cliente_criar' | 'cliente_editar'
   summary: string
 }
 
@@ -30,6 +30,7 @@ const KIND_LABEL: Record<PendingAction['kind'], string> = {
   orcamento_editar: 'Editar orçamento',
   pedido_criar: 'Criar pedido',
   pedido_editar: 'Editar pedido',
+  cliente_criar: 'Criar cliente',
   cliente_editar: 'Editar cliente',
 }
 

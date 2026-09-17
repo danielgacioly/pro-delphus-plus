@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto'
 
-export type PendingActionKind = 'orcamento_criar' | 'orcamento_editar' | 'pedido_criar' | 'pedido_editar' | 'cliente_editar'
+export type PendingActionKind =
+  | 'orcamento_criar'
+  | 'orcamento_editar'
+  | 'pedido_criar'
+  | 'pedido_editar'
+  | 'cliente_criar'
+  | 'cliente_editar'
 
 export interface PendingAction {
   id: string

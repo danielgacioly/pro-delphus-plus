@@ -27,12 +27,13 @@ import {
   proporEdicaoOrcamento,
   proporPedido,
   proporEdicaoPedido,
+  proporCliente,
   proporEdicaoCliente,
 } from '../lib/neoTools.js'
 import { toQuoteDTO, toClientDTO } from '../lib/dto.js'
 import { createQuoteRecord, updateQuoteRecord } from './quotes.routes.js'
 import { createOrderRecord, updateOrderRecord, toOrderDTOFresh } from './orders.routes.js'
-import { updateClientRecord } from './clients.routes.js'
+import { createClientRecord, updateClientRecord } from './clients.routes.js'
 
 export const neoRouter = Router()
 neoRouter.use(requireAuth)
@@ -327,6 +328,28 @@ const writeTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: 'propor_cliente',
+    description:
+      'Monta uma prévia de cadastro de um cliente novo — NÃO grava nada. Só o nome é obrigatório; o resto é o que a pessoa foi contando na conversa (ver o passo 1 do processo comercial) — não invente endereço, e-mail ou telefone que ninguém disse.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING },
+        kind: { type: Type.STRING, enum: ['INDIVIDUAL', 'INSTITUTION', 'DISTRIBUTOR'] },
+        institution: { type: Type.STRING },
+        email: { type: Type.STRING },
+        phone: { type: Type.STRING },
+        country: { type: Type.STRING },
+        billToText: { type: Type.STRING, description: 'Endereço de cobrança completo' },
+        shipToText: { type: Type.STRING, description: 'Endereço de entrega completo' },
+        sectors: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Setores/áreas de interesse do cliente' },
+        inService: { type: Type.BOOLEAN, description: 'Cliente "em atendimento" (negociação ativa agora)' },
+        notes: { type: Type.STRING },
+      },
+      required: ['name'],
+    },
+  },
+  {
     name: 'propor_edicao_cliente',
     description:
       'Monta uma prévia de edição de um cliente existente (clienteId de buscar_cliente) — NÃO grava nada. Mande só os campos que mudam. notes SUBSTITUI a observação inteira: pra acrescentar algo, mande a observação atual + o texto novo.',
@@ -389,6 +412,10 @@ async function dispatchTool(
     }
     case 'propor_edicao_pedido': {
       const { pendingAction, summaryForModel } = await proporEdicaoPedido(args as any, userId)
+      return { result: summaryForModel, pendingAction }
+    }
+    case 'propor_cliente': {
+      const { pendingAction, summaryForModel } = await proporCliente(args as any, userId)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_cliente': {
@@ -500,6 +527,12 @@ neoRouter.post(
         const order = await updateOrderRecord(pedidoId, data as never, req.user!.id)
         discardPendingAction(action.id)
         res.json({ resource: 'order', order: await toOrderDTOFresh(order) })
+        return
+      }
+      case 'cliente_criar': {
+        const client = await createClientRecord(action.payload as never, req.user!.id)
+        discardPendingAction(action.id)
+        res.json({ resource: 'client', client: toClientDTO(client) })
         return
       }
       case 'cliente_editar': {
