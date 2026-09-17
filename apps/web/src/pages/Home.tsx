@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
 import { Page, Section, ButtonLink } from '../components/ui'
+import { NeoAvatar } from '../components/NeoMascot'
 import {
   IconBoard,
   IconBox,
   IconChart,
   IconChevronRight,
   IconContacts,
-  IconBot,
   IconLayers,
   IconPlus,
   IconQuote,
@@ -146,16 +146,7 @@ export function Home() {
   const isAdmin = user?.role === 'ADMIN'
 
   return (
-    <Page
-      title={`${greeting()}, ${firstName}.`}
-      description="O que você deseja fazer hoje?"
-      actions={
-        <ButtonLink size="sm" to="/neo">
-          <IconBot className="h-4 w-4" />
-          NEO
-        </ButtonLink>
-      }
-    >
+    <Page title={`${greeting()}, ${firstName}.`} description="O que você deseja fazer hoje?">
       <div className="flex flex-wrap gap-3">
         <ButtonLink to="/orcamentos/novo" variant="primary" size="lg">
           <IconPlus className="h-4 w-4" />
@@ -177,7 +168,30 @@ export function Home() {
         )}
       </div>
 
-      <Section title="Principal" className="mt-8">
+      <Link
+        to="/neo"
+        className={cn(
+          'group relative mt-8 flex flex-col items-start gap-4 overflow-hidden rounded-3xl bg-ink-900 p-6 text-white shadow-sm',
+          'transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg',
+          'sm:flex-row sm:items-center sm:justify-between',
+        )}
+      >
+        <div className="flex items-center gap-4">
+          <NeoAvatar className="h-14 w-14 shrink-0 ring-2 ring-white/15" />
+          <div>
+            <h3 className="text-heading text-white">Converse com o Neo</h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-white/60">
+              Pergunte sobre preços e produtos, ou peça para montar um orçamento por você.
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex h-9.5 shrink-0 items-center gap-1.5 self-start rounded-lg bg-white px-4 text-sm font-semibold text-ink-900 transition-colors duration-150 group-hover:bg-neutral-100 sm:self-auto">
+          Conversar
+          <IconChevronRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+        </span>
+      </Link>
+
+      <Section title="Principal">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {primaryShortcuts.map((shortcut, i) => (
             <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" size="lg" index={i} />

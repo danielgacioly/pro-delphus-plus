@@ -142,7 +142,7 @@ export function Layout() {
           >
             <IconSidebar className="h-[18px] w-[18px]" />
           </button>
-          <Link to="/" className={cn('lg:hidden', collapsed && 'lg:block')} aria-label="Início">
+          <Link to="/" className="lg:hidden" aria-label="Início">
             <img src={logo} alt="" className="h-8 w-auto" />
           </Link>
         </div>
