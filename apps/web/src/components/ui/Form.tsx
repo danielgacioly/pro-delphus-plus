@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 import { IconChevronDown } from '../icons'
@@ -56,14 +57,17 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return <input className={cn(control, 'h-10 px-3', widthClass(className), className)} {...props} />
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      className={cn(control, 'resize-y px-3 py-2.5 leading-relaxed', widthClass(className), className)}
-      {...props}
-    />
-  )
-}
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ className, ...props }, ref) {
+    return (
+      <textarea
+        ref={ref}
+        className={cn(control, 'resize-y px-3 py-2.5 leading-relaxed', widthClass(className), className)}
+        {...props}
+      />
+    )
+  },
+)
 
 /**
  * `auto` encolhe o campo até o conteúdo — usado nas barras de filtro, onde um
