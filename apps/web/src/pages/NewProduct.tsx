@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
 import { DropZone } from '../components/DropZone'
-import { Alert, BackLink, Button, Card, FormSection, Page } from '../components/ui'
+import { Alert, Button, Card, FormSection, Page } from '../components/ui'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -93,10 +93,7 @@ export function NewProduct() {
   })
 
   return (
-    <Page title="Novo produto" description="Cadastrar aqui já adiciona o produto à tabela de preços." width="narrow">
-      <div className="-mt-4 mb-5">
-        <BackLink to="/produtos">Produtos</BackLink>
-      </div>
+    <Page back={{ to: '/produtos', label: 'Produtos' }} title="Novo produto" description="Cadastrar aqui já adiciona o produto à tabela de preços." width="narrow">
 
       {error && (
         <div className="mb-4">

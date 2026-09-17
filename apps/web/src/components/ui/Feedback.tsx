@@ -15,11 +15,11 @@ export function Spinner({ className }: { className?: string }) {
 type Tone = 'neutral' | 'brand' | 'success' | 'warning' | 'ink'
 
 const tones: Record<Tone, string> = {
-  neutral: 'bg-neutral-500/10 text-neutral-700',
-  brand: 'bg-brand-50 text-brand-700',
+  neutral: 'bg-black/[0.05] text-neutral-700',
+  brand: 'bg-brand-500/10 text-brand-700',
   success: 'bg-emerald-500/12 text-emerald-700',
-  warning: 'bg-amber-500/15 text-amber-700',
-  ink: 'bg-ink-900/8 text-ink-800',
+  warning: 'bg-amber-500/14 text-amber-700',
+  ink: 'bg-black/[0.07] text-ink-800',
 }
 
 export function Badge({
@@ -44,7 +44,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium whitespace-nowrap',
+        'inline-flex h-5 items-center gap-1.5 rounded-md px-1.5 text-[11.5px] font-medium whitespace-nowrap',
         tones[tone],
         className,
       )}
@@ -69,12 +69,10 @@ export function EmptyState({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-500/8 text-neutral-400">
-        <Icon className="h-5.5 w-5.5" />
-      </div>
-      <p className="mt-4 text-[15px] font-semibold text-ink-900">{title}</p>
-      {description && <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-neutral-500">{description}</p>}
+    <div className={cn('flex flex-col items-center justify-center px-6 py-16 text-center', className)}>
+      <Icon className="h-8 w-8 text-neutral-300" strokeWidth={1.5} />
+      <p className="mt-3 text-[15px] font-semibold text-ink-900">{title}</p>
+      {description && <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-neutral-500">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   )

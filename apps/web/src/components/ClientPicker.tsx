@@ -94,7 +94,7 @@ export function ClientPicker({
     const place = [selected.city, selected.state, selected.country].filter(Boolean).join(', ')
     return (
       <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-xs">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-500/8 text-neutral-500">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-500">
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
@@ -180,7 +180,7 @@ export function ClientPicker({
         <Modal onClose={() => setCreating(false)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-scale-in max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="animate-scale-in max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
           >
             <h2 className="text-title text-ink-900">Novo cliente</h2>
             <p className="mt-1 text-[13px] text-neutral-500">

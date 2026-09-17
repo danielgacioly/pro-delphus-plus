@@ -116,7 +116,7 @@ export function Quotes() {
           value={yearFilter}
           onChange={(e) => setYearFilter(e.target.value)}
           auto
-          className="h-9 text-[13px]"
+          className="text-[13px]"
         >
           <option value="all">Todos os anos</option>
           {availableYears.map((year) => (
@@ -130,7 +130,7 @@ export function Quotes() {
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
           auto
-          className="h-9 text-[13px]"
+          className="text-[13px]"
         >
           <option value="all">Todos os meses</option>
           {monthLabels.map((label, index) => (
@@ -208,7 +208,7 @@ export function Quotes() {
                         <Link
                           to={`/orcamentos/${q.id}/editar`}
                           title="Editar orçamento"
-                          className="inline-flex h-7 items-center rounded-md border border-neutral-200 bg-white px-2 text-[12px] font-semibold text-neutral-600 shadow-xs transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900 active:scale-95"
+                          className="inline-flex h-7 items-center rounded-md border border-black/[0.1] bg-white px-2 text-[12px] font-medium text-ink-800 transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900"
                         >
                           Editar
                         </Link>
@@ -269,7 +269,7 @@ function FileLink({ href, children }: { href: string; children: string }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex h-7 items-center rounded-md border border-neutral-200 bg-white px-2 text-[12px] font-semibold text-neutral-600 shadow-xs transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900 active:scale-95"
+      className="inline-flex h-7 items-center rounded-md border border-black/[0.1] bg-white px-2 text-[12px] font-medium text-ink-800 transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900"
     >
       {children}
     </a>

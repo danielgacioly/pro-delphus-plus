@@ -17,7 +17,6 @@ import { api, getErrorMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import {
   Alert,
-  BackLink,
   Badge,
   Button,
   Card,
@@ -262,10 +261,7 @@ export function NewQuote() {
 
   if (isEditing && loadingQuote) {
     return (
-      <Page title="Editar orçamento" width="narrow">
-        <div className="-mt-4 mb-5">
-          <BackLink to="/orcamentos">Orçamentos</BackLink>
-        </div>
+      <Page back={{ to: '/orcamentos', label: 'Orçamentos' }} title="Editar orçamento" width="narrow">
         <p className="text-[13px] text-neutral-500">Carregando orçamento…</p>
       </Page>
     )
@@ -273,6 +269,7 @@ export function NewQuote() {
 
   return (
     <Page
+      back={{ to: '/orcamentos', label: 'Orçamentos' }}
       title={isEditing ? `Editar orçamento ${existingQuote?.quoteNumber ?? ''}` : 'Novo orçamento'}
       description={
         isEditing
@@ -281,9 +278,6 @@ export function NewQuote() {
       }
       width="narrow"
     >
-      <div className="-mt-4 mb-5">
-        <BackLink to="/orcamentos">Orçamentos</BackLink>
-      </div>
 
       <form
         onSubmit={(e) => {
@@ -440,7 +434,7 @@ export function NewQuote() {
                           setInfoIndex(null)
                         }}
                         aria-label="Remover item"
-                        className="mt-[26px] flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+                        className="mt-[26px] flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600"
                       >
                         ×
                       </button>
@@ -477,13 +471,13 @@ export function NewQuote() {
                           {infoProduct && (
                             <div className="space-y-2.5">
                               <div>
-                                <p className="text-eyebrow text-neutral-400">Descrição do catálogo</p>
+                                <p className="text-[12px] font-medium text-neutral-500">Descrição do catálogo</p>
                                 <p className="mt-1 max-h-32 overflow-y-auto text-[12.5px] leading-relaxed text-ink-700">
                                   {infoDescription || 'Sem descrição cadastrada.'}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-eyebrow text-neutral-400">
+                                <p className="text-[12px] font-medium text-neutral-500">
                                   Preço de tabela · {currency}
                                   {effectivePriceTier === 'DISTRIBUTOR' ? ' (distribuidor)' : ''}
                                 </p>
@@ -644,7 +638,7 @@ export function NewQuote() {
 
       {completedOrderWarning && (
         <Modal onClose={() => setCompletedOrderWarning(null)} dismissOnBackdrop>
-          <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+          <div className="animate-scale-in w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
             <h2 className="text-base font-semibold text-ink-900">Este orçamento já tem pedido concluído</h2>
             <p className="mt-1 text-sm text-neutral-500">
               {completedOrderWarning.length === 1

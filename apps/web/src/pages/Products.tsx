@@ -55,7 +55,7 @@ const kindLabel: Record<ProductKind, string> = {
 function DetailBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-eyebrow text-neutral-400">{label}</dt>
+      <dt className="text-[12px] font-medium text-neutral-500">{label}</dt>
       <dd className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-600">{children}</dd>
     </div>
   )
@@ -265,7 +265,7 @@ export function Products() {
           value={sectorFilter}
           onChange={(e) => setSectorFilter(e.target.value)}
           auto
-          className="h-9 text-[13px]"
+          className="max-w-56 text-[13px]"
         >
           <option value="ALL">Todos os setores</option>
           {sectors?.map((s) => (
@@ -286,7 +286,7 @@ export function Products() {
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="flex items-center gap-4 rounded-2xl border border-neutral-200/70 bg-white p-4 shadow-sm"
+              className="flex items-center gap-4 rounded-2xl border border-black/[0.06] bg-white p-4"
             >
               <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
               <div className="flex-1 space-y-2">
@@ -303,7 +303,7 @@ export function Products() {
       )}
 
       {!isLoading && !isError && filteredProducts?.length === 0 && (
-        <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
           <EmptyState
             icon={IconBox}
             title="Nenhum produto encontrado"
@@ -383,7 +383,7 @@ export function Products() {
                     }}
                     aria-label={isExpanded ? 'Fechar detalhes' : 'Ver detalhes'}
                     aria-expanded={isExpanded}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900 active:scale-90"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900"
                   >
                     <IconChevronDown
                       className={cn('h-4 w-4 transition-transform duration-300 ease-out', isExpanded && 'rotate-180')}
@@ -431,7 +431,7 @@ export function Products() {
                     )}
                     {product.videoLinks.length > 0 && (
                       <div className="lg:col-span-2">
-                        <dt className="text-eyebrow text-neutral-400">Links de vídeo</dt>
+                        <dt className="text-[12px] font-medium text-neutral-500">Links de vídeo</dt>
                         <dd className="mt-1.5 space-y-1">
                           {product.videoLinks.map((link) => (
                             <a

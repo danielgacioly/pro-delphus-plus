@@ -55,7 +55,7 @@ export function Login() {
         <div>
           {/* Sem link de recuperação: quem esquece a senha pede a um admin, que
               define uma nova pelo painel de contas. */}
-          <label htmlFor="login-password" className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+          <label htmlFor="login-password" className="mb-1.5 block text-[13px] font-medium text-ink-800">
             Senha
           </label>
           <Input
@@ -68,7 +68,7 @@ export function Login() {
           />
         </div>
 
-        <Button type="submit" variant="primary" size="lg" disabled={submitting} className="w-full">
+        <Button type="submit" variant="primary" size="lg" disabled={submitting} className="h-10 w-full">
           {submitting ? 'Entrando…' : 'Entrar'}
         </Button>
 

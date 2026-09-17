@@ -12,7 +12,6 @@ import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   Alert,
-  BackLink,
   Button,
   Card,
   Field,
@@ -29,6 +28,7 @@ import {
   Th,
   Tr,
 } from '../components/ui'
+import { IconQuote } from '../components/icons'
 
 async function fetchOrder(id: string) {
   const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
@@ -38,7 +38,7 @@ async function fetchOrder(id: string) {
 function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <dt className="text-eyebrow text-neutral-400">{label}</dt>
+      <dt className="text-[12px] font-medium text-neutral-500">{label}</dt>
       <dd className="mt-1 whitespace-pre-line text-[13.5px] leading-relaxed text-ink-900">
         {value?.trim() ? value : '—'}
       </dd>
@@ -63,10 +63,11 @@ function DocLink({ href, children, tone = 'brand' }: { href: string; children: R
       href={href}
       target="_blank"
       rel="noreferrer"
-      className={`inline-flex h-8 items-center rounded-lg px-3 text-[12.5px] font-semibold text-white shadow-sm transition-[background-color,box-shadow,transform] duration-150 hover:shadow-md active:scale-[0.97] ${
-        tone === 'brand' ? 'bg-brand-600 hover:bg-brand-700' : 'bg-ink-900 hover:bg-black'
-      }`}
+      // Documento é arquivo, não ação principal: botão secundário com o
+      // glifo colorido pelo tipo (vermelho PDF, verde planilha), como no Finder.
+      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/[0.1] bg-white px-3 text-[13px] font-medium text-ink-900 shadow-[0_0.5px_1px_rgb(0_0_0/0.05)] transition-colors duration-100 hover:bg-neutral-50"
     >
+      <IconQuote className={`h-3.5 w-3.5 ${tone === 'brand' ? 'text-brand-600' : 'text-emerald-600'}`} />
       {children}
     </a>
   )
@@ -331,6 +332,7 @@ export function OrderDetail() {
 
   return (
     <Page
+      back={{ to: '/pedidos', label: 'Pedidos' }}
       title={`Pedido #${formatOrderNumber(order.orderNumber)}`}
       description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
       actions={
@@ -339,9 +341,6 @@ export function OrderDetail() {
         </Button>
       }
     >
-      <div className="-mt-4 mb-6">
-        <BackLink to="/pedidos">Pedidos</BackLink>
-      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">

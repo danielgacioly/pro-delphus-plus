@@ -8,14 +8,14 @@ export interface SegmentedOption<T extends string> {
 }
 
 /**
- * Controle segmentado no estilo iOS: trilho recuado com a opção ativa
- * “levantada” numa pastilha branca.
+ * Controle segmentado no estilo macOS: trilho cinza recuado com a opção ativa
+ * numa pastilha branca com traço fino.
  *
  * Convenção de “estado selecionado/ativo” no app (documentada aqui por ser
  * o primeiro primitivo do arquivo; vale para FilterChip abaixo e para
  * Badge.tsx também):
  *   - Controle de alternância exclusiva num trilho (como este SegmentedControl):
- *     pílula branca elevada sobre o item ativo.
+ *     pastilha branca sobre o item ativo.
  *   - Filtro booleano solto (como FilterChip abaixo): preenchimento sólido
  *     bg-ink-900 quando ativo.
  *   - Rótulo de status/contagem (Badge, em Feedback.tsx): tom suave da cor
@@ -45,7 +45,7 @@ export function SegmentedControl<T extends string>({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex items-center gap-1 rounded-lg bg-neutral-500/8 p-1',
+        'inline-flex h-8 items-center gap-0.5 rounded-lg bg-black/[0.055] p-0.5',
         fill && 'flex w-full',
         className,
       )}
@@ -60,11 +60,11 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              'rounded-lg px-3 py-1 text-[13px] font-medium whitespace-nowrap',
-              'transition-[background-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.97]',
+              'flex h-7 items-center justify-center rounded-md px-3 text-[13px] whitespace-nowrap',
+              'transition-[background-color,color,box-shadow] duration-150 ease-out',
               fill && 'flex-1',
               active
-                ? 'bg-white text-ink-900 shadow-sm'
+                ? 'bg-white font-medium text-ink-900 shadow-[0_0.5px_2px_rgb(0_0_0/0.14),0_0_0_0.5px_rgb(0_0_0/0.05)]'
                 : 'text-neutral-600 hover:text-ink-900',
             )}
           >
@@ -94,11 +94,11 @@ export function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium',
-        'transition-[background-color,color,border-color,transform] duration-150 ease-out active:scale-[0.97]',
+        'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px]',
+        'transition-[background-color,color,border-color] duration-100 ease-out',
         active
-          ? 'border border-transparent bg-ink-900 text-white'
-          : 'border border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-ink-900',
+          ? 'border border-transparent bg-ink-900 font-medium text-white'
+          : 'border border-black/[0.1] bg-white text-ink-800 hover:bg-neutral-50',
         className,
       )}
     >
@@ -107,6 +107,10 @@ export function FilterChip({
   )
 }
 
+/**
+ * Campo de busca de barra de ferramentas do macOS: preenchimento cinza em vez
+ * de borda, que só vira campo branco com anel quando recebe foco.
+ */
 export function SearchField({
   value,
   onChange,
@@ -120,17 +124,17 @@ export function SearchField({
 }) {
   return (
     <div className={cn('relative', className)}>
-      <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+      <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-neutral-500" />
       <input
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'h-9 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm text-ink-900 shadow-xs',
-          'placeholder:text-neutral-400',
-          'transition-[border-color,box-shadow] duration-150 ease-out hover:border-neutral-300',
-          'focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus-visible:outline-none',
+          'h-8 w-full rounded-lg border border-transparent bg-black/[0.055] pl-8 pr-7 text-[13.5px] text-ink-900',
+          'placeholder:text-neutral-500',
+          'transition-[background-color,border-color,box-shadow] duration-100 ease-out hover:bg-black/[0.07]',
+          'focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-[3px] focus:ring-brand-500/20 focus-visible:outline-none',
           '[&::-webkit-search-cancel-button]:appearance-none',
         )}
       />
@@ -139,7 +143,7 @@ export function SearchField({
           type="button"
           onClick={() => onChange('')}
           aria-label="Limpar busca"
-          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-500/15 text-[11px] text-neutral-600 transition-colors hover:bg-neutral-500/25"
+          className="absolute right-2 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-400 text-[11px] leading-none text-white transition-colors hover:bg-neutral-500"
         >
           ×
         </button>
@@ -150,5 +154,5 @@ export function SearchField({
 
 /** Barra de filtros acima de uma tabela ou grade. */
 export function Toolbar({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('flex flex-wrap items-center gap-2.5', className)}>{children}</div>
+  return <div className={cn('flex flex-wrap items-center gap-2', className)}>{children}</div>
 }

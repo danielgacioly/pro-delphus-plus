@@ -1,7 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { cn } from '../lib/cn'
 import { Page, Section, ButtonLink } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
@@ -22,8 +21,9 @@ interface Shortcut {
   icon: ComponentType<SVGProps<SVGSVGElement>>
 }
 
-// Orçamentos, Pedidos e Clientes são o fluxo do dia a dia — cards maiores, tom
-// de marca. O resto é ferramenta de apoio, usada com menos frequência.
+// Orçamentos, Pedidos e Clientes são o fluxo do dia a dia — ganham tiles.
+// O resto é ferramenta de apoio e vira lista agrupada: a hierarquia vem da
+// forma diferente, não de repetir o mesmo card em dois tamanhos.
 const primaryShortcuts: Shortcut[] = [
   {
     to: '/orcamentos',
@@ -49,19 +49,19 @@ const secondaryShortcuts: Shortcut[] = [
   {
     to: '/minha-pro-delphus',
     title: 'Minha Pro Delphus',
-    description: 'Seu mural pessoal de tarefas e lembretes.',
+    description: 'Seu mural pessoal de tarefas e lembretes',
     icon: IconBoard,
   },
   {
     to: '/precos',
     title: 'Tabela de preços',
-    description: 'Preços em real, dólar e euro por setor.',
+    description: 'Preços em real, dólar e euro por setor',
     icon: IconTag,
   },
   {
     to: '/produtos',
     title: 'Produtos',
-    description: 'Catálogo, mídia e customizações disponíveis.',
+    description: 'Catálogo, mídia e customizações disponíveis',
     icon: IconBox,
   },
 ]
@@ -73,55 +73,24 @@ function greeting() {
   return 'Boa noite'
 }
 
-function ShortcutCard({
-  shortcut,
-  tone,
-  size,
-  index,
-}: {
-  shortcut: Shortcut
-  tone: 'brand' | 'neutral'
-  size: 'lg' | 'sm'
-  index: number
-}) {
+function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
   const { to, title, description, icon: Icon } = shortcut
   return (
     <Link
       to={to}
-      style={{ animationDelay: `${index * 40}ms` }}
-      className={cn(
-        'group animate-fade-in-up relative flex flex-col rounded-2xl border border-neutral-200/70 bg-white shadow-sm',
-        'transition-[transform,box-shadow,border-color] duration-200 ease-out',
-        'hover:-translate-y-0.5 hover:shadow-lg',
-        tone === 'brand' ? 'hover:border-brand-200' : 'hover:border-neutral-300',
-        size === 'lg' ? 'p-5' : 'p-4',
-      )}
+      className="group flex flex-col rounded-2xl border border-black/[0.06] bg-white p-5 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
     >
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-xl transition-colors duration-200',
-          size === 'lg' ? 'h-10 w-10' : 'h-8 w-8',
-          tone === 'brand'
-            ? 'bg-brand-50 text-brand-600 group-hover:bg-brand-100'
-            : 'bg-neutral-500/8 text-ink-800 group-hover:bg-neutral-500/14',
-        )}
-      >
-        <Icon className={size === 'lg' ? 'h-4.75 w-4.75' : 'h-4 w-4'} />
+      <Icon className="h-[22px] w-[22px] text-brand-600" />
+      <div className="pt-7">
+        <h3 className="flex items-center gap-1 text-[17px] font-semibold tracking-[-0.022em] text-ink-900">
+          {title}
+          <IconChevronRight
+            className="h-3.5 w-3.5 text-neutral-400 transition-transform duration-150 ease-out group-hover:translate-x-0.5"
+            strokeWidth={2.2}
+          />
+        </h3>
+        <p className="mt-0.5 text-[13px] leading-snug text-neutral-600">{description}</p>
       </div>
-
-      <h3 className={cn('mt-3.5 text-ink-900', size === 'lg' ? 'text-heading' : 'text-[13.5px] font-semibold')}>
-        {title}
-      </h3>
-      <p className={cn('mt-1 leading-relaxed text-neutral-500', size === 'lg' ? 'text-[13px]' : 'text-[12.5px]')}>
-        {description}
-      </p>
-
-      <IconChevronRight
-        className={cn(
-          'absolute right-4 h-4 w-4 text-neutral-300 transition-[transform,color] duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-neutral-500',
-          size === 'lg' ? 'top-5' : 'top-4',
-        )}
-      />
     </Link>
   )
 }
@@ -133,22 +102,22 @@ export function Home() {
 
   return (
     <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
-      <div className="flex flex-wrap gap-3">
+      <div className="-mt-2 flex flex-wrap gap-2">
         <ButtonLink to="/orcamentos/novo" variant="primary" size="lg">
-          <IconPlus className="h-4 w-4" />
+          <IconPlus className="h-4 w-4" strokeWidth={2} />
           Novo Orçamento
         </ButtonLink>
-        <ButtonLink to="/pedidos/novo" variant="primary" size="lg">
-          <IconPlus className="h-4 w-4" />
+        <ButtonLink to="/pedidos/novo" size="lg">
+          <IconPlus className="h-4 w-4 text-neutral-500" strokeWidth={2} />
           Novo Pedido
         </ButtonLink>
-        <ButtonLink to="/clientes?novo=1" variant="secondary" size="lg">
-          <IconPlus className="h-4 w-4" />
+        <ButtonLink to="/clientes?novo=1" size="lg">
+          <IconPlus className="h-4 w-4 text-neutral-500" strokeWidth={2} />
           Novo Cliente
         </ButtonLink>
         {isAdmin && (
-          <ButtonLink to="/produtos/novo" variant="secondary" size="lg">
-            <IconPlus className="h-4 w-4" />
+          <ButtonLink to="/produtos/novo" size="lg">
+            <IconPlus className="h-4 w-4 text-neutral-500" strokeWidth={2} />
             Novo Produto
           </ButtonLink>
         )}
@@ -156,39 +125,46 @@ export function Home() {
 
       <Link
         to="/neo"
-        className={cn(
-          'group relative mt-8 flex flex-col items-start gap-4 overflow-hidden rounded-3xl bg-ink-900 p-6 text-white shadow-sm',
-          'transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg',
-          'sm:flex-row sm:items-center sm:justify-between',
-        )}
+        className="group mt-7 flex flex-col items-start gap-4 rounded-2xl bg-ink-900 py-4 pr-4 pl-4 text-white transition-colors duration-150 ease-out hover:bg-ink-800 sm:flex-row sm:items-center sm:justify-between sm:pl-5"
       >
-        <div className="flex items-center gap-4">
-          <NeoAvatar className="h-14 w-14 shrink-0 ring-2 ring-white/15" />
+        <div className="flex items-center gap-3.5">
+          <NeoAvatar className="h-10 w-10 shrink-0" />
           <div>
-            <h3 className="text-heading text-white">Vamos bater um papo!</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-white/60">
+            <h3 className="text-[15px] font-semibold tracking-[-0.014em] text-white">Vamos bater um papo!</h3>
+            <p className="mt-0.5 text-[13px] leading-snug text-white/55">
               Pergunte ao NEO sobre preços, clientes e produtos, ou peça para montar um orçamento ou um pedido por você.
             </p>
           </div>
         </div>
-        <span className="inline-flex h-9.5 shrink-0 items-center gap-1.5 self-start rounded-lg bg-white px-4 text-sm font-semibold text-ink-900 transition-colors duration-150 group-hover:bg-neutral-100 sm:self-auto">
+        <span className="inline-flex h-8 shrink-0 items-center gap-1 self-start rounded-lg bg-white/[0.12] px-3.5 text-[13px] font-medium text-white transition-colors duration-150 group-hover:bg-white/[0.18] sm:self-auto">
           Conversar
-          <IconChevronRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+          <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
         </span>
       </Link>
 
-      <Section title="Principal">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {primaryShortcuts.map((shortcut, i) => (
-            <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" size="lg" index={i} />
+      <Section title="Principal" className="mt-12">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {primaryShortcuts.map((shortcut) => (
+            <PrimaryTile key={shortcut.to} shortcut={shortcut} />
           ))}
         </div>
       </Section>
 
-      <Section title="Mais ferramentas">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {secondaryShortcuts.map((shortcut, i) => (
-            <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="neutral" size="sm" index={i} />
+      <Section title="Mais ferramentas" className="mt-10">
+        <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
+          {secondaryShortcuts.map(({ to, title, description, icon: Icon }, i) => (
+            <Link
+              key={to}
+              to={to}
+              className="group relative flex h-12 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]"
+            >
+              {/* Separador recuado até o texto, como nas listas agrupadas do macOS. */}
+              {i > 0 && <span aria-hidden className="absolute top-0 right-0 left-11 h-px bg-black/[0.06]" />}
+              <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-500" />
+              <span className="text-[14px] font-medium text-ink-900">{title}</span>
+              <span className="hidden truncate text-[13px] text-neutral-500 sm:inline">{description}</span>
+              <IconChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-neutral-400" strokeWidth={2.2} />
+            </Link>
           ))}
         </div>
       </Section>

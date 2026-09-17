@@ -25,25 +25,27 @@
   --color-danger-800: #991b1b;
   --color-danger-900: #7f1d1d;
 
-  /* ---- Ink (warm near-blacks) --------------------------------------- */
-  --color-ink-900: #17161a;
-  --color-ink-800: #232227;
-  --color-ink-700: #33313a;
+  /* ---- Ink — os pretos de texto da Apple (#1d1d1f), não preto puro ---- */
+  --color-ink-900: #1d1d1f;
+  --color-ink-800: #2c2c2e;
+  --color-ink-700: #3a3a3c;
 
-  /* ---- Warm neutral ramp (overrides Tailwind's cool grey) ----------- */
-  --color-neutral-50: #faf9f8;
-  --color-neutral-100: #f4f3f1;
-  --color-neutral-200: #e8e6e3;
-  --color-neutral-300: #d8d5d1;
-  --color-neutral-400: #b3afaa;
-  --color-neutral-500: #8a8580;
-  --color-neutral-600: #67635e;
-  --color-neutral-700: #4c4945;
-  --color-neutral-800: #322f2d;
-  --color-neutral-900: #1d1b1a;
+  /* ---- Cinzas do sistema da Apple (sobrescreve o cinza do Tailwind) ----
+     500 = rótulo terciário, 600 = rótulo secundário (#6e6e73). */
+  --color-neutral-50: #fafafc;
+  --color-neutral-100: #f5f5f7;
+  --color-neutral-200: #e8e8ed;
+  --color-neutral-300: #d2d2d7;
+  --color-neutral-400: #aeaeb2;
+  --color-neutral-500: #86868b;
+  --color-neutral-600: #6e6e73;
+  --color-neutral-700: #515154;
+  --color-neutral-800: #3a3a3c;
+  --color-neutral-900: #1d1d1f;
 
-  /* App canvas — warm off-white, a touch darker than surfaces so cards lift */
-  --color-canvas: #f6f5f3;
+  /* Fundo do app: o #f5f5f7 da Apple. Superfícies são branco puro — o
+     contraste de fundo separa, não a sombra. */
+  --color-canvas: #f5f5f7;
 
   /* ---- Typography ---------------------------------------------------- */
   /* System stack first: real SF Pro on Apple platforms. */
@@ -51,29 +53,29 @@
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter var', 'Segoe UI', Roboto,
     Helvetica, Arial, sans-serif;
 
-  /* ---- Soft, layered elevation --------------------------------------- */
-  --shadow-xs: 0 1px 2px rgb(23 22 26 / 0.04);
-  --shadow-sm: 0 1px 3px rgb(23 22 26 / 0.05), 0 1px 2px rgb(23 22 26 / 0.03);
-  --shadow-md: 0 4px 14px rgb(23 22 26 / 0.06), 0 1px 3px rgb(23 22 26 / 0.04);
-  --shadow-lg: 0 14px 36px rgb(23 22 26 / 0.09), 0 3px 10px rgb(23 22 26 / 0.04);
-  --shadow-xl: 0 28px 70px rgb(23 22 26 / 0.14), 0 10px 20px rgb(23 22 26 / 0.06);
+  /* ---- Elevação — quase nenhuma em conteúdo; só o que flutua tem sombra.
+     O 0.5px de "anel" imita o traço fino que o macOS põe em volta de
+     janelas e popovers. */
+  --shadow-xs: 0 0.5px 1px rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 0.06), 0 0 0 0.5px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 8px 28px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 22px 60px rgb(0 0 0 / 0.18), 0 0 0 0.5px rgb(0 0 0 / 0.08);
 
-  /* ---- Radii — generous, closer to Apple's continuous corners --------
-     Convenção por nível de superfície (não escolher um rounded-* por
-     preferência pontual — seguir esta tabela):
-       - Controles inline (button, input, select, chip, segmented item,
-         ícone de ação): rounded-lg
-       - Containers de conteúdo (card, tabela, painel de seção): rounded-2xl
-       - Superfícies flutuantes (modal, popover, dropdown, toast): rounded-3xl
-     Hoje só o SegmentedControl (rounded-[7px], em Controls.tsx) e as
-     superfícies flutuantes (rounded-xl em Modal/DropZone/ConfirmDeleteModal)
-     divergem desta tabela — corrigido na Camada B. */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.125rem;
-  --radius-3xl: 1.5rem;
+  /* ---- Raios — contidos, proporcionais ao tamanho da peça ------------
+       - Controles (button, input, select, segmented): rounded-lg  (8px)
+       - Itens de lista/sidebar, chips pequenos:        rounded-md  (6px)
+       - Painéis internos, alertas:                     rounded-xl  (10px)
+       - Cards e tabelas:                               rounded-2xl (12px)
+       - Modais e superfícies flutuantes:               rounded-3xl (14px)
+     Raio grande e igual em tudo é a assinatura de interface gerada; aqui o
+     raio cresce devagar com a peça, como nos cantos concêntricos da Apple. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 0.875rem;
 
   /* ---- Opacity convention for interactive states (usage guide — no new tokens) ----
      Usar sempre um destes quatro valores como modificador de opacidade
@@ -105,6 +107,9 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-canvas);
   color: var(--color-ink-900);
+  /* No nativo o SF Pro aplica tracking óptico sozinho; na web não — este é o
+     valor que a própria apple.com usa para texto de 14px. */
+  letter-spacing: -0.012em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -113,32 +118,33 @@ body {
 /* Optical sizing: large type tightens, small type opens up. Mirrors how SF Pro
    switches between Display and Text optical sizes. */
 .text-display {
-  font-size: 2.125rem;
-  line-height: 1.12;
+  font-size: 1.75rem;
+  line-height: 1.14;
   letter-spacing: -0.024em;
   font-weight: 700;
 }
 
 .text-title {
-  font-size: 1.375rem;
-  line-height: 1.22;
-  letter-spacing: -0.017em;
-  font-weight: 650;
-}
-
-.text-heading {
-  font-size: 1.0625rem;
-  line-height: 1.35;
-  letter-spacing: -0.011em;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
   font-weight: 600;
 }
 
-/* Small all-caps section labels — needs positive tracking to stay legible. */
+.text-heading {
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  letter-spacing: -0.014em;
+  font-weight: 600;
+}
+
+/* Rótulo de seção. Sem caixa alta espaçada — rótulo em CAPS rastreado é
+   vocabulário de template de dashboard; a Apple usa caixa normal, peso
+   semibold e cor secundária. */
 .text-eyebrow {
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   line-height: 1.3;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  letter-spacing: -0.008em;
   font-weight: 600;
 }
 
@@ -155,9 +161,10 @@ h3 {
 }
 
 /* ---- Focus: a single, calm focus ring used app-wide -------------------- */
+/* Anel de foco à moda do macOS: largo, translúcido, colado à peça. */
 :focus-visible {
-  outline: 2px solid var(--color-brand-500);
-  outline-offset: 2px;
+  outline: 3px solid color-mix(in srgb, var(--color-brand-500) 45%, transparent);
+  outline-offset: 1px;
 }
 
 /* ---- Scrollbars: thin and unobtrusive, macOS-like ---------------------- */
@@ -301,6 +308,14 @@ h3 {
 /* ---- Materials: translucent surfaces that let content show through ----- */
 .material {
   background-color: rgb(255 255 255 / 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Barra fixa do topo sobre o fundo cinza do app: mesma cor do fundo,
+   translúcida, para o título compacto não parecer uma faixa branca solta. */
+.material-canvas {
+  background-color: rgb(245 245 247 / 0.8);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }

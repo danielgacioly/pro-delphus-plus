@@ -4,7 +4,7 @@ import type { UserDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage as errorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { DropZone } from '../components/DropZone'
-import { BackLink, Button, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
+import { Button, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
 
 function SettingsCard({
   title,
@@ -130,10 +130,7 @@ export function Account() {
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? '?'
 
   return (
-    <Page title="Minha Conta" description={user?.email} width="narrow">
-      <div className="-mt-4 mb-6">
-        <BackLink to="/">Início</BackLink>
-      </div>
+    <Page back={{ to: '/', label: 'Início' }} title="Minha Conta" description={user?.email} width="narrow">
 
       <div className="mb-6 flex items-center gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[20px] font-semibold text-white shadow-sm">

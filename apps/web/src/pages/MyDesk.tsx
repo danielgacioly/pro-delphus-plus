@@ -142,7 +142,7 @@ function ColumnTitle({ column }: { column: PersonalBoardColumnDTO }) {
           }
         }}
         onClick={(e) => e.stopPropagation()}
-        className="text-eyebrow w-full rounded-md border border-brand-300 bg-white px-1.5 py-0.5 text-ink-900 focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+        className="text-eyebrow w-full rounded-md border border-brand-300 bg-white px-1.5 py-0.5 text-ink-900 focus:outline-none focus:ring-[3px] focus:ring-brand-500/20"
       />
     )
   }
@@ -335,7 +335,7 @@ export function MyDesk() {
         <StatTile to="/pedidos" icon={IconTruck} label="Meus pedidos" value={myOrders.length} />
       </div>
 
-      <h2 className="text-eyebrow mb-3.5 text-neutral-400">Mural de tarefas</h2>
+      <h2 className="text-heading mb-3 text-ink-900">Mural de tarefas</h2>
 
       {columnError && (
         <div className="mb-4">
@@ -362,7 +362,7 @@ export function MyDesk() {
             e.preventDefault()
             if (newColumnName.trim()) createColumn.mutate(newColumnName.trim())
           }}
-          className="animate-fade-in mb-4 flex items-center gap-2 rounded-2xl border border-neutral-200/70 bg-white p-3 shadow-sm"
+          className="animate-fade-in mb-4 flex items-center gap-2 rounded-2xl border border-black/[0.06] bg-white p-3"
         >
           <Input
             autoFocus
@@ -386,7 +386,7 @@ export function MyDesk() {
             e.preventDefault()
             createTask.mutate()
           }}
-          className="animate-fade-in mb-5 rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm"
+          className="animate-fade-in mb-5 rounded-2xl border border-black/[0.06] bg-white p-5"
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Título" className="sm:col-span-2">
@@ -514,7 +514,7 @@ export function MyDesk() {
       {!columns && (
         <div className="flex gap-4 overflow-x-auto pb-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="w-[288px] shrink-0 rounded-2xl border border-neutral-200/70 bg-white p-3 shadow-sm">
+            <div key={i} className="w-[288px] shrink-0 rounded-2xl bg-black/[0.035] p-2.5">
               <Skeleton className="h-2.5 w-24" />
               <div className="mt-4 space-y-2">
                 <Skeleton className="h-16 rounded-xl" />
@@ -545,10 +545,10 @@ export function MyDesk() {
                 else handleDrop(col.id)
               }}
               className={cn(
-                'shrink-0 cursor-grab rounded-2xl border border-neutral-200/70 bg-white p-3 shadow-sm active:cursor-grabbing',
-                'transition-[opacity,box-shadow,width] duration-200 ease-out',
+                'shrink-0 cursor-grab rounded-2xl bg-black/[0.035] p-2.5 active:cursor-grabbing',
+                'transition-[opacity,background-color,width] duration-200 ease-out',
                 isCollapsed ? 'w-53' : 'w-[288px]',
-                draggingColumnId === col.id ? 'opacity-40' : 'hover:shadow-md',
+                draggingColumnId === col.id ? 'opacity-40' : 'hover:bg-black/[0.05]',
               )}
             >
               <div className="flex items-center gap-1 px-1">
@@ -617,9 +617,9 @@ export function MyDesk() {
                         }}
                         onClick={() => setEditingTaskId(task.id)}
                         className={cn(
-                          'group cursor-pointer rounded-xl border border-neutral-200/70 p-3 shadow-xs',
-                          'transition-[transform,box-shadow,border-color] duration-200 ease-out',
-                          'hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md active:cursor-grabbing',
+                          'group cursor-pointer rounded-xl border border-black/[0.05] p-3 shadow-[0_0.5px_1.5px_rgb(0_0_0/0.06)]',
+                          'transition-[box-shadow,border-color] duration-150 ease-out',
+                          'hover:border-black/[0.1] hover:shadow-md active:cursor-grabbing',
                           done ? 'bg-neutral-50/70' : 'bg-white',
                           draggingId === task.id && 'opacity-40',
                         )}
@@ -707,7 +707,7 @@ export function MyDesk() {
                   })}
 
                   {colTasks.length === 0 && (
-                    <p className="rounded-xl border border-dashed border-neutral-200 px-3 py-5 text-center text-[12px] text-neutral-400">
+                    <p className="px-3 py-6 text-center text-[12.5px] text-neutral-400">
                       Nada por aqui.
                     </p>
                   )}
@@ -718,7 +718,7 @@ export function MyDesk() {
         })}
 
         {columns && columns.length === 0 && (
-          <div className="w-full overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+          <div className="w-full overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
             <EmptyState
               icon={IconBoard}
               title="Nenhum quadro ainda"

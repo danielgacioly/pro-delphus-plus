@@ -15,38 +15,27 @@ interface StatTileProps {
 }
 
 /**
- * Card de métrica — rótulo pequeno em maiúsculas + valor grande tabular,
- * com ícone opcional e, opcionalmente, como link. Consolida o que antes
- * eram três implementações quase idênticas (Home, Stats, MyDesk) — Home
- * ficou de fora por ser um padrão diferente (ver plano).
+ * Card de métrica — rótulo discreto + valor tabular. O número é o destaque;
+ * o ícone, quando existe, é só um glifo pequeno ao lado do rótulo, não um
+ * quadrado colorido competindo com o valor.
  */
 export function StatTile({ icon: Icon, label, value, sub, to, tone = 'brand', delay = 0, className }: StatTileProps) {
   const content = (
     <>
-      <div className="flex items-center gap-2.5">
-        {Icon && (
-          <span
-            className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-              tone === 'brand' ? 'bg-brand-50 text-brand-600' : 'bg-neutral-500/8 text-ink-800',
-            )}
-          >
-            <Icon className="h-4 w-4" />
-          </span>
-        )}
-        <p className="text-eyebrow text-neutral-400">{label}</p>
+      <div className="flex items-center gap-1.5">
+        {Icon && <Icon className={cn('h-3.5 w-3.5 shrink-0', tone === 'brand' ? 'text-brand-600' : 'text-neutral-500')} />}
+        <p className="text-[13px] font-medium text-neutral-500">{label}</p>
       </div>
-      <p className="tabular mt-2.5 text-[26px] font-bold leading-none text-ink-900">
+      <p className="tabular mt-1.5 whitespace-nowrap text-[24px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">
         {value}
-        {sub && <span className="ml-1.5 text-[15px] font-normal text-neutral-400">{sub}</span>}
+        {sub && <span className="ml-1.5 text-[14px] font-normal tracking-normal text-neutral-500">{sub}</span>}
       </p>
     </>
   )
 
   const classes = cn(
-    'animate-fade-in-up rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm',
-    'transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg',
-    to && tone === 'brand' && 'hover:border-brand-200',
+    'animate-fade-in rounded-2xl border border-black/[0.06] bg-white px-4 py-3.5',
+    to && 'transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md',
     className,
   )
 

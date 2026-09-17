@@ -123,7 +123,7 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
                         type="button"
                         onClick={() => editor.removeBoxLine(line.id)}
                         aria-label="Remover linha"
-                        className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+                        className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600"
                       >
                         ×
                       </button>

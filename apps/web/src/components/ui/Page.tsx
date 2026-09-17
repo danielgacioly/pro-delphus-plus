@@ -44,19 +44,22 @@ export function Page({
   title,
   description,
   actions,
+  back,
   children,
   width = 'wide',
 }: {
   title: string
   description?: ReactNode
   actions?: ReactNode
+  /** Link de volta, mostrado acima do título (navegação, não conteúdo). */
+  back?: { to: string; label: string }
   children: ReactNode
   width?: 'wide' | 'narrow' | 'full'
 }) {
   const { ref, scrolled } = useScrolledPast()
 
   const container =
-    width === 'narrow' ? 'mx-auto w-full max-w-3xl' : width === 'full' ? 'w-full' : 'mx-auto w-full max-w-[1440px]'
+    width === 'narrow' ? 'mx-auto w-full max-w-3xl' : width === 'full' ? 'w-full' : 'mx-auto w-full max-w-[1280px]'
 
   return (
     <>
@@ -64,16 +67,16 @@ export function Page({
 
       <header
         className={cn(
-          'sticky top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-300 ease-out',
-          scrolled ? 'material border-b border-neutral-200/70' : 'border-b border-transparent',
+          'sticky top-0 z-30 transition-[background-color,border-color] duration-200 ease-out',
+          scrolled ? 'material-canvas border-b border-black/[0.08]' : 'border-b border-transparent',
         )}
       >
-        <div className={cn(container, 'flex h-14 items-center gap-4 px-6 sm:px-8')}>
+        <div className={cn(container, 'flex h-12 items-center gap-3 px-6 sm:px-10')}>
           <h2
             className={cn(
-              'min-w-0 flex-1 truncate text-[15px] font-semibold text-ink-900',
-              'transition-[opacity,transform] duration-300 ease-out',
-              scrolled ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0',
+              'min-w-0 flex-1 truncate text-[14px] font-semibold text-ink-900',
+              'transition-opacity duration-200 ease-out',
+              scrolled ? 'opacity-100' : 'pointer-events-none opacity-0',
             )}
           >
             {title}
@@ -82,12 +85,15 @@ export function Page({
         </div>
       </header>
 
-      <div className={cn(container, 'px-6 pb-20 sm:px-8')}>
-        <div className="pt-1 pb-7">
-          <h1 className="text-display text-ink-900">{title}</h1>
-          {description && (
-            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-neutral-500">{description}</p>
+      <div className={cn(container, 'px-6 pb-24 sm:px-10')}>
+        <div className="pt-2 pb-8">
+          {back && (
+            <div className="-mt-1 mb-1.5">
+              <BackLink to={back.to}>{back.label}</BackLink>
+            </div>
           )}
+          <h1 className="text-display text-ink-900">{title}</h1>
+          {description && <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-neutral-600">{description}</p>}
         </div>
         {children}
       </div>
@@ -108,10 +114,10 @@ export function Section({
   className?: string
 }) {
   return (
-    <section className={cn('mt-10 first:mt-0', className)}>
+    <section className={cn('mt-11 first:mt-0', className)}>
       {(title || action) && (
-        <div className="mb-3.5 flex items-end justify-between gap-4">
-          {title && <h2 className="text-eyebrow text-neutral-400">{title}</h2>}
+        <div className="mb-3 flex items-end justify-between gap-4">
+          {title && <h2 className="text-heading text-ink-900">{title}</h2>}
           {action}
         </div>
       )}
@@ -125,9 +131,9 @@ export function BackLink({ to, children }: { to: string; children: ReactNode }) 
   return (
     <Link
       to={to}
-      className="group -ml-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] font-medium text-neutral-500 transition-colors hover:text-ink-900"
+      className="-ml-1 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[13px] text-brand-600 transition-colors hover:text-brand-700"
     >
-      <IconChevronLeft className="h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover:-translate-x-0.5" />
+      <IconChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
       {children}
     </Link>
   )

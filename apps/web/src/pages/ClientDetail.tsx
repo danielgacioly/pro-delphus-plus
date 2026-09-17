@@ -26,7 +26,6 @@ import {
   Th,
   Tr,
 } from '../components/ui'
-import { BackLink } from '../components/ui'
 import { IconGlobe, IconMail, IconPhone, IconPin, IconPlus, IconQuote } from '../components/icons'
 
 interface ClientOrderRow {
@@ -68,7 +67,7 @@ function ContactLine({ icon, children }: { icon: ReactNode; children: ReactNode 
 function AddressBlock({ title, text }: { title: string; text: string | null }) {
   return (
     <div>
-      <p className="text-eyebrow text-neutral-400">{title}</p>
+      <p className="text-[12px] font-medium text-neutral-500">{title}</p>
       {text ? (
         <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{text}</p>
       ) : (
@@ -148,6 +147,7 @@ export function ClientDetail() {
 
   return (
     <Page
+      back={{ to: '/clientes', label: 'Clientes' }}
       title={client.name}
       description={
         <>
@@ -161,9 +161,6 @@ export function ClientDetail() {
         </Button>
       }
     >
-      <div className="-mt-4 mb-6">
-        <BackLink to="/clientes">Clientes</BackLink>
-      </div>
 
       {!client.active && (
         <div className="mb-5">
@@ -175,7 +172,7 @@ export function ClientDetail() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-1">
-          <p className="text-eyebrow text-neutral-400">Contato</p>
+          <p className="text-[12px] font-medium text-neutral-500">Contato</p>
           <div className="mt-3 space-y-2.5">
             {client.email ? (
               <ContactLine icon={<IconMail className="h-4 w-4" />}>
@@ -211,7 +208,7 @@ export function ClientDetail() {
 
           {client.notes && (
             <div className="mt-5 border-t border-neutral-200/70 pt-5">
-              <p className="text-eyebrow text-neutral-400">Observações</p>
+              <p className="text-[12px] font-medium text-neutral-500">Observações</p>
               <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{client.notes}</p>
             </div>
           )}
@@ -226,8 +223,8 @@ export function ClientDetail() {
               { label: 'Total orçado', value: formatAmount(client.stats.totalQuoted) },
             ].map((stat) => (
               <Card key={stat.label} className="p-4">
-                <p className="text-eyebrow text-neutral-400">{stat.label}</p>
-                <p className="tabular mt-2 text-[22px] font-bold leading-none text-ink-900">{stat.value}</p>
+                <p className="text-[12px] font-medium text-neutral-500">{stat.label}</p>
+                <p className="tabular mt-2 text-[22px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">{stat.value}</p>
               </Card>
             ))}
           </div>
@@ -338,7 +335,7 @@ export function ClientDetail() {
         <Modal onClose={() => setEditing(false)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-scale-in max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="animate-scale-in max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
           >
             <h2 className="text-title text-ink-900">Editar cliente</h2>
             <div className="mt-5">

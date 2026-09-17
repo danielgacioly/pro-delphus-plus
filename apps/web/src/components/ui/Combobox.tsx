@@ -101,7 +101,7 @@ export function Combobox<T extends string>({
               'h-10 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm text-ink-900 shadow-xs',
               'placeholder:text-neutral-400',
               'transition-[border-color,box-shadow] duration-150 ease-out hover:border-neutral-300',
-              'focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus-visible:outline-none',
+              'focus:border-brand-400 focus:outline-none focus:ring-[3px] focus:ring-brand-500/20 focus-visible:outline-none',
             )}
           />
         </div>
@@ -119,7 +119,7 @@ export function Combobox<T extends string>({
               e.preventDefault()
             }
           }}
-          className="z-50 w-[var(--radix-popover-trigger-width)] rounded-3xl border border-neutral-200/70 bg-white p-1.5 shadow-lg"
+          className="z-50 w-[var(--radix-popover-trigger-width)] rounded-xl border border-black/[0.08] bg-white p-1 shadow-lg"
         >
           {filtered.length === 0 ? (
             <p className="px-3 py-6 text-center text-[13px] text-neutral-500">{emptyMessage}</p>

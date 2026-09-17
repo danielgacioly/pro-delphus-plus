@@ -95,7 +95,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
     <Modal onClose={onClose} dismissOnBackdrop>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-scale-in max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+        className="animate-scale-in max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
       >
         <div className="flex items-start justify-between gap-3">
           <div>

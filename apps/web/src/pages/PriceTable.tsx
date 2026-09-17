@@ -76,7 +76,7 @@ function SkeletonGroup() {
       {[0, 1].map((g) => (
         <div key={g}>
           <Skeleton className="h-3.5 w-48" />
-          <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+          <div className="mt-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
             <div className="border-b border-neutral-200/70 bg-neutral-50/80 px-4 py-2.5">
               <Skeleton className="h-2.5 w-32" />
             </div>
@@ -202,7 +202,7 @@ export function PriceTable() {
             onClick={() => setColumnsOpen((s) => !s)}
             className={cn(
               'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium shadow-xs',
-              'transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]',
+              'transition-[background-color,border-color,color] duration-150',
               columnsOpen
                 ? 'border-neutral-300 bg-neutral-50 text-ink-900'
                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-ink-900',
@@ -267,7 +267,7 @@ export function PriceTable() {
                   </span>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
                   {(['COMPLETE_MODEL', 'COMPONENT'] as ProductKind[]).map((kind) => {
                     const items = groups[kind]
                     if (items.length === 0) return null
@@ -355,7 +355,7 @@ export function PriceTable() {
           })}
 
           {grouped.length === 0 && (
-            <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
               <EmptyState
                 title="Nenhum item encontrado"
                 description={search ? 'Tente ajustar sua busca.' : 'Ainda não há produtos cadastrados.'}

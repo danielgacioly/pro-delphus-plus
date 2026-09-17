@@ -62,31 +62,35 @@ function ClientCard({
 
   return (
     <Link to={`/clientes/${client.id}`} className="block focus:outline-none">
-      <InteractiveCard className="h-full p-5 focus-visible:ring-4 focus-visible:ring-brand-500/10">
+      <InteractiveCard className="flex h-full flex-col px-4 pt-4 pb-3.5 focus-visible:ring-[3px] focus-visible:ring-brand-500/20">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-500/8 text-neutral-500">
-            <Icon className="h-4.5 w-4.5" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-500">
+            <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-semibold text-ink-900">{client.name}</p>
-            <p className="mt-0.5 truncate text-[13px] text-neutral-500">
+            <p className="truncate text-[15px] font-semibold tracking-[-0.014em] text-ink-900">{client.name}</p>
+            <p className="truncate text-[13px] text-neutral-500">
               {client.institution || CLIENT_KIND_LABEL[client.kind]}
             </p>
+            {/* Selos numa linha própria: dividindo a linha do nome, espremiam
+                o nome do cliente até sobrar só a inicial. */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                title={client.inService ? 'Marcar como não em atendimento' : 'Marcar como em atendimento'}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onToggleService(client)
+                }}
+              >
+                <Badge tone={client.inService ? 'success' : 'neutral'} dot>
+                  {client.inService ? 'Em atendimento' : 'Sem atendimento'}
+                </Badge>
+              </button>
+              {!client.active && <Badge tone="warning">Inativo</Badge>}
+            </div>
           </div>
-          <button
-            type="button"
-            title={client.inService ? 'Marcar como não em atendimento' : 'Marcar como em atendimento'}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onToggleService(client)
-            }}
-          >
-            <Badge tone={client.inService ? 'success' : 'neutral'} dot>
-              {client.inService ? 'Em atendimento' : 'Sem atendimento'}
-            </Badge>
-          </button>
-          {!client.active && <Badge tone="warning">Inativo</Badge>}
           {isAdmin && (
             <button
               type="button"
@@ -97,14 +101,14 @@ function ClientCard({
                 e.stopPropagation()
                 onDelete(client)
               }}
-              className="-m-1.5 shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+              className="-m-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-black/[0.05] hover:text-danger-600"
             >
               <IconTrash className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        <div className="mt-4 space-y-1.5 text-[12.5px] text-neutral-500">
+        <div className="mt-3.5 mb-4 space-y-1 text-[13px] text-neutral-600">
           {client.email && (
             <p className="flex items-center gap-1.5 truncate">
               <IconMail className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
@@ -119,16 +123,16 @@ function ClientCard({
           )}
         </div>
 
-        <div className="mt-4 flex items-end justify-between border-t border-neutral-200/70 pt-3.5">
+        <div className="mt-auto flex items-end justify-between border-t border-black/[0.06] pt-3">
           <div className="flex gap-5">
             <div>
-              <p className="text-eyebrow text-neutral-400">Orçamentos</p>
+              <p className="text-[12px] font-medium text-neutral-500">Orçamentos</p>
               <p className="tabular mt-0.5 text-[17px] font-semibold leading-none text-ink-900">
                 {client.stats.quoteCount}
               </p>
             </div>
             <div>
-              <p className="text-eyebrow text-neutral-400">Pedidos</p>
+              <p className="text-[12px] font-medium text-neutral-500">Pedidos</p>
               <p className="tabular mt-0.5 text-[17px] font-semibold leading-none text-ink-900">
                 {client.stats.orderCount}
               </p>
@@ -236,10 +240,10 @@ export function Clients() {
           <div
             key={stat.label}
             style={{ animationDelay: `${i * 40}ms` }}
-            className="animate-fade-in-up rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm"
+            className="animate-fade-in-up rounded-2xl border border-black/[0.06] bg-white p-5"
           >
-            <p className="text-eyebrow text-neutral-400">{stat.label}</p>
-            <p className="tabular mt-2.5 text-[26px] font-bold leading-none text-ink-900">
+            <p className="text-[12px] font-medium text-neutral-500">{stat.label}</p>
+            <p className="tabular mt-2.5 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">
               {isLoading ? '—' : <AnimatedNumber value={stat.value} />}
             </p>
           </div>
@@ -272,7 +276,7 @@ export function Clients() {
         ) : isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm">
+              <div key={i} className="rounded-2xl border border-black/[0.06] bg-white p-5">
                 <Skeleton className="h-10 w-10 rounded-xl" />
                 <Skeleton className="mt-4 h-3.5 w-40" />
                 <Skeleton className="mt-2 h-3 w-28" />
@@ -281,7 +285,7 @@ export function Clients() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+          <div className="rounded-2xl border border-black/[0.06] bg-white">
             <EmptyState
               icon={IconContacts}
               title={clients?.length ? 'Nenhum cliente com esse filtro' : 'Nenhum cliente cadastrado'}
@@ -318,7 +322,7 @@ export function Clients() {
         <Modal onClose={() => setCreating(false)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-scale-in max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="animate-scale-in max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
           >
             <h2 className="text-title text-ink-900">Novo cliente</h2>
             <p className="mt-1 text-[13px] text-neutral-500">
