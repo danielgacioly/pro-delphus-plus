@@ -16,7 +16,7 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../lib/api'
-import { AnimatedNumber, Card, Page, SegmentedControl, Skeleton, StatTile } from '../components/ui'
+import { Alert, AnimatedNumber, Card, Page, SegmentedControl, Skeleton, StatTile } from '../components/ui'
 
 interface MonthStat {
   year: number
@@ -253,9 +253,7 @@ export function Stats() {
 
   if (isError || !data) {
     return page(
-      <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-        Não foi possível carregar as métricas.
-      </div>,
+      <Alert tone="error">Não foi possível carregar as métricas.</Alert>,
     )
   }
 
@@ -292,9 +290,7 @@ export function Stats() {
   if (view === 'efficiency') {
     if (!eff) {
       return page(
-        <div className="rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-700">
-          As métricas de eficiência ainda não estão disponíveis nesta versão da API.
-        </div>,
+        <Alert tone="info">As métricas de eficiência ainda não estão disponíveis nesta versão da API.</Alert>,
       )
     }
 

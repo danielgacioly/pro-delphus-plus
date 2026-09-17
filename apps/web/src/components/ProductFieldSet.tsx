@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import type { ProductKind } from '@prodelphusplus/shared'
-import { Input, Select } from './ui'
+import { Field, FormSection, Input, Select } from './ui'
 
 export const emptyProductForm = {
   sku: '',
@@ -41,21 +41,6 @@ export function productFormToPayload(form: ProductFormState) {
 }
 
 const spanClass = { 1: undefined, 2: 'col-span-2', 3: 'col-span-3', 4: 'col-span-4' } as const
-
-function Field({ label, span, children }: { label: string; span?: 1 | 2 | 3 | 4; children: ReactNode }) {
-  return (
-    <div className={span ? spanClass[span] : undefined}>
-      <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="text-eyebrow col-span-4 mt-3 border-t border-neutral-200/70 pt-5 text-neutral-400">{children}</div>
-  )
-}
 
 export function ProductFieldSet({
   value,
@@ -109,176 +94,157 @@ export function ProductFieldSet({
 
   return (
     <>
-      <Field label="SKU">
-        <Input
-          value={value.sku}
-          onChange={(e) => onChange({ sku: e.target.value })}
-        />
-      </Field>
-      <Field label="Nome" span={2}>
-        <Input
-          required
-          value={value.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-        />
-      </Field>
-      <Field label="Peso (kg, opcional)">
-        <Input
-          type="number"
-          step="0.001"
-          value={value.weightKg}
-          onChange={(e) => onChange({ weightKg: e.target.value })}
-        />
-      </Field>
-      <Field label="Tipo">
-        <Select
-          value={value.kind}
-          onChange={(e) => onChange({ kind: e.target.value as ProductKind })}
-        >
-          <option value="COMPLETE_MODEL">Modelo completo</option>
-          <option value="COMPONENT">Componente / peça</option>
-        </Select>
-      </Field>
-      <Field label="Setores" span={3}>
-        <Input
-          placeholder="Digite e aperte Enter para adicionar"
-          list="sectors-datalist"
-          value={sectorDraft}
-          onChange={(e) => {
-            setSectorDraft(e.target.value)
-            if (sectorError) setSectorError('')
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              addSector(sectorDraft)
-            }
-          }}
-        />
-        {sectorError && <p className="mt-1.5 text-[12px] text-brand-600">{sectorError}</p>}
-        {value.sectors.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {value.sectors.map((s) => (
-              <span
-                key={s}
-                className="inline-flex items-center gap-1 rounded-full bg-neutral-500/10 px-2.5 py-0.5 text-[12px] font-medium text-neutral-700"
-              >
-                {s}
-                <button
-                  type="button"
-                  onClick={() => removeSector(s)}
-                  className="text-neutral-400 transition-colors hover:text-brand-600"
-                  aria-label={`Remover setor ${s}`}
+      <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+        <Field label="SKU">
+          <Input value={value.sku} onChange={(e) => onChange({ sku: e.target.value })} />
+        </Field>
+        <Field label="Nome" className={spanClass[2]}>
+          <Input required value={value.name} onChange={(e) => onChange({ name: e.target.value })} />
+        </Field>
+        <Field label="Peso (kg, opcional)">
+          <Input
+            type="number"
+            step="0.001"
+            value={value.weightKg}
+            onChange={(e) => onChange({ weightKg: e.target.value })}
+          />
+        </Field>
+        <Field label="Tipo">
+          <Select value={value.kind} onChange={(e) => onChange({ kind: e.target.value as ProductKind })}>
+            <option value="COMPLETE_MODEL">Modelo completo</option>
+            <option value="COMPONENT">Componente / peça</option>
+          </Select>
+        </Field>
+        <Field label="Setores" className={spanClass[3]}>
+          <Input
+            placeholder="Digite e aperte Enter para adicionar"
+            list="sectors-datalist"
+            value={sectorDraft}
+            onChange={(e) => {
+              setSectorDraft(e.target.value)
+              if (sectorError) setSectorError('')
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addSector(sectorDraft)
+              }
+            }}
+          />
+          {sectorError && <p className="mt-1.5 text-[12px] text-danger-600">{sectorError}</p>}
+          {value.sectors.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {value.sectors.map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center gap-1 rounded-full bg-neutral-500/10 px-2.5 py-0.5 text-[12px] font-medium text-neutral-700"
                 >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </Field>
-      <datalist id="sectors-datalist">
-        {sectors.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-      <Field label="Links de vídeo" span={4}>
-        {value.videoLinks.length > 0 && (
-          <ul className="mb-1.5 space-y-1">
-            {value.videoLinks.map((link) => (
-              <li
-                key={link}
-                className="flex items-center justify-between gap-2 rounded-lg bg-neutral-500/8 px-2.5 py-1.5 text-[12.5px] text-neutral-700"
-              >
-                <span className="truncate">{link}</span>
-                <button
-                  type="button"
-                  onClick={() => removeVideoLink(link)}
-                  className="shrink-0 text-neutral-400 transition-colors hover:text-brand-600"
-                  aria-label={`Remover vídeo ${link}`}
+                  {s}
+                  <button
+                    type="button"
+                    onClick={() => removeSector(s)}
+                    className="text-neutral-400 transition-colors hover:text-brand-600"
+                    aria-label={`Remover setor ${s}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </Field>
+        <datalist id="sectors-datalist">
+          {sectors.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+        <Field label="Links de vídeo" className={spanClass[4]}>
+          {value.videoLinks.length > 0 && (
+            <ul className="mb-1.5 space-y-1">
+              {value.videoLinks.map((link) => (
+                <li
+                  key={link}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-neutral-500/8 px-2.5 py-1.5 text-[12.5px] text-neutral-700"
                 >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Input
-          placeholder="Cole o link e aperte Enter para adicionar"
-          value={videoDraft}
-          onChange={(e) => setVideoDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              addVideoLink(videoDraft)
-            }
-          }}
-        />
-      </Field>
-      <SectionLabel>Descrição (opcional)</SectionLabel>
-      <Field label="Em inglês" span={2}>
-        <Input
-          value={value.description}
-          onChange={(e) => onChange({ description: e.target.value })}
-        />
-      </Field>
-      <Field label="Em português" span={2}>
-        <Input
-          value={value.descriptionPt}
-          onChange={(e) => onChange({ descriptionPt: e.target.value })}
-        />
-      </Field>
+                  <span className="truncate">{link}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeVideoLink(link)}
+                    className="shrink-0 text-neutral-400 transition-colors hover:text-brand-600"
+                    aria-label={`Remover vídeo ${link}`}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Input
+            placeholder="Cole o link e aperte Enter para adicionar"
+            value={videoDraft}
+            onChange={(e) => setVideoDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addVideoLink(videoDraft)
+              }
+            }}
+          />
+        </Field>
+      </div>
+
+      <FormSection title="Descrição (opcional)">
+        <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+          <Field label="Em inglês" className={spanClass[2]}>
+            <Input value={value.description} onChange={(e) => onChange({ description: e.target.value })} />
+          </Field>
+          <Field label="Em português" className={spanClass[2]}>
+            <Input value={value.descriptionPt} onChange={(e) => onChange({ descriptionPt: e.target.value })} />
+          </Field>
+        </div>
+      </FormSection>
+
       {value.kind === 'COMPLETE_MODEL' && (
-        <>
-          <SectionLabel>Componentes do kit (opcional)</SectionLabel>
-          <Field label="Em inglês" span={2}>
-            <Input
-              placeholder="ex: Components: 1 MMT-0, 1 MMT-1"
-              value={value.components}
-              onChange={(e) => onChange({ components: e.target.value })}
-            />
-          </Field>
-          <Field label="Em português" span={2}>
-            <Input
-              value={value.componentsPt}
-              onChange={(e) => onChange({ componentsPt: e.target.value })}
-            />
-          </Field>
-        </>
+        <FormSection title="Componentes do kit (opcional)">
+          <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+            <Field label="Em inglês" className={spanClass[2]}>
+              <Input
+                placeholder="ex: Components: 1 MMT-0, 1 MMT-1"
+                value={value.components}
+                onChange={(e) => onChange({ components: e.target.value })}
+              />
+            </Field>
+            <Field label="Em português" className={spanClass[2]}>
+              <Input value={value.componentsPt} onChange={(e) => onChange({ componentsPt: e.target.value })} />
+            </Field>
+          </div>
+        </FormSection>
       )}
-      <SectionLabel>Preços</SectionLabel>
-      <Field label="Preço final BRL">
-        <Input
-          type="number"
-          step="0.01"
-          value={value.priceBRL}
-          onChange={(e) => onChange({ priceBRL: e.target.value })}
-        />
-      </Field>
-      <Field label="Preço final USD">
-        <Input
-          type="number"
-          step="0.01"
-          value={value.priceUSD}
-          onChange={(e) => onChange({ priceUSD: e.target.value })}
-        />
-      </Field>
-      <Field label="Preço final EUR">
-        <Input
-          type="number"
-          step="0.01"
-          value={value.priceEUR}
-          onChange={(e) => onChange({ priceEUR: e.target.value })}
-        />
-      </Field>
-      <Field label="Preço distribuidor USD">
-        <Input
-          type="number"
-          step="0.01"
-          value={value.priceUSDDistributor}
-          onChange={(e) => onChange({ priceUSDDistributor: e.target.value })}
-        />
-      </Field>
+
+      <FormSection
+        title="Preços"
+        description="Até quatro moedas independentes — um produto sem preço numa delas simplesmente não pode ser orçado nela, mas continua visível no catálogo."
+      >
+        <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+          <Field label="Preço final BRL">
+            <Input type="number" step="0.01" value={value.priceBRL} onChange={(e) => onChange({ priceBRL: e.target.value })} />
+          </Field>
+          <Field label="Preço final USD">
+            <Input type="number" step="0.01" value={value.priceUSD} onChange={(e) => onChange({ priceUSD: e.target.value })} />
+          </Field>
+          <Field label="Preço final EUR">
+            <Input type="number" step="0.01" value={value.priceEUR} onChange={(e) => onChange({ priceEUR: e.target.value })} />
+          </Field>
+          <Field label="Preço distribuidor USD">
+            <Input
+              type="number"
+              step="0.01"
+              value={value.priceUSDDistributor}
+              onChange={(e) => onChange({ priceUSDDistributor: e.target.value })}
+            />
+          </Field>
+        </div>
+      </FormSection>
     </>
   )
 }
