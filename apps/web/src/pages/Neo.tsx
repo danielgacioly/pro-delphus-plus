@@ -57,19 +57,25 @@ async function cancelAction(id: string) {
   await api.post(`/neo/actions/${id}/cancel`)
 }
 
-// O Gemini responde em markdown, e o pouco que ele usa de verdade — negrito e
-// listas — aparecia cru na tela ("**Peso bruto**", "* Endereço").
-function renderInlineBold(text: string) {
+// O Gemini responde em markdown, e o pouco que ele usa de verdade — negrito,
+// itálico e listas — aparecia cru na tela ("**Peso bruto**", "*(piada)*",
+// "* Endereço"). Ordem importa: casa `**negrito**` antes de `*itálico*` pra
+// não sobrar um asterisco solto de cada lado de um trecho em negrito.
+function renderInlineFormatting(text: string) {
   const withBullets = text.replace(/^[ \t]*[*-][ \t]+/gm, '• ')
-  return withBullets.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
-      <strong key={i} className="font-semibold">
-        {part.slice(2, -2)}
-      </strong>
-    ) : (
-      part
-    ),
-  )
+  return withBullets.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return (
+        <strong key={i} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>
+    }
+    return part
+  })
 }
 
 // A conversa vive enquanto a aba viver: sair pra Orçamentos e voltar mantém o
@@ -252,7 +258,7 @@ export function Neo() {
                       : 'self-start rounded-bl-md bg-neutral-500/8 text-ink-900',
                   )}
                 >
-                  {m.role === 'model' ? renderInlineBold(m.text) : m.text}
+                  {m.role === 'model' ? renderInlineFormatting(m.text) : m.text}
                 </div>
               ),
             )}
