@@ -21,7 +21,7 @@ export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, e
     <Modal onClose={onCancel}>
       <div className="animate-scale-in w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">Redefinir senha de {userName}</h2>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-600">
           Defina uma senha temporária. A pessoa poderá trocá-la depois em "Minha Conta".
         </p>
         <input

@@ -154,7 +154,7 @@ function ColumnTitle({ column }: { column: PersonalBoardColumnDTO }) {
         setEditing(true)
       }}
       title="Clique duas vezes para renomear"
-      className="text-eyebrow cursor-text select-none truncate text-neutral-500"
+      className="text-eyebrow cursor-text select-none truncate text-neutral-600"
     >
       {column.name}
     </h3>
@@ -320,10 +320,10 @@ export function MyDesk() {
       description="Seu espaço pessoal: pendências, lembretes e acesso rápido ao que você já criou."
       actions={
         <>
-          <Button size="sm" onClick={() => setAddingColumn((s) => !s)}>
+          <Button size="md" onClick={() => setAddingColumn((s) => !s)}>
             {addingColumn ? 'Cancelar' : 'Novo quadro'}
           </Button>
-          <Button size="sm" variant="primary" onClick={() => setShowForm((s) => !s)}>
+          <Button size="md" variant="primary" onClick={() => setShowForm((s) => !s)}>
             <IconPlus className="h-4 w-4" />
             {showForm ? 'Cancelar' : 'Nova tarefa'}
           </Button>
@@ -444,7 +444,7 @@ export function MyDesk() {
                       <button
                         type="button"
                         onClick={() => setDraftTags((s) => s.filter((x) => x !== t))}
-                        className="text-neutral-400 transition-colors hover:text-brand-600"
+                        className="text-neutral-500 transition-colors hover:text-brand-600"
                         aria-label={`Remover tag ${t}`}
                       >
                         ×
@@ -581,7 +581,7 @@ export function MyDesk() {
                 <span
                   className={cn(
                     'tabular shrink-0 rounded-full px-1.5 text-[11px] font-medium',
-                    col.isDone ? 'bg-emerald-500/10 text-emerald-700' : 'bg-neutral-500/10 text-neutral-500',
+                    col.isDone ? 'bg-emerald-500/10 text-emerald-700' : 'bg-neutral-500/10 text-neutral-600',
                   )}
                 >
                   {colTasks.length}
@@ -628,7 +628,7 @@ export function MyDesk() {
                           <p
                             className={cn(
                               'text-[13.5px] font-medium leading-snug',
-                              done ? 'text-neutral-400 line-through' : 'text-ink-900',
+                              done ? 'text-neutral-500 line-through' : 'text-ink-900',
                             )}
                           >
                             {done && <IconCheckCircle className="mr-1 -mt-0.5 inline h-3.5 w-3.5 text-emerald-500" />}
@@ -648,10 +648,10 @@ export function MyDesk() {
                         </div>
 
                         {task.clientName && (
-                          <p className="mt-1 text-[12px] text-neutral-500">{task.clientName}</p>
+                          <p className="mt-1 text-[12px] text-neutral-600">{task.clientName}</p>
                         )}
                         {task.notes && (
-                          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-neutral-400">{task.notes}</p>
+                          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-neutral-500">{task.notes}</p>
                         )}
 
                         {task.tags.length > 0 && (
@@ -671,7 +671,7 @@ export function MyDesk() {
                           <p
                             className={cn(
                               'mt-2 inline-flex items-center gap-1 text-[11.5px] font-medium',
-                              overdue ? 'text-brand-600' : 'text-neutral-400',
+                              overdue ? 'text-brand-600' : 'text-neutral-500',
                             )}
                           >
                             {overdue && <IconAlert className="h-3 w-3" />}
@@ -707,7 +707,7 @@ export function MyDesk() {
                   })}
 
                   {colTasks.length === 0 && (
-                    <p className="px-3 py-6 text-center text-[12.5px] text-neutral-400">
+                    <p className="px-3 py-6 text-center text-[12.5px] text-neutral-500">
                       Nada por aqui.
                     </p>
                   )}

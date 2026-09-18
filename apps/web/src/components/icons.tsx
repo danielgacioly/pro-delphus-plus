@@ -321,3 +321,12 @@ export function IconArrowUp(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconArrowLeft(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </Base>
+  )
+}

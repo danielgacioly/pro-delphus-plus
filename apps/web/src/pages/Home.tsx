@@ -5,7 +5,7 @@ import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
-import { Badge, ButtonLink, Page, Section, Skeleton } from '../components/ui'
+import { Badge, Page, Section, Skeleton } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
   IconBoard,
@@ -25,31 +25,60 @@ interface Shortcut {
   icon: ComponentType<SVGProps<SVGSVGElement>>
 }
 
-// Orçamentos, Pedidos e Clientes são o fluxo do dia a dia — ganham tiles.
-// O resto é ferramenta de apoio e vira lista agrupada: a hierarquia vem da
-// forma diferente, não de repetir o mesmo card em dois tamanhos.
-const primaryShortcuts: Shortcut[] = [
+// "Principal" é onde se começa alguma coisa; navegar para as listas é papel
+// da lista de ferramentas abaixo (e da barra lateral, que tem tudo sempre).
+interface CreateAction extends Shortcut {
+  /** Rota protegida por papel — o card não aparece para quem não pode criar. */
+  adminOnly?: boolean
+}
+
+const createActions: CreateAction[] = [
+  {
+    to: '/orcamentos/novo',
+    title: 'Novo orçamento',
+    description: 'Monte em PDF ou Excel a partir do catálogo.',
+    icon: IconQuote,
+  },
+  {
+    to: '/pedidos/novo',
+    title: 'Novo pedido',
+    description: 'Gere invoice e documentos de exportação.',
+    icon: IconTruck,
+  },
+  {
+    to: '/clientes?novo=1',
+    title: 'Novo cliente',
+    description: 'Cadastre contato, endereços e dados fiscais.',
+    icon: IconContacts,
+  },
+  {
+    to: '/produtos/novo',
+    title: 'Novo produto',
+    description: 'Adicione ao catálogo e à tabela de preços.',
+    icon: IconBox,
+    adminOnly: true,
+  },
+]
+
+const secondaryShortcuts: Shortcut[] = [
   {
     to: '/orcamentos',
     title: 'Orçamentos',
-    description: 'Gere orçamentos em PDF ou Excel a partir do catálogo.',
+    description: 'Todos os orçamentos emitidos',
     icon: IconQuote,
   },
   {
     to: '/pedidos',
     title: 'Pedidos',
-    description: 'Invoice, Packing List e documentos de exportação.',
+    description: 'Invoice, Packing List e exportação',
     icon: IconTruck,
   },
   {
     to: '/clientes',
     title: 'Clientes',
-    description: 'Contatos, endereços e o histórico de cada cliente.',
+    description: 'Contatos, endereços e histórico',
     icon: IconContacts,
   },
-]
-
-const secondaryShortcuts: Shortcut[] = [
   {
     to: '/minha-pro-delphus',
     title: 'Minha Pro Delphus',
@@ -58,7 +87,7 @@ const secondaryShortcuts: Shortcut[] = [
   },
   {
     to: '/precos',
-    title: 'Tabela de preços',
+    title: 'Tabela de preço',
     description: 'Preços em real, dólar e euro por setor',
     icon: IconTag,
   },
@@ -78,6 +107,57 @@ const currencyPlural: Record<string, string> = { BRL: 'reais', USD: 'dólares', 
 interface MonthSale {
   currency: string
   amount: string
+  /** Variação contra o mesmo recorte do mês anterior; null quando não havia base. */
+  change: number | null
+}
+
+/** Variação percentual; sem base no mês anterior não há porcentagem honesta. */
+function variation(current: number, previous: number): number | null {
+  if (!previous) return null
+  return ((current - previous) / previous) * 100
+}
+
+/** Mini-gráfico de tendência: só a linha, sem eixo nem grade. */
+function Sparkline({ values, up, className }: { values: number[]; up: boolean; className?: string }) {
+  if (values.length < 2) return null
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const span = max - min || 1
+  const points = values
+    .map((value, i) => `${(i / (values.length - 1)) * 100},${100 - ((value - min) / span) * 100}`)
+    .join(' ')
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden
+      className={cn('w-full', up ? 'text-emerald-600' : 'text-brand-600', className)}
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
+
+/** "▲ 12% vs. agosto" — contexto para o número não ficar solto. */
+function Change({ value, previousLabel }: { value: number | null; previousLabel: string }) {
+  // Sem registro no mês anterior não existe porcentagem honesta — e repetir
+  // "sem base" em cada coluna vira ruído. A linha simplesmente não aparece.
+  if (value === null) return null
+  const up = value >= 0
+  return (
+    <span className={up ? 'text-emerald-700' : 'text-brand-700'}>
+      {up ? '▲' : '▼'} {Math.abs(value).toFixed(0)}% vs. {previousLabel}
+    </span>
+  )
 }
 
 interface ExchangeRate {
@@ -85,6 +165,8 @@ interface ExchangeRate {
   rate: number
   pctChange: number
   updatedAt: string
+  /** Fechamentos dos últimos dias, do mais antigo ao mais recente. */
+  history: number[]
 }
 
 const PAIR_LABEL: Record<string, { name: string; symbol: string }> = {
@@ -118,22 +200,25 @@ function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
-  const { to, title, description, icon: Icon } = shortcut
+/**
+ * Card de criação: fundo branco com traço fino e o vermelho só no glifo e no
+ * "+" — encher o card inteiro de cor deixaria quatro blocos gritando juntos.
+ */
+function CreateCard({ action }: { action: CreateAction }) {
+  const { to, title, description, icon: Icon } = action
   return (
     <Link
       to={to}
       className="group flex flex-col rounded-2xl border border-black/[0.06] bg-white p-4 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
     >
-      <Icon className="h-5 w-5 text-brand-600" />
+      <div className="flex items-center justify-between">
+        <Icon className="h-5 w-5 text-brand-600" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 transition-colors duration-150 group-hover:bg-brand-500/16">
+          <IconPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
+        </span>
+      </div>
       <div className="pt-5">
-        <h3 className="flex items-center gap-1 text-[16px] font-semibold tracking-[-0.02em] text-ink-900">
-          {title}
-          <IconChevronRight
-            className="h-3.5 w-3.5 text-neutral-400 transition-transform duration-150 ease-out group-hover:translate-x-0.5"
-            strokeWidth={2.2}
-          />
-        </h3>
+        <h3 className="text-[16px] font-semibold tracking-[-0.02em] text-ink-900">{title}</h3>
         <p className="mt-0.5 text-[13px] leading-snug text-neutral-600">{description}</p>
       </div>
     </Link>
@@ -141,17 +226,34 @@ function PrimaryTile({ shortcut }: { shortcut: Shortcut }) {
 }
 
 const statValue = 'tabular truncate text-[24px] leading-tight font-semibold tracking-[-0.02em] text-ink-900'
-const statLabel = 'truncate text-[13px] text-neutral-500'
+const statLabel = 'truncate text-[13px] text-neutral-600'
 const statColumn = (divider?: boolean, className?: string) =>
   // O traço separador some quando as colunas empilham no celular.
   cn('min-w-0', divider && 'sm:border-l sm:border-black/[0.07] sm:pl-4', className)
 
-/** Uma coluna do painel do mês: valor tabular grande, rótulo discreto embaixo. */
-function MonthStat({ value, label, divider }: { value: ReactNode; label: string; divider?: boolean }) {
+/** Uma coluna do painel do mês: valor tabular grande, rótulo e comparação. */
+function MonthStat({
+  value,
+  label,
+  change,
+  previousLabel,
+  divider,
+}: {
+  value: ReactNode
+  label: string
+  change: number | null
+  previousLabel: string
+  divider?: boolean
+}) {
   return (
     <div className={statColumn(divider)}>
       <p className={statValue}>{value}</p>
       <p className={cn('mt-0.5', statLabel)}>{label}</p>
+      {change !== null && (
+        <p className="tabular mt-1 truncate text-[12px]">
+          <Change value={change} previousLabel={previousLabel} />
+        </p>
+      )}
     </div>
   )
 }
@@ -162,7 +264,17 @@ const CYCLE_MS = 3800
  * Moedas não se somam, então o total do mês roda entre elas: o valor e a última
  * palavra do rótulo ("…em reais") trocam juntos. Com uma moeda só, fica parado.
  */
-function SalesStat({ sales, divider, className }: { sales: MonthSale[]; divider?: boolean; className?: string }) {
+function SalesStat({
+  sales,
+  previousLabel,
+  divider,
+  className,
+}: {
+  sales: MonthSale[]
+  previousLabel: string
+  divider?: boolean
+  className?: string
+}) {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -176,43 +288,55 @@ function SalesStat({ sales, divider, className }: { sales: MonthSale[]; divider?
 
   return (
     <div className={statColumn(divider, className)}>
-      <div className="overflow-hidden">
-        <p key={index} className={cn('animate-value-roll', statValue)}>
-          {current ? current.amount : '—'}
-        </p>
+      <div>
+        <div className="min-w-0">
+          <div className="overflow-hidden">
+            <p key={index} className={cn('animate-value-roll', statValue)}>
+              {current ? current.amount : '—'}
+            </p>
+          </div>
+          <p className={cn('mt-0.5', statLabel)}>
+            em vendas
+            {current && (
+              <>
+                {' em '}
+                {/* Só a última palavra troca junto com o valor. */}
+                <span key={index} className="animate-value-roll inline-block">
+                  {currencyPlural[current.currency] ?? current.currency}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
       </div>
-      <p className={cn('mt-0.5', statLabel)}>
-        em vendas
-        {current && (
-          <>
-            {' em '}
-            {/* Só a última palavra troca junto com o valor. */}
-            <span key={index} className="animate-value-roll inline-block">
-              {currencyPlural[current.currency] ?? current.currency}
-            </span>
-          </>
-        )}
-      </p>
+      {current?.change != null && (
+        <p className="tabular mt-1 truncate text-[12px]">
+          <Change value={current.change} previousLabel={previousLabel} />
+        </p>
+      )}
     </div>
   )
 }
 
-/** Cotação do dia de uma moeda, com a variação em relação ao fechamento anterior. */
-function RateRow({ pair, rate, pctChange }: ExchangeRate) {
+/** Cotação do dia de uma moeda, com a variação e a linha dos últimos dias. */
+function RateRow({ pair, rate, pctChange, history }: ExchangeRate) {
   const label = PAIR_LABEL[pair] ?? { name: pair, symbol: '' }
   const up = pctChange >= 0
   return (
     <div className="min-w-0">
       <div className="flex items-baseline gap-1.5">
         <span className="text-[13px] font-medium text-ink-900">{label.name}</span>
-        <span className="text-[11.5px] text-neutral-400">{label.symbol}</span>
+        <span className="text-[11.5px] text-neutral-500">{label.symbol}</span>
       </div>
-      <p className="tabular mt-0.5 truncate text-[17px] leading-tight font-semibold tracking-[-0.02em] text-ink-900 sm:text-[22px]">
-        R$ {rate.toFixed(4).replace('.', ',')}
+      {/* Duas casas: a terceira e a quarta são ruído para quem só quer saber
+          como o dia está. */}
+      <p className="tabular mt-0.5 text-[20px] leading-tight font-semibold tracking-[-0.02em] whitespace-nowrap text-ink-900">
+        R$ {rate.toFixed(2).replace('.', ',')}
       </p>
-      <p className={cn('tabular mt-0.5 text-[12px]', up ? 'text-emerald-600' : 'text-danger-600')}>
+      <p className={cn('tabular mt-0.5 text-[12px] whitespace-nowrap', up ? 'text-emerald-700' : 'text-brand-700')}>
         {up ? '▲' : '▼'} {Math.abs(pctChange).toFixed(2).replace('.', ',')}% hoje
       </p>
+      <Sparkline values={history} up={up} className="mt-1.5 h-6" />
     </div>
   )
 }
@@ -239,10 +363,10 @@ function ActivityRow({
     <Link to={to} className="relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]">
       {!first && <span aria-hidden className="absolute top-0 right-0 left-4 h-px bg-black/[0.06]" />}
       <span className="tabular shrink-0 text-[13px] font-medium text-ink-900">{title}</span>
-      <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-500">{subtitle}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-600">{subtitle}</span>
       {status && <span className="shrink-0">{status}</span>}
       <span className="tabular shrink-0 text-[13px] text-ink-800">{amount}</span>
-      <span className="tabular w-10 shrink-0 text-right text-[12px] text-neutral-400">{date}</span>
+      <span className="tabular w-10 shrink-0 text-right text-[12px] text-neutral-500">{date}</span>
     </Link>
   )
 }
@@ -256,7 +380,7 @@ function ActivityList({ title, to, empty, children }: { title: string; to: strin
           Ver todos
         </Link>
       </div>
-      {empty ? <p className="px-4 py-5 text-[13px] text-neutral-400">Nada por aqui ainda.</p> : children}
+      {empty ? <p className="px-4 py-5 text-[13px] text-neutral-500">Nada por aqui ainda.</p> : children}
     </div>
   )
 }
@@ -293,31 +417,50 @@ export function Home() {
   )
 
   const month = useMemo(() => {
-    const start = new Date()
-    start.setDate(1)
-    start.setHours(0, 0, 0, 0)
-    const since = (iso: string) => new Date(iso).getTime() >= start.getTime()
-
-    const ordersOfMonth = myOrders.filter((o) => since(o.createdAt))
-    // O valor do pedido vive no orçamento vinculado; moedas não se somam entre
-    // si, então cada uma vira uma linha própria (maior primeiro).
-    const byCurrency = new Map<string, number>()
-    for (const order of ordersOfMonth) {
-      const currency = order.quote.currency
-      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + Number(order.quote.total))
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const inThisMonth = (iso: string) => new Date(iso).getTime() >= start.getTime()
+    const inPreviousMonth = (iso: string) => {
+      const time = new Date(iso).getTime()
+      return time >= previousStart.getTime() && time < start.getTime()
     }
-    const sales: MonthSale[] = [...byCurrency.entries()]
+
+    const ordersOfMonth = myOrders.filter((o) => inThisMonth(o.createdAt))
+    const ordersBefore = myOrders.filter((o) => inPreviousMonth(o.createdAt))
+
+    // O valor do pedido vive no orçamento vinculado; moedas não se somam entre
+    // si, então cada uma vira uma entrada própria (maior primeiro).
+    const totalsBy = (list: typeof myOrders) => {
+      const totals = new Map<string, number>()
+      for (const order of list) {
+        const currency = order.quote.currency
+        totals.set(currency, (totals.get(currency) ?? 0) + Number(order.quote.total))
+      }
+      return totals
+    }
+    const current = totalsBy(ordersOfMonth)
+    const previous = totalsBy(ordersBefore)
+
+    const sales: MonthSale[] = [...current.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([currency, total]) => ({
         currency,
         amount: `${currencySymbol[currency] ?? currency} ${formatAmount(total)}`,
+        change: variation(total, previous.get(currency) ?? 0),
       }))
 
+    const quotesNow = myQuotes.filter((q) => inThisMonth(q.createdAt)).length
+    const quotesBefore = myQuotes.filter((q) => inPreviousMonth(q.createdAt)).length
+
     return {
-      quotes: myQuotes.filter((q) => since(q.createdAt)).length,
+      quotes: quotesNow,
+      quotesChange: variation(quotesNow, quotesBefore),
       orders: ordersOfMonth.length,
+      ordersChange: variation(ordersOfMonth.length, ordersBefore.length),
       sales,
-      label: new Date().toLocaleDateString('pt-BR', { month: 'long' }),
+      label: now.toLocaleDateString('pt-BR', { month: 'long' }),
+      previousLabel: previousStart.toLocaleDateString('pt-BR', { month: 'long' }),
     }
   }, [myQuotes, myOrders])
 
@@ -331,35 +474,17 @@ export function Home() {
   )
 
   return (
-    <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
-      {/* Metade esquerda: ações. Metade direita: câmbio do dia. Juntas ocupam a
-          mesma largura do card do NEO logo abaixo. */}
+    <Page
+      title={`${greeting()}, ${firstName}.`}
+      description="Tudo em ordem. Vamos começar?"
+    >
+      {/* Câmbio e NEO dividem a faixa do topo: informação de um lado, o
+          assistente do outro — as ações de criar moram na barra de cima. */}
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-          <ButtonLink to="/orcamentos/novo" variant="primary" size="lg" className="h-full min-h-9 w-full justify-start">
-            <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
-            Novo Orçamento
-          </ButtonLink>
-          <ButtonLink to="/pedidos/novo" variant="primary" size="lg" className="h-full min-h-9 w-full justify-start">
-            <IconPlus className="h-4 w-4 shrink-0" strokeWidth={2} />
-            Novo Pedido
-          </ButtonLink>
-          <ButtonLink to="/clientes?novo=1" size="lg" className="h-full min-h-9 w-full justify-start">
-            <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-            Novo Cliente
-          </ButtonLink>
-          {isAdmin && (
-            <ButtonLink to="/produtos/novo" size="lg" className="h-full min-h-9 w-full justify-start">
-              <IconPlus className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2} />
-              Novo Produto
-            </ButtonLink>
-          )}
-        </div>
-
         <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
           <div className="flex items-baseline justify-between gap-2">
-            <p className="text-[13px] font-medium text-neutral-500">Câmbio de hoje</p>
-            {ratesUpdatedAt && <p className="text-[11.5px] text-neutral-400">{ratesUpdatedAt}</p>}
+            <p className="text-[13px] font-medium text-neutral-600">Câmbio de hoje</p>
+            {ratesUpdatedAt && <p className="text-[11.5px] text-neutral-500">{ratesUpdatedAt}</p>}
           </div>
           {rates && rates.length > 0 ? (
             <div className="mt-2 grid grid-cols-2 gap-x-3 sm:gap-x-4">
@@ -376,41 +501,41 @@ export function Home() {
             </div>
           ) : (
             // Fonte pública fora do ar não pode deixar um buraco na tela.
-            <p className="mt-3 text-[13px] text-neutral-400">Cotação indisponível no momento.</p>
+            <p className="mt-3 text-[13px] text-neutral-500">Cotação indisponível no momento.</p>
           )}
         </div>
-      </div>
 
-      <Link
-        to="/neo"
-        className="group mt-4 flex flex-col items-start gap-4 rounded-2xl bg-ink-900 p-4 text-white transition-colors duration-150 ease-out hover:bg-ink-800 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div className="flex items-center gap-3.5">
+        <Link
+          to="/neo"
+          className="group flex items-center gap-3.5 rounded-2xl bg-ink-900 px-4 py-3 text-white transition-colors duration-150 ease-out hover:bg-ink-800"
+        >
           <NeoAvatar className="h-10 w-10 shrink-0" />
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-[15px] font-semibold tracking-[-0.014em] text-white">Vamos bater um papo!</h3>
-            <p className="mt-0.5 text-[13px] leading-snug text-white/55">
-              Pergunte ao NEO sobre preços, clientes e produtos, ou peça para montar um orçamento ou um pedido por você.
+            <p className="mt-0.5 text-[13px] leading-snug text-white/60">
+              Pergunte ao NEO sobre preços e clientes, ou peça um orçamento pronto.
             </p>
           </div>
-        </div>
-        <span className="inline-flex h-8 shrink-0 items-center gap-1 self-start rounded-lg bg-white/[0.12] px-3.5 text-[13px] font-medium text-white transition-colors duration-150 group-hover:bg-white/[0.18] sm:self-auto">
-          Conversar
-          <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
-        </span>
-      </Link>
+          <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-white/[0.12] px-3 text-[13px] font-medium text-white transition-colors duration-150 group-hover:bg-white/[0.18]">
+            Conversar
+            <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </span>
+        </Link>
+      </div>
 
       <Section title="Principal" className="mt-8">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {primaryShortcuts.map((shortcut) => (
-            <PrimaryTile key={shortcut.to} shortcut={shortcut} />
-          ))}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {createActions
+            .filter((action) => !action.adminOnly || isAdmin)
+            .map((action) => (
+              <CreateCard key={action.to} action={action} />
+            ))}
         </div>
       </Section>
 
       <Section title="Minha atividade recente" className="mt-8">
         <div className="mb-3 rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
-          <p className="text-[13px] font-medium text-neutral-500">Em {month.label}, você fez</p>
+          <p className="text-[13px] font-medium text-neutral-600">Em {month.label}, você fez</p>
           {loading ? (
             <div className="mt-3 flex gap-10">
               <Skeleton className="h-8 w-16" />
@@ -419,9 +544,25 @@ export function Home() {
             </div>
           ) : (
             <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-              <MonthStat value={month.quotes} label="orçamentos" />
-              <MonthStat value={month.orders} label="pedidos" divider />
-              <SalesStat sales={month.sales} divider className="col-span-2 sm:col-span-1" />
+              <MonthStat
+                value={month.quotes}
+                label="orçamentos"
+                change={month.quotesChange}
+                previousLabel={month.previousLabel}
+              />
+              <MonthStat
+                value={month.orders}
+                label="pedidos"
+                change={month.ordersChange}
+                previousLabel={month.previousLabel}
+                divider
+              />
+              <SalesStat
+                sales={month.sales}
+                previousLabel={month.previousLabel}
+                divider
+                className="col-span-2 sm:col-span-1"
+              />
             </div>
           )}
         </div>
@@ -476,10 +617,10 @@ export function Home() {
             >
               {/* Separador recuado até o texto, como nas listas agrupadas do macOS. */}
               {i > 0 && <span aria-hidden className="absolute top-0 right-0 left-11 h-px bg-black/[0.06]" />}
-              <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-500" />
+              <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-600" />
               <span className="text-[14px] font-medium text-ink-900">{title}</span>
-              <span className="hidden truncate text-[13px] text-neutral-500 sm:inline">{description}</span>
-              <IconChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-neutral-400" strokeWidth={2.2} />
+              <span className="hidden truncate text-[13px] text-neutral-600 sm:inline">{description}</span>
+              <IconChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-neutral-500" strokeWidth={2.2} />
             </Link>
           ))}
         </div>

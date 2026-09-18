@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '../../lib/cn'
-import { IconChevronLeft } from '../icons'
+import { IconArrowLeft } from '../icons'
 
 /**
  * Observa a rolagem do contêiner rolável mais próximo.
@@ -87,12 +87,21 @@ export function Page({
 
       <div className={cn(container, 'px-6 pb-24 sm:px-10')}>
         <div className="pt-1.5 pb-6">
-          {back && (
-            <div className="-mt-1 mb-1.5">
-              <BackLink to={back.to}>{back.label}</BackLink>
-            </div>
-          )}
-          <h1 className="text-display text-ink-900">{title}</h1>
+          {/* Voltar ancorado no título, não flutuando acima dele: botão
+              quadrado com a seta, do tamanho da linha de texto. */}
+          <div className="flex items-center gap-2.5">
+            {back && (
+              <Link
+                to={back.to}
+                aria-label={`Voltar para ${back.label}`}
+                title={back.label}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-ink-800 shadow-[0_0.5px_1px_rgb(0_0_0/0.05)] transition-colors duration-100 hover:bg-neutral-50"
+              >
+                <IconArrowLeft className="h-4 w-4" strokeWidth={2} />
+              </Link>
+            )}
+            <h1 className="min-w-0 truncate text-display text-ink-900">{title}</h1>
+          </div>
           {description && <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-neutral-600">{description}</p>}
         </div>
         {children}
@@ -123,18 +132,5 @@ export function Section({
       )}
       {children}
     </section>
-  )
-}
-
-/** Link de volta para telas de formulário/detalhe. */
-export function BackLink({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <Link
-      to={to}
-      className="-ml-1 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[13px] text-brand-600 transition-colors hover:text-brand-700"
-    >
-      <IconChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
-      {children}
-    </Link>
   )
 }

@@ -59,7 +59,7 @@ export function Combobox<T extends string>({
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Anchor asChild>
         <div ref={anchorRef} className={cn('relative', className)}>
-          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <input
             value={open ? query : (selected?.label ?? '')}
             onChange={(e) => {
@@ -99,7 +99,7 @@ export function Combobox<T extends string>({
             autoComplete="off"
             className={cn(
               'h-10 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm text-ink-900 shadow-xs',
-              'placeholder:text-neutral-400',
+              'placeholder:text-neutral-500',
               'transition-[border-color,box-shadow] duration-150 ease-out hover:border-neutral-300',
               'focus:border-brand-400 focus:outline-none focus:ring-[3px] focus:ring-brand-500/20 focus-visible:outline-none',
             )}
@@ -122,7 +122,7 @@ export function Combobox<T extends string>({
           className="z-50 w-[var(--radix-popover-trigger-width)] rounded-xl border border-black/[0.08] bg-white p-1 shadow-lg"
         >
           {filtered.length === 0 ? (
-            <p className="px-3 py-6 text-center text-[13px] text-neutral-500">{emptyMessage}</p>
+            <p className="px-3 py-6 text-center text-[13px] text-neutral-600">{emptyMessage}</p>
           ) : (
             <ul role="listbox" className="max-h-64 overflow-y-auto">
               {filtered.map((option, i) => (
@@ -139,7 +139,7 @@ export function Combobox<T extends string>({
                 >
                   <span className="font-medium text-ink-900">{option.label}</span>
                   {option.description && (
-                    <span className="text-[12px] text-neutral-500">{option.description}</span>
+                    <span className="text-[12px] text-neutral-600">{option.description}</span>
                   )}
                 </li>
               ))}

@@ -58,7 +58,7 @@ function formatDate(iso: string) {
 function ContactLine({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <div className="flex items-start gap-2.5 text-[13px] text-neutral-600">
-      <span className="mt-0.5 shrink-0 text-neutral-400">{icon}</span>
+      <span className="mt-0.5 shrink-0 text-neutral-500">{icon}</span>
       <span className="min-w-0 wrap-break-word">{children}</span>
     </div>
   )
@@ -67,11 +67,11 @@ function ContactLine({ icon, children }: { icon: ReactNode; children: ReactNode 
 function AddressBlock({ title, text }: { title: string; text: string | null }) {
   return (
     <div>
-      <p className="text-[12px] font-medium text-neutral-500">{title}</p>
+      <p className="text-[12px] font-medium text-neutral-600">{title}</p>
       {text ? (
         <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{text}</p>
       ) : (
-        <p className="mt-1.5 text-[13px] text-neutral-400">Não informado</p>
+        <p className="mt-1.5 text-[13px] text-neutral-500">Não informado</p>
       )}
     </div>
   )
@@ -156,7 +156,7 @@ export function ClientDetail() {
         </>
       }
       actions={
-        <Button size="sm" onClick={() => setEditing(true)}>
+        <Button size="md" onClick={() => setEditing(true)}>
           Editar
         </Button>
       }
@@ -172,7 +172,7 @@ export function ClientDetail() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-1">
-          <p className="text-[12px] font-medium text-neutral-500">Contato</p>
+          <p className="text-[12px] font-medium text-neutral-600">Contato</p>
           <div className="mt-3 space-y-2.5">
             {client.email ? (
               <ContactLine icon={<IconMail className="h-4 w-4" />}>
@@ -197,7 +197,7 @@ export function ClientDetail() {
             )}
             {client.taxId && <p className="text-[13px] text-neutral-600">CNPJ / Tax ID: {client.taxId}</p>}
             {!client.email && !client.phone && !place && !client.website && (
-              <p className="text-[13px] text-neutral-400">Nenhum contato cadastrado.</p>
+              <p className="text-[13px] text-neutral-500">Nenhum contato cadastrado.</p>
             )}
           </div>
 
@@ -208,7 +208,7 @@ export function ClientDetail() {
 
           {client.notes && (
             <div className="mt-5 border-t border-neutral-200/70 pt-5">
-              <p className="text-[12px] font-medium text-neutral-500">Observações</p>
+              <p className="text-[12px] font-medium text-neutral-600">Observações</p>
               <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{client.notes}</p>
             </div>
           )}
@@ -223,7 +223,7 @@ export function ClientDetail() {
               { label: 'Total orçado', value: formatAmount(client.stats.totalQuoted) },
             ].map((stat) => (
               <Card key={stat.label} className="p-4">
-                <p className="text-[12px] font-medium text-neutral-500">{stat.label}</p>
+                <p className="text-[12px] font-medium text-neutral-600">{stat.label}</p>
                 <p className="tabular mt-2 text-[22px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">{stat.value}</p>
               </Card>
             ))}
@@ -264,12 +264,12 @@ export function ClientDetail() {
                         <Td>
                           <span className="font-medium text-ink-900">{quote.quoteNumber}</span>
                         </Td>
-                        <Td className="text-neutral-500">{formatDate(quote.createdAt)}</Td>
-                        <Td className="text-neutral-500">{quote.items.length}</Td>
+                        <Td className="text-neutral-600">{formatDate(quote.createdAt)}</Td>
+                        <Td className="text-neutral-600">{quote.items.length}</Td>
                         <Td align="right" className="tabular font-medium text-ink-900">
                           {currencySymbol[quote.currency] ?? ''} {formatAmount(quote.total)}
                         </Td>
-                        <Td className="text-neutral-500">{quote.createdBy.name}</Td>
+                        <Td className="text-neutral-600">{quote.createdBy.name}</Td>
                       </Tr>
                     ))
                   )}
@@ -303,8 +303,8 @@ export function ClientDetail() {
                         <Td>
                           <span className="font-medium text-ink-900">#{formatOrderNumber(order.orderNumber)}</span>
                         </Td>
-                        <Td className="text-neutral-500">{order.quoteNumber}</Td>
-                        <Td className="text-neutral-500">{formatDate(order.createdAt)}</Td>
+                        <Td className="text-neutral-600">{order.quoteNumber}</Td>
+                        <Td className="text-neutral-600">{formatDate(order.createdAt)}</Td>
                         <Td align="right" className="tabular font-medium text-ink-900">
                           {currencySymbol[order.currency] ?? ''} {formatAmount(order.total)}
                         </Td>

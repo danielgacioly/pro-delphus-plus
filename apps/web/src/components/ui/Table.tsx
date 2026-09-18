@@ -27,7 +27,7 @@ export function Th({ className, align, ...props }: ThHTMLAttributes<HTMLTableCel
   return (
     <th
       className={cn(
-        'whitespace-nowrap border-b border-black/[0.08] px-4 pt-3 pb-2 text-left text-[12px] font-medium text-neutral-500',
+        'whitespace-nowrap border-b border-black/[0.08] px-4 pt-3 pb-2 text-left text-[12px] font-medium text-neutral-600',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         className,

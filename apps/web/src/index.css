@@ -2,16 +2,19 @@
 
 @theme {
   /* ---- Brand -------------------------------------------------------- */
-  --color-brand-50: #fef3f2;
-  --color-brand-100: #fde4e2;
-  --color-brand-200: #fbcdc9;
-  --color-brand-300: #f5a8a1;
-  --color-brand-400: #ee7368;
-  --color-brand-500: #e14638;
-  --color-brand-600: #cd2b1d;
-  --color-brand-700: #ab2015;
-  --color-brand-800: #8d1e15;
-  --color-brand-900: #751e18;
+  /* Vermelho da marca, um passo mais fechado e menos saturado nos tons de
+     interação (600/700): vermelho puro em botão grande lê como alerta, não
+     como marca. O logo continua no vermelho vivo — é a assinatura, não a UI. */
+  --color-brand-50: #fdf4f2;
+  --color-brand-100: #fbe5e1;
+  --color-brand-200: #f6cbc4;
+  --color-brand-300: #eda79c;
+  --color-brand-400: #df7264;
+  --color-brand-500: #c4483a;
+  --color-brand-600: #a83224;
+  --color-brand-700: #8c2a1e;
+  --color-brand-800: #74241a;
+  --color-brand-900: #5f2018;
 
   /* ---- Danger (dedicated red — distinct hue from the warm brand ramp) --- */
   --color-danger-50: #fef2f2;

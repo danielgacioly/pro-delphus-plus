@@ -13,6 +13,7 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   Alert,
   Button,
+  buttonClasses,
   Card,
   Field,
   Input,
@@ -38,7 +39,7 @@ async function fetchOrder(id: string) {
 function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <dt className="text-[12px] font-medium text-neutral-500">{label}</dt>
+      <dt className="text-[12px] font-medium text-neutral-600">{label}</dt>
       <dd className="mt-1 whitespace-pre-line text-[13.5px] leading-relaxed text-ink-900">
         {value?.trim() ? value : '—'}
       </dd>
@@ -65,7 +66,7 @@ function DocLink({ href, children, tone = 'brand' }: { href: string; children: R
       rel="noreferrer"
       // Documento é arquivo, não ação principal: botão secundário com o
       // glifo colorido pelo tipo (vermelho PDF, verde planilha), como no Finder.
-      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/[0.1] bg-white px-3 text-[13px] font-medium text-ink-900 shadow-[0_0.5px_1px_rgb(0_0_0/0.05)] transition-colors duration-100 hover:bg-neutral-50"
+      className={buttonClasses()}
     >
       <IconQuote className={`h-3.5 w-3.5 ${tone === 'brand' ? 'text-brand-600' : 'text-emerald-600'}`} />
       {children}
@@ -86,7 +87,7 @@ function ManualUpload({
 }) {
   return (
     <div className="border-t border-neutral-200/70 pt-4">
-      <h3 className="text-eyebrow mb-2 text-neutral-500">{title}</h3>
+      <h3 className="text-eyebrow mb-2 text-neutral-600">{title}</h3>
       {url ? (
         <a
           href={url}
@@ -97,7 +98,7 @@ function ManualUpload({
           Ver arquivo enviado
         </a>
       ) : (
-        <p className="text-[13px] text-neutral-400">Nenhum arquivo enviado.</p>
+        <p className="text-[13px] text-neutral-500">Nenhum arquivo enviado.</p>
       )}
       <DropZone
         className="mt-2.5 py-3"
@@ -107,7 +108,7 @@ function ManualUpload({
           if (file) onFile(file)
         }}
       >
-        <p className="text-[12.5px] text-neutral-500">
+        <p className="text-[12.5px] text-neutral-600">
           Arraste o arquivo ou <span className="font-medium text-brand-600">clique para selecionar</span>
         </p>
       </DropZone>
@@ -336,7 +337,7 @@ export function OrderDetail() {
       title={`Pedido #${formatOrderNumber(order.orderNumber)}`}
       description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
       actions={
-        <Button size="sm" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
+        <Button size="md" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
           {editing ? 'Cancelar' : 'Editar'}
         </Button>
       }
@@ -529,7 +530,7 @@ export function OrderDetail() {
                 )}
               </div>
 
-              <p className="mt-4 text-[12px] leading-relaxed text-neutral-400">
+              <p className="mt-4 text-[12px] leading-relaxed text-neutral-500">
                 {isNational
                   ? 'Salvar regenera automaticamente a Packing List Box.'
                   : 'Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.'}
@@ -617,7 +618,7 @@ export function OrderDetail() {
                   <Td>
                     <p className="font-medium text-ink-900">{item.productName}</p>
                     {item.description && (
-                      <p className="mt-0.5 text-[12px] leading-relaxed text-neutral-500">{item.description}</p>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-neutral-600">{item.description}</p>
                     )}
                   </Td>
                   <Td className="tabular text-right">{item.quantity}</Td>
@@ -626,7 +627,7 @@ export function OrderDetail() {
                         negociado (menor). Um preço customizado maior não é
                         "especial" — é só o preço do item, sem riscado. */}
                     {item.listPrice && item.listPrice > item.unitPrice && (
-                      <span className="mr-1.5 text-neutral-400 line-through">
+                      <span className="mr-1.5 text-neutral-500 line-through">
                         {formatAmount(item.listPrice)}
                       </span>
                     )}

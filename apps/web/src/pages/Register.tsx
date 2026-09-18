@@ -96,7 +96,7 @@ export function Register() {
             {submitting ? 'Enviando…' : 'Solicitar acesso'}
           </Button>
 
-          <p className="pt-1 text-center text-[13px] text-neutral-500">
+          <p className="pt-1 text-center text-[13px] text-neutral-600">
             Já tem conta?{' '}
             <Link to="/login" className="font-medium text-brand-600 hover:underline">
               Entrar

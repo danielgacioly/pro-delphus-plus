@@ -134,7 +134,7 @@ export function AdminUsers() {
       title="Contas"
       description="Gerencie o acesso dos usuários ao Pro Delphus+."
       actions={
-        <Button size="sm" variant={showCreate ? 'secondary' : 'primary'} onClick={() => setShowCreate((s) => !s)}>
+        <Button size="md" variant={showCreate ? 'secondary' : 'primary'} onClick={() => setShowCreate((s) => !s)}>
           {showCreate ? 'Cancelar' : 'Criar conta'}
         </Button>
       }
@@ -156,7 +156,7 @@ export function AdminUsers() {
               >
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-medium text-ink-900">{u.name}</p>
-                  <p className="truncate text-[12.5px] text-neutral-500">
+                  <p className="truncate text-[12.5px] text-neutral-600">
                     {u.email}
                     {u.jobTitle && ` · ${u.jobTitle}`}
                   </p>
@@ -173,7 +173,7 @@ export function AdminUsers() {
                     size="sm"
                     variant="ghost"
                     onClick={() => reject.mutate(u.id)}
-                    className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                    className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                   >
                     Rejeitar
                   </Button>
@@ -265,7 +265,7 @@ export function AdminUsers() {
               {others.map((u) => (
                 <Tr key={u.id}>
                   <Td className="font-medium text-ink-900">{u.name}</Td>
-                  <Td className="text-neutral-500">{u.email}</Td>
+                  <Td className="text-neutral-600">{u.email}</Td>
                   <Td>
                     <Select
                       auto
@@ -321,7 +321,7 @@ export function AdminUsers() {
                             setDeleteError(null)
                             setDeletingUser(u)
                           }}
-                          className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                          className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                         >
                           Excluir
                         </Button>

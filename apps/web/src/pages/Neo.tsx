@@ -214,10 +214,10 @@ export function Neo() {
           <NeoAvatar thinking={loading} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
             <h1 className="text-display text-ink-900">NEO</h1>
-            <p className="mt-0.5 text-[13px] text-neutral-500">Ou Network Executive Operator. Seu assistente pessoal na Pro Delphus+</p>
+            <p className="mt-0.5 text-[13px] text-neutral-600">Ou Network Executive Operator. Seu assistente pessoal na Pro Delphus+</p>
           </div>
           {messages.length > 0 && (
-            <Button size="sm" onClick={handleNewChat} disabled={loading}>
+            <Button size="md" onClick={handleNewChat} disabled={loading}>
               Nova conversa
             </Button>
           )}
@@ -230,7 +230,7 @@ export function Neo() {
             <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
               <NeoMascot className="h-40 w-40 sm:h-48 sm:w-48" />
               <h2 className="text-heading mt-1 text-ink-900">Oi, eu sou o NEO</h2>
-              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-500">
+              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-600">
                 Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
               </p>
             </div>

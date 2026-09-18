@@ -9,6 +9,7 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   Badge,
   Button,
+  buttonClasses,
   ButtonLink,
   EmptyState,
   Page,
@@ -95,7 +96,7 @@ export function Quotes() {
       title="Orçamentos"
       description="Gere orçamentos automáticos em PDF ou Excel buscando por nome ou SKU."
       actions={
-        <ButtonLink to="/orcamentos/novo" variant="primary" size="sm">
+        <ButtonLink to="/orcamentos/novo" variant="primary" size="md">
           <IconPlus className="h-4 w-4" />
           Novo orçamento
         </ButtonLink>
@@ -183,21 +184,21 @@ export function Quotes() {
                         {prefix && `${prefix} `}
                         {q.clientName}
                       </p>
-                      <p className="mt-0.5 truncate text-[12px] text-neutral-500">
+                      <p className="mt-0.5 truncate text-[12px] text-neutral-600">
                         {q.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}
                       </p>
                     </Td>
                     <Td>
                       <span className="inline-flex items-center gap-1.5">
                         <Badge>{languageLabel[q.language]}</Badge>
-                        <span className="text-[12px] text-neutral-500">{q.currency}</span>
+                        <span className="text-[12px] text-neutral-600">{q.currency}</span>
                         {q.priceTier === 'DISTRIBUTOR' && <Badge tone="ink">Distrib.</Badge>}
                       </span>
                     </Td>
-                    <Td className="tabular whitespace-nowrap text-neutral-500">
+                    <Td className="tabular whitespace-nowrap text-neutral-600">
                       {new Date(q.createdAt).toLocaleDateString('pt-BR')}
                     </Td>
-                    <Td className="whitespace-nowrap text-neutral-500">{q.createdBy.name}</Td>
+                    <Td className="whitespace-nowrap text-neutral-600">{q.createdBy.name}</Td>
                     <Td className="tabular whitespace-nowrap text-right font-semibold text-ink-900">
                       {formatAmount(q.total)}
                     </Td>
@@ -208,7 +209,7 @@ export function Quotes() {
                         <Link
                           to={`/orcamentos/${q.id}/editar`}
                           title="Editar orçamento"
-                          className="inline-flex h-7 items-center rounded-md border border-black/[0.1] bg-white px-2 text-[12px] font-medium text-ink-800 transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900"
+                          className={buttonClasses({ size: 'sm' })}
                         >
                           Editar
                         </Link>
@@ -219,7 +220,7 @@ export function Quotes() {
                             title="Excluir orçamento"
                             aria-label="Excluir orçamento"
                             onClick={() => setDeletingQuote(q)}
-                            className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                            className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                           >
                             <IconTrash className="h-3.5 w-3.5" />
                           </Button>
@@ -269,7 +270,7 @@ function FileLink({ href, children }: { href: string; children: string }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex h-7 items-center rounded-md border border-black/[0.1] bg-white px-2 text-[12px] font-medium text-ink-800 transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900"
+      className={buttonClasses({ size: 'sm' })}
     >
       {children}
     </a>

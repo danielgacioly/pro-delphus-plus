@@ -94,12 +94,12 @@ export function ClientPicker({
     const place = [selected.city, selected.state, selected.country].filter(Boolean).join(', ')
     return (
       <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-xs">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-500">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-600">
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink-900">{selected.name}</p>
-          <p className="truncate text-[12.5px] text-neutral-500">
+          <p className="truncate text-[12.5px] text-neutral-600">
             {[selected.institution || CLIENT_KIND_LABEL[selected.kind], place].filter(Boolean).join(' · ')}
           </p>
         </div>
@@ -130,7 +130,7 @@ export function ClientPicker({
           <div className="animate-scale-in absolute left-0 right-0 top-full z-20 mt-1.5 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
             <div className="max-h-64 overflow-y-auto">
               {(results ?? []).length === 0 ? (
-                <p className="px-4 py-3 text-[13px] text-neutral-500">
+                <p className="px-4 py-3 text-[13px] text-neutral-600">
                   {search ? 'Nenhum cliente encontrado com esse nome.' : 'Comece a digitar para buscar.'}
                 </p>
               ) : (
@@ -147,13 +147,13 @@ export function ClientPicker({
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13.5px] font-medium text-ink-900">{client.name}</p>
-                      <p className="truncate text-[12px] text-neutral-500">
+                      <p className="truncate text-[12px] text-neutral-600">
                         {[client.institution || CLIENT_KIND_LABEL[client.kind], client.city, client.country]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
                     </div>
-                    <span className="tabular shrink-0 text-[11.5px] text-neutral-400">
+                    <span className="tabular shrink-0 text-[11.5px] text-neutral-500">
                       {client.stats.quoteCount} orç.
                     </span>
                   </button>
@@ -183,7 +183,7 @@ export function ClientPicker({
             className="animate-scale-in max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
           >
             <h2 className="text-title text-ink-900">Novo cliente</h2>
-            <p className="mt-1 text-[13px] text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-600">
               Ele já entra selecionado neste orçamento — o cadastro completo pode ser feito depois.
             </p>
             <div className="mt-5">

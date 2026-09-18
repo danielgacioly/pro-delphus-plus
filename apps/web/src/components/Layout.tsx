@@ -106,7 +106,7 @@ export function Layout() {
             <Icon
               className={cn(
                 'h-[17px] w-[17px] shrink-0 transition-colors duration-100',
-                isActive ? 'text-brand-600' : 'text-neutral-500',
+                isActive ? 'text-brand-600' : 'text-neutral-600',
               )}
             />
             <span className={cn('truncate', labelClass)}>{label}</span>
@@ -140,7 +140,7 @@ export function Layout() {
             onClick={toggleCollapsed}
             aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
             title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900 lg:flex"
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-600 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900 lg:flex"
           >
             <IconSidebar className="h-[17px] w-[17px]" />
           </button>
@@ -155,7 +155,7 @@ export function Layout() {
           {user?.role === 'ADMIN' && (
             <>
               <div className={cn('mt-5 mb-1 px-2', collapsed ? 'hidden' : 'hidden lg:block')}>
-                <span className="text-[11.5px] font-semibold text-neutral-500">Administração</span>
+                <span className="text-[11.5px] font-semibold text-neutral-600">Administração</span>
               </div>
               <div className={cn('mx-2 my-2.5 h-px bg-black/[0.08]', collapsed ? 'block' : 'block lg:hidden')} />
               {adminNavItems.map(renderItem)}
@@ -178,14 +178,14 @@ export function Layout() {
               </span>
               <span className={cn('min-w-0 flex-1', labelClass)}>
                 <span className="block truncate text-[13px] leading-tight font-medium text-ink-900">{user?.name}</span>
-                <span className="block truncate text-[11.5px] leading-tight text-neutral-500">{user?.email}</span>
+                <span className="block truncate text-[11.5px] leading-tight text-neutral-600">{user?.email}</span>
               </span>
             </Link>
             <button
               onClick={handleLogout}
               aria-label="Sair"
               title="Sair"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-600 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900"
             >
               <IconLogout className="h-4 w-4" />
             </button>

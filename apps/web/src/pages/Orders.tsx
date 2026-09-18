@@ -21,6 +21,7 @@ import {
   Th,
   Toolbar,
   Tr,
+  buttonClasses,
 } from '../components/ui'
 import { IconPlus, IconTruck } from '../components/icons'
 
@@ -104,7 +105,7 @@ export function Orders() {
       title="Pedidos"
       description="Gere Invoice, Packing List e o documento de exportação a partir de um orçamento existente."
       actions={
-        <ButtonLink to="/pedidos/novo" variant="primary" size="sm">
+        <ButtonLink to="/pedidos/novo" variant="primary" size="md">
           <IconPlus className="h-4 w-4" />
           Novo pedido
         </ButtonLink>
@@ -191,12 +192,12 @@ export function Orders() {
                   </Td>
                   <Td className="max-w-88">
                     <p className="truncate font-medium text-ink-900">{o.quote.clientName}</p>
-                    <p className="mt-0.5 truncate text-[12px] text-neutral-500">Orç. {o.quoteNumber}</p>
+                    <p className="mt-0.5 truncate text-[12px] text-neutral-600">Orç. {o.quoteNumber}</p>
                   </Td>
-                  <Td className="tabular whitespace-nowrap text-neutral-500">
+                  <Td className="tabular whitespace-nowrap text-neutral-600">
                     {new Date(o.createdAt).toLocaleDateString('pt-BR')}
                   </Td>
-                  <Td className="whitespace-nowrap text-neutral-500">{o.createdBy.name}</Td>
+                  <Td className="whitespace-nowrap text-neutral-600">{o.createdBy.name}</Td>
                   <Td className="tabular whitespace-nowrap text-right font-semibold text-ink-900">
                     {formatAmount(o.quote.total)}
                   </Td>
@@ -207,7 +208,7 @@ export function Orders() {
                     <Link
                       to={`/pedidos/novo?duplicateFrom=${o.id}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex h-7 items-center rounded-md border border-black/[0.1] bg-white px-2 text-[12px] font-medium text-ink-800 transition-[background-color,border-color,color,transform] duration-150 hover:border-neutral-300 hover:bg-neutral-50 hover:text-ink-900"
+                      className={buttonClasses({ size: 'sm' })}
                     >
                       Duplicar
                     </Link>

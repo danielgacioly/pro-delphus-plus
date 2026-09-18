@@ -64,12 +64,12 @@ function ClientCard({
     <Link to={`/clientes/${client.id}`} className="block focus:outline-none">
       <InteractiveCard className="flex h-full flex-col px-4 pt-4 pb-3.5 focus-visible:ring-[3px] focus-visible:ring-brand-500/20">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-500">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-600">
             <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-semibold tracking-[-0.014em] text-ink-900">{client.name}</p>
-            <p className="truncate text-[13px] text-neutral-500">
+            <p className="truncate text-[13px] text-neutral-600">
               {client.institution || CLIENT_KIND_LABEL[client.kind]}
             </p>
             {/* Selos numa linha própria: dividindo a linha do nome, espremiam
@@ -101,7 +101,7 @@ function ClientCard({
                 e.stopPropagation()
                 onDelete(client)
               }}
-              className="-m-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-black/[0.05] hover:text-danger-600"
+              className="-m-1 shrink-0 rounded-md p-1 text-neutral-500 transition-colors hover:bg-black/[0.05] hover:text-danger-600"
             >
               <IconTrash className="h-4 w-4" />
             </button>
@@ -111,13 +111,13 @@ function ClientCard({
         <div className="mt-3.5 mb-4 space-y-1 text-[13px] text-neutral-600">
           {client.email && (
             <p className="flex items-center gap-1.5 truncate">
-              <IconMail className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+              <IconMail className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
               <span className="truncate">{client.email}</span>
             </p>
           )}
           {place && (
             <p className="flex items-center gap-1.5 truncate">
-              <IconPin className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+              <IconPin className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
               <span className="truncate">{place}</span>
             </p>
           )}
@@ -126,19 +126,19 @@ function ClientCard({
         <div className="mt-auto flex items-end justify-between border-t border-black/[0.06] pt-3">
           <div className="flex gap-5">
             <div>
-              <p className="text-[12px] font-medium text-neutral-500">Orçamentos</p>
+              <p className="text-[12px] font-medium text-neutral-600">Orçamentos</p>
               <p className="tabular mt-0.5 text-[17px] font-semibold leading-none text-ink-900">
                 {client.stats.quoteCount}
               </p>
             </div>
             <div>
-              <p className="text-[12px] font-medium text-neutral-500">Pedidos</p>
+              <p className="text-[12px] font-medium text-neutral-600">Pedidos</p>
               <p className="tabular mt-0.5 text-[17px] font-semibold leading-none text-ink-900">
                 {client.stats.orderCount}
               </p>
             </div>
           </div>
-          <p className="text-[12px] text-neutral-400">{relativeDate(client.stats.lastQuoteAt)}</p>
+          <p className="text-[12px] text-neutral-500">{relativeDate(client.stats.lastQuoteAt)}</p>
         </div>
       </InteractiveCard>
     </Link>
@@ -225,7 +225,7 @@ export function Clients() {
       title="Clientes"
       description="Quem compra da Pro Delphus: contato, endereços, orçamentos e pedidos de cada um."
       actions={
-        <Button variant="primary" size="sm" onClick={() => setCreating(true)}>
+        <Button variant="primary" size="md" onClick={() => setCreating(true)}>
           <IconPlus className="h-4 w-4" />
           Novo cliente
         </Button>
@@ -242,7 +242,7 @@ export function Clients() {
             style={{ animationDelay: `${i * 40}ms` }}
             className="animate-fade-in-up rounded-2xl border border-black/[0.06] bg-white p-5"
           >
-            <p className="text-[12px] font-medium text-neutral-500">{stat.label}</p>
+            <p className="text-[12px] font-medium text-neutral-600">{stat.label}</p>
             <p className="tabular mt-2.5 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">
               {isLoading ? '—' : <AnimatedNumber value={stat.value} />}
             </p>
@@ -325,7 +325,7 @@ export function Clients() {
             className="animate-scale-in max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
           >
             <h2 className="text-title text-ink-900">Novo cliente</h2>
-            <p className="mt-1 text-[13px] text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-600">
               O que você preencher aqui fica salvo para futuros orçamentos e pedidos desse cliente.
             </p>
             <div className="mt-5">

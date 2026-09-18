@@ -23,12 +23,12 @@ export function StatTile({ icon: Icon, label, value, sub, to, tone = 'brand', de
   const content = (
     <>
       <div className="flex items-center gap-1.5">
-        {Icon && <Icon className={cn('h-3.5 w-3.5 shrink-0', tone === 'brand' ? 'text-brand-600' : 'text-neutral-500')} />}
-        <p className="text-[13px] font-medium text-neutral-500">{label}</p>
+        {Icon && <Icon className={cn('h-3.5 w-3.5 shrink-0', tone === 'brand' ? 'text-brand-600' : 'text-neutral-600')} />}
+        <p className="text-[13px] font-medium text-neutral-600">{label}</p>
       </div>
       <p className="tabular mt-1.5 whitespace-nowrap text-[24px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">
         {value}
-        {sub && <span className="ml-1.5 text-[14px] font-normal tracking-normal text-neutral-500">{sub}</span>}
+        {sub && <span className="ml-1.5 text-[14px] font-normal tracking-normal text-neutral-600">{sub}</span>}
       </p>
     </>
   )

@@ -72,7 +72,7 @@ export function Login() {
           {submitting ? 'Entrando…' : 'Entrar'}
         </Button>
 
-        <p className="pt-1 text-center text-[13px] text-neutral-500">
+        <p className="pt-1 text-center text-[13px] text-neutral-600">
           Ainda não tem conta?{' '}
           <Link to="/cadastro" className="font-medium text-brand-600 hover:underline">
             Solicitar acesso

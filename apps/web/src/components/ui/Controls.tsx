@@ -124,7 +124,7 @@ export function SearchField({
 }) {
   return (
     <div className={cn('relative', className)}>
-      <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-neutral-500" />
+      <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-neutral-600" />
       <input
         type="search"
         value={value}
@@ -132,7 +132,7 @@ export function SearchField({
         placeholder={placeholder}
         className={cn(
           'h-8 w-full rounded-lg border border-transparent bg-black/[0.055] pl-8 pr-7 text-[13.5px] text-ink-900',
-          'placeholder:text-neutral-500',
+          'placeholder:text-neutral-600',
           'transition-[background-color,border-color,box-shadow] duration-100 ease-out hover:bg-black/[0.07]',
           'focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-[3px] focus:ring-brand-500/20 focus-visible:outline-none',
           '[&::-webkit-search-cancel-button]:appearance-none',

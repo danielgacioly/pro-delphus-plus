@@ -98,7 +98,7 @@ function SkeletonGroup() {
 }
 
 const priceHeadClass =
-  'whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-right text-[12px] font-semibold text-neutral-500'
+  'whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-right text-[12px] font-semibold text-neutral-600'
 const priceCellClass = 'tabular whitespace-nowrap px-4 py-2.5 text-right text-ink-900'
 
 export function PriceTable() {
@@ -183,7 +183,7 @@ export function PriceTable() {
       title="Tabela de Preços"
       description="Consulta de preços por setor. Para alterar um preço, edite o produto correspondente."
       actions={
-        <Button variant="primary" size="sm" onClick={exportPdf} disabled={exporting}>
+        <Button variant="primary" size="md" onClick={exportPdf} disabled={exporting}>
           {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
         </Button>
       }
@@ -262,7 +262,7 @@ export function PriceTable() {
               >
                 <div className="mb-3 flex items-baseline gap-2.5">
                   <h2 className="text-title text-ink-900">{localizeSector(sector, sectorList, lang)}</h2>
-                  <span className="tabular text-[13px] text-neutral-400">
+                  <span className="tabular text-[13px] text-neutral-500">
                     {total} {total === 1 ? 'item' : 'itens'}
                   </span>
                 </div>
@@ -275,25 +275,25 @@ export function PriceTable() {
                     return (
                       <div key={kind} className="border-t border-neutral-200/70 first:border-t-0">
                         <div className="bg-neutral-50/80 px-4 py-2">
-                          <h3 className="text-eyebrow text-neutral-500">{kindLabel[kind]}</h3>
+                          <h3 className="text-eyebrow text-neutral-600">{kindLabel[kind]}</h3>
                         </div>
                         <div className="overflow-x-auto">
                           <table className="min-w-full text-sm">
                             <thead>
                               <tr>
-                                <th className="whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                <th className="whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                   SKU
                                 </th>
-                                <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                   Nome
                                 </th>
                                 {columns.description && (
-                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                     Descrição
                                   </th>
                                 )}
                                 {showComponents && (
-                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                     Componentes
                                   </th>
                                 )}
@@ -311,19 +311,19 @@ export function PriceTable() {
                                   title="Abrir no catálogo de produtos"
                                   className="group cursor-pointer transition-colors duration-150 hover:bg-neutral-500/6"
                                 >
-                                  <td className="tabular whitespace-nowrap px-4 py-2.5 font-medium text-neutral-500">
+                                  <td className="tabular whitespace-nowrap px-4 py-2.5 font-medium text-neutral-600">
                                     {product.sku}
                                   </td>
                                   <td className="px-4 py-2.5 font-medium text-ink-900 group-hover:text-brand-700">
                                     {product.name}
                                   </td>
                                   {columns.description && (
-                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-500">
+                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
                                       {localize(product.description, product.descriptionPt, lang) ?? '—'}
                                     </td>
                                   )}
                                   {showComponents && (
-                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-500">
+                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
                                       {localize(product.components, product.componentsPt, lang) ?? '—'}
                                     </td>
                                   )}

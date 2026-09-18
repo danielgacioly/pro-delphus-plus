@@ -67,7 +67,7 @@ export function AuthLayout({
         <div className="w-full max-w-sm">
           <img src={logo} alt="Pro Delphus" className="mb-8 h-12 w-auto lg:hidden" />
           <h2 className="text-title text-ink-900">{title}</h2>
-          <p className="mt-1.5 mb-7 text-[14px] text-neutral-500">{subtitle}</p>
+          <p className="mt-1.5 mb-7 text-[14px] text-neutral-600">{subtitle}</p>
           {children}
         </div>
       </div>
