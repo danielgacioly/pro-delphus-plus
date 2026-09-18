@@ -224,12 +224,6 @@ export function Clients() {
     <Page
       title="Clientes"
       description="Quem compra da Pro Delphus: contato, endereços, orçamentos e pedidos de cada um."
-      actions={
-        <Button variant="primary" size="md" onClick={() => setCreating(true)}>
-          <IconPlus className="h-4 w-4" />
-          Novo cliente
-        </Button>
-      }
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
@@ -251,12 +245,6 @@ export function Clients() {
       </div>
 
       <Toolbar className="mt-8">
-        <SearchField
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar por nome, instituição, e-mail ou cidade"
-          className="min-w-0 flex-1 sm:max-w-md"
-        />
         <SegmentedControl
           aria-label="Tipo de cliente"
           value={kindFilter}
@@ -268,6 +256,16 @@ export function Clients() {
             { value: 'DISTRIBUTOR', label: 'Distribuidores' },
           ]}
         />
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por nome, instituição, e-mail ou cidade"
+          className="ml-auto min-w-0 w-full sm:max-w-md"
+        />
+        <Button variant="primary" size="md" onClick={() => setCreating(true)}>
+          <IconPlus className="h-4 w-4" />
+          Novo cliente
+        </Button>
       </Toolbar>
 
       <div className="mt-5">

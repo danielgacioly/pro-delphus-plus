@@ -8,30 +8,6 @@ export interface PairQuote {
   pctChange: number
   /** Momento da cotação, ISO. */
   updatedAt: string
-  /** Fechamentos dos últimos dias, do mais antigo ao mais recente. */
-  history: number[]
-}
-
-const HISTORY_DAYS = 8
-
-/**
- * Série curta para o mini-gráfico. É best-effort: se falhar, a cotação do dia
- * ainda vale, então o erro vira lista vazia em vez de derrubar a chamada.
- */
-async function fetchPairHistory(pair: string): Promise<number[]> {
-  try {
-    const res = await fetch(`https://economia.awesomeapi.com.br/json/daily/${pair}/${HISTORY_DAYS}`, {
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!res.ok) return []
-    const days = (await res.json()) as Array<{ bid?: string }>
-    return days
-      .map((day) => Number(day.bid))
-      .filter((value) => Number.isFinite(value) && value > 0)
-      .reverse()
-  } catch {
-    return []
-  }
 }
 
 const cache = new Map<string, { quote: PairQuote; fetchedAt: number }>()
@@ -57,7 +33,6 @@ export async function fetchPairQuote(pair: string): Promise<PairQuote> {
     rate,
     pctChange: Number(entry?.pctChange) || 0,
     updatedAt: (Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date()).toISOString(),
-    history: await fetchPairHistory(pair),
   }
 
   cache.set(pair, { quote, fetchedAt: Date.now() })

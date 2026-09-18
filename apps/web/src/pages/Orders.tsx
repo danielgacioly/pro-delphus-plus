@@ -104,12 +104,6 @@ export function Orders() {
     <Page
       title="Pedidos"
       description="Gere Invoice, Packing List e o documento de exportação a partir de um orçamento existente."
-      actions={
-        <ButtonLink to="/pedidos/novo" variant="primary" size="md">
-          <IconPlus className="h-4 w-4" />
-          Novo pedido
-        </ButtonLink>
-      }
     >
       <Toolbar className="mb-4">
         <SegmentedControl
@@ -151,6 +145,10 @@ export function Orders() {
           placeholder="Buscar por pedido ou cliente"
           className="ml-auto w-full sm:w-72"
         />
+        <ButtonLink to="/pedidos/novo" variant="primary" size="md">
+          <IconPlus className="h-4 w-4" />
+          Novo pedido
+        </ButtonLink>
       </Toolbar>
 
       <TableShell>

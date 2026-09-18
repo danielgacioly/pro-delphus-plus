@@ -234,22 +234,8 @@ export function Products() {
     <Page
       title="Produtos"
       description="Catálogo Pro Delphus — cadastrar aqui já adiciona o item à tabela de preços."
-      actions={
-        isAdmin && (
-          <ButtonLink to="/produtos/novo" variant="primary" size="md">
-            <IconPlus className="h-4 w-4" />
-            Novo produto
-          </ButtonLink>
-        )
-      }
     >
       <Toolbar className="mb-5">
-        <SearchField
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar produtos"
-          className="w-full sm:w-64"
-        />
         <SegmentedControl
           aria-label="Tipo de produto"
           value={kindFilter}
@@ -275,9 +261,21 @@ export function Products() {
           ))}
         </Select>
         {filteredProducts && !isLoading && (
-          <span className="tabular ml-auto text-[13px] text-neutral-500">
+          <span className="tabular text-[13px] text-neutral-500">
             {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
           </span>
+        )}
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar produtos"
+          className="ml-auto w-full sm:w-64"
+        />
+        {isAdmin && (
+          <ButtonLink to="/produtos/novo" variant="primary" size="md">
+            <IconPlus className="h-4 w-4" />
+            Novo produto
+          </ButtonLink>
         )}
       </Toolbar>
 

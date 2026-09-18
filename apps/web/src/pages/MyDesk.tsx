@@ -177,6 +177,7 @@ export function MyDesk() {
   const myOrders = useMemo(() => (orders ?? []).filter((o) => o.createdBy.id === user?.id), [orders, user])
 
   const [showForm, setShowForm] = useState(false)
+  const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [draft, setDraft] = useState(emptyDraft)
   const [tagDraft, setTagDraft] = useState('')
   const [draftTags, setDraftTags] = useState<string[]>([])
@@ -318,24 +319,53 @@ export function MyDesk() {
     <Page
       title="Minha Pro Delphus"
       description="Seu espaço pessoal: pendências, lembretes e acesso rápido ao que você já criou."
-      actions={
-        <>
-          <Button size="md" onClick={() => setAddingColumn((s) => !s)}>
-            {addingColumn ? 'Cancelar' : 'Novo quadro'}
-          </Button>
-          <Button size="md" variant="primary" onClick={() => setShowForm((s) => !s)}>
-            <IconPlus className="h-4 w-4" />
-            {showForm ? 'Cancelar' : 'Nova tarefa'}
-          </Button>
-        </>
-      }
     >
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile to="/orcamentos" icon={IconQuote} label="Meus orçamentos" value={myQuotes.length} />
         <StatTile to="/pedidos" icon={IconTruck} label="Meus pedidos" value={myOrders.length} />
       </div>
 
-      <h2 className="text-heading mb-3 text-ink-900">Mural de tarefas</h2>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-heading text-ink-900">Mural de tarefas</h2>
+        <div className="relative">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => setCreateMenuOpen((open) => !open)}
+            aria-expanded={createMenuOpen}
+            aria-haspopup="menu"
+          >
+            <IconPlus className="h-3.5 w-3.5" />
+            Criar
+          </Button>
+          {createMenuOpen && (
+            <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-neutral-200/70 bg-white p-1.5 shadow-lg">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAddingColumn(true)
+                  setCreateMenuOpen(false)
+                }}
+                className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[13px] font-medium text-ink-900 transition-colors hover:bg-neutral-500/8"
+              >
+                Novo quadro
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setShowForm(true)
+                  setCreateMenuOpen(false)
+                }}
+                className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[13px] font-medium text-ink-900 transition-colors hover:bg-neutral-500/8"
+              >
+                Nova tarefa
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {columnError && (
         <div className="mb-4">
@@ -525,7 +555,7 @@ export function MyDesk() {
         </div>
       )}
 
-      <div className="flex items-start gap-4 overflow-x-auto pb-4">
+      <div className="grid w-full grid-cols-1 items-start gap-4 pb-4 md:grid-cols-2 xl:grid-cols-3">
         {(columns ?? []).map((col) => {
           const isCollapsed = !!collapsed[col.id]
           const colTasks = grouped[col.id] ?? []
@@ -545,9 +575,9 @@ export function MyDesk() {
                 else handleDrop(col.id)
               }}
               className={cn(
-                'shrink-0 cursor-grab rounded-2xl bg-black/[0.035] p-2.5 active:cursor-grabbing',
+                'min-w-0 cursor-grab rounded-2xl bg-black/[0.035] p-2.5 active:cursor-grabbing',
                 'transition-[opacity,background-color,width] duration-200 ease-out',
-                isCollapsed ? 'w-53' : 'w-[288px]',
+                isCollapsed ? 'min-h-12' : 'min-h-52',
                 draggingColumnId === col.id ? 'opacity-40' : 'hover:bg-black/[0.05]',
               )}
             >

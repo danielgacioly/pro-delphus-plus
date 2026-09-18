@@ -9,12 +9,12 @@
   --color-brand-100: #fbe5e1;
   --color-brand-200: #f6cbc4;
   --color-brand-300: #eda79c;
-  --color-brand-400: #df7264;
-  --color-brand-500: #c4483a;
-  --color-brand-600: #a83224;
-  --color-brand-700: #8c2a1e;
-  --color-brand-800: #74241a;
-  --color-brand-900: #5f2018;
+  --color-brand-400: #e27d70;
+  --color-brand-500: #c95345;
+  --color-brand-600: #ae3a2c;
+  --color-brand-700: #933024;
+  --color-brand-800: #7b281e;
+  --color-brand-900: #66231b;
 
   /* ---- Danger (dedicated red — distinct hue from the warm brand ramp) --- */
   --color-danger-50: #fef2f2;

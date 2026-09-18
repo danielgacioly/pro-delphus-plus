@@ -182,20 +182,8 @@ export function PriceTable() {
     <Page
       title="Tabela de Preços"
       description="Consulta de preços por setor. Para alterar um preço, edite o produto correspondente."
-      actions={
-        <Button variant="primary" size="md" onClick={exportPdf} disabled={exporting}>
-          {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
-        </Button>
-      }
     >
       <Toolbar className="mb-6">
-        <SearchField
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar por SKU, nome ou setor"
-          className="w-full sm:w-80"
-        />
-
         <div ref={columnsRef} className="relative">
           <button
             type="button"
@@ -234,6 +222,15 @@ export function PriceTable() {
             </div>
           )}
         </div>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por SKU, nome ou setor"
+          className="ml-auto w-full sm:w-80"
+        />
+        <Button variant="primary" size="md" onClick={exportPdf} disabled={exporting}>
+          {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
+        </Button>
       </Toolbar>
 
       {priceColumnCount === 0 && (

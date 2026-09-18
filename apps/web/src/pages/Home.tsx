@@ -12,7 +12,6 @@ import {
   IconBox,
   IconChevronRight,
   IconContacts,
-  IconPlus,
   IconQuote,
   IconTag,
   IconTruck,
@@ -117,36 +116,6 @@ function variation(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100
 }
 
-/** Mini-gráfico de tendência: só a linha, sem eixo nem grade. */
-function Sparkline({ values, up, className }: { values: number[]; up: boolean; className?: string }) {
-  if (values.length < 2) return null
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const span = max - min || 1
-  const points = values
-    .map((value, i) => `${(i / (values.length - 1)) * 100},${100 - ((value - min) / span) * 100}`)
-    .join(' ')
-
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden
-      className={cn('w-full', up ? 'text-emerald-600' : 'text-brand-600', className)}
-    >
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  )
-}
-
 /** "▲ 12% vs. agosto" — contexto para o número não ficar solto. */
 function Change({ value, previousLabel }: { value: number | null; previousLabel: string }) {
   // Sem registro no mês anterior não existe porcentagem honesta — e repetir
@@ -165,8 +134,6 @@ interface ExchangeRate {
   rate: number
   pctChange: number
   updatedAt: string
-  /** Fechamentos dos últimos dias, do mais antigo ao mais recente. */
-  history: number[]
 }
 
 const PAIR_LABEL: Record<string, { name: string; symbol: string }> = {
@@ -200,27 +167,21 @@ function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-/**
- * Card de criação: fundo branco com traço fino e o vermelho só no glifo e no
- * "+" — encher o card inteiro de cor deixaria quatro blocos gritando juntos.
- */
 function CreateCard({ action }: { action: CreateAction }) {
   const { to, title, description, icon: Icon } = action
   return (
     <Link
       to={to}
-      className="group flex flex-col rounded-2xl border border-black/[0.06] bg-white p-4 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
+      className="group flex min-h-[88px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
     >
-      <div className="flex items-center justify-between">
-        <Icon className="h-5 w-5 text-brand-600" />
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 transition-colors duration-150 group-hover:bg-brand-500/16">
-          <IconPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
-        </span>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600">
+        <Icon className="h-5 w-5" />
       </div>
-      <div className="pt-5">
-        <h3 className="text-[16px] font-semibold tracking-[-0.02em] text-ink-900">{title}</h3>
-        <p className="mt-0.5 text-[13px] leading-snug text-neutral-600">{description}</p>
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-[15px] font-semibold tracking-[-0.014em] text-ink-900">{title}</h3>
+        <p className="mt-0.5 truncate text-[12.5px] leading-snug text-neutral-600">{description}</p>
       </div>
+      <IconChevronRight className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2.2} />
     </Link>
   )
 }
@@ -319,7 +280,7 @@ function SalesStat({
 }
 
 /** Cotação do dia de uma moeda, com a variação e a linha dos últimos dias. */
-function RateRow({ pair, rate, pctChange, history }: ExchangeRate) {
+function RateRow({ pair, rate, pctChange }: ExchangeRate) {
   const label = PAIR_LABEL[pair] ?? { name: pair, symbol: '' }
   const up = pctChange >= 0
   return (
@@ -336,7 +297,6 @@ function RateRow({ pair, rate, pctChange, history }: ExchangeRate) {
       <p className={cn('tabular mt-0.5 text-[12px] whitespace-nowrap', up ? 'text-emerald-700' : 'text-brand-700')}>
         {up ? '▲' : '▼'} {Math.abs(pctChange).toFixed(2).replace('.', ',')}% hoje
       </p>
-      <Sparkline values={history} up={up} className="mt-1.5 h-6" />
     </div>
   )
 }
@@ -524,7 +484,7 @@ export function Home() {
       </div>
 
       <Section title="Principal" className="mt-8">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {createActions
             .filter((action) => !action.adminOnly || isAdmin)
             .map((action) => (

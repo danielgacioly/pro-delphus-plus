@@ -133,12 +133,16 @@ export function AdminUsers() {
     <Page
       title="Contas"
       description="Gerencie o acesso dos usuários ao Pro Delphus+."
-      actions={
+    >
+      <div className="mb-6 flex items-center justify-between gap-4 border-b border-black/[0.07] pb-3">
+        <div>
+          <p className="text-[13px] font-medium text-ink-900">Acesso da equipe</p>
+          <p className="mt-0.5 text-[12px] text-neutral-600">Adicione uma conta aprovada diretamente.</p>
+        </div>
         <Button size="md" variant={showCreate ? 'secondary' : 'primary'} onClick={() => setShowCreate((s) => !s)}>
           {showCreate ? 'Cancelar' : 'Criar conta'}
         </Button>
-      }
-    >
+      </div>
       {pending.length > 0 && (
         <Card className="mb-6 border-amber-300/50 bg-amber-50/60 p-5">
           <h2 className="mb-3.5 flex items-center gap-2 text-[13px] font-semibold text-amber-900">

@@ -95,12 +95,6 @@ export function Quotes() {
     <Page
       title="Orçamentos"
       description="Gere orçamentos automáticos em PDF ou Excel buscando por nome ou SKU."
-      actions={
-        <ButtonLink to="/orcamentos/novo" variant="primary" size="md">
-          <IconPlus className="h-4 w-4" />
-          Novo orçamento
-        </ButtonLink>
-      }
     >
       <Toolbar className="mb-4">
         <SegmentedControl
@@ -146,6 +140,10 @@ export function Quotes() {
           placeholder="Buscar por número ou cliente"
           className="ml-auto w-full sm:w-72"
         />
+        <ButtonLink to="/orcamentos/novo" variant="primary" size="md">
+          <IconPlus className="h-4 w-4" />
+          Novo orçamento
+        </ButtonLink>
       </Toolbar>
 
       <TableShell>

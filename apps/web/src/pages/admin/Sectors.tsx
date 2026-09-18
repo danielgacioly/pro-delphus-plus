@@ -96,12 +96,6 @@ export function AdminSectors() {
     <Page
       title="Setores"
       description="Gerencie os setores usados no catálogo de produtos e na tabela de preços."
-      actions={
-        <ButtonLink to="/admin/setores/novo" variant="primary" size="md">
-          <IconPlus className="h-4 w-4" />
-          Novo setor
-        </ButtonLink>
-      }
     >
       {error && (
         <div className="mb-4">
@@ -110,7 +104,6 @@ export function AdminSectors() {
       )}
 
       <Toolbar className="mb-4">
-        <SearchField value={search} onChange={setSearch} placeholder="Buscar setor" className="w-full sm:w-72" />
         <SegmentedControl
           aria-label="Colunas visíveis"
           value={columnFilter}
@@ -121,6 +114,11 @@ export function AdminSectors() {
             { value: 'PT', label: 'Nome em português' },
           ]}
         />
+        <SearchField value={search} onChange={setSearch} placeholder="Buscar setor" className="ml-auto w-full sm:w-72" />
+        <ButtonLink to="/admin/setores/novo" variant="primary" size="md">
+          <IconPlus className="h-4 w-4" />
+          Novo setor
+        </ButtonLink>
       </Toolbar>
 
       <TableShell>
