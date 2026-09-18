@@ -92,12 +92,12 @@ export function Layout() {
         title={label}
         className={({ isActive }) =>
           cn(
-            'group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px]',
-            'transition-[background-color,color] duration-150 ease-out',
+            // Lista de origem do macOS: linha baixa, texto regular, seleção
+            // em cinza — a cor de marca aparece só no ícone do item ativo.
+            'group relative flex h-[30px] items-center gap-2 rounded-md px-2 text-[13.5px] text-ink-900',
+            'transition-colors duration-100 ease-out',
             collapsed ? 'justify-center' : 'justify-center lg:justify-start',
-            isActive
-              ? 'bg-ink-900/[0.06] font-semibold text-ink-900'
-              : 'font-medium text-neutral-600 hover:bg-ink-900/[0.035] hover:text-ink-900',
+            isActive ? 'bg-black/[0.07] font-medium' : 'hover:bg-black/[0.035]',
           )
         }
       >
@@ -105,8 +105,8 @@ export function Layout() {
           <>
             <Icon
               className={cn(
-                'h-[18px] w-[18px] shrink-0 transition-colors duration-150',
-                isActive ? 'text-brand-600' : 'text-neutral-400 group-hover:text-neutral-600',
+                'h-[17px] w-[17px] shrink-0 transition-colors duration-100',
+                isActive ? 'text-brand-600' : 'text-neutral-600',
               )}
             />
             <span className={cn('truncate', labelClass)}>{label}</span>
@@ -122,72 +122,72 @@ export function Layout() {
     <div className="flex h-screen overflow-hidden bg-canvas">
       <aside
         className={cn(
-          'material z-40 flex shrink-0 flex-col border-r border-neutral-200/70',
+          'z-40 flex shrink-0 flex-col border-r border-black/[0.08] bg-neutral-50',
           'transition-[width] duration-300 ease-out-expo',
-          collapsed ? 'w-[68px]' : 'w-[68px] lg:w-[248px]',
+          collapsed ? 'w-[60px]' : 'w-[60px] lg:w-[228px]',
         )}
       >
         <div
           className={cn(
-            'flex h-16 shrink-0 items-center px-3',
-            collapsed ? 'justify-center' : 'justify-center lg:justify-between',
+            'flex h-14 shrink-0 items-center px-3',
+            collapsed ? 'justify-center' : 'justify-center lg:justify-between lg:pl-4',
           )}
         >
-          <Link to="/" className={cn('shrink-0 rounded-md px-1', collapsed ? 'hidden' : 'hidden lg:block')}>
-            <img src={logo} alt="Pro Delphus" className="h-11 w-auto" />
+          <Link to="/" className={cn('shrink-0', collapsed ? 'hidden' : 'hidden lg:block')}>
+            <img src={logo} alt="Pro Delphus" className="h-7 w-auto" />
           </Link>
           <button
             onClick={toggleCollapsed}
             aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
             title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-ink-900/5 hover:text-ink-900 active:scale-90 lg:flex"
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-600 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900 lg:flex"
           >
-            <IconSidebar className="h-[18px] w-[18px]" />
+            <IconSidebar className="h-[17px] w-[17px]" />
           </button>
           <Link to="/" className="lg:hidden" aria-label="Início">
-            <img src={logo} alt="" className="h-8 w-auto" />
+            <img src={logo} alt="" className="h-6 w-auto" />
           </Link>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2">
+        <nav className="flex flex-1 flex-col gap-px overflow-y-auto px-2.5 pt-1 pb-2">
           {navItems.map(renderItem)}
 
           {user?.role === 'ADMIN' && (
             <>
-              <div className={cn('mt-6 mb-1.5 px-2.5', collapsed ? 'hidden' : 'hidden lg:block')}>
-                <span className="text-eyebrow text-neutral-400">Administração</span>
+              <div className={cn('mt-5 mb-1 px-2', collapsed ? 'hidden' : 'hidden lg:block')}>
+                <span className="text-[11.5px] font-semibold text-neutral-600">Administração</span>
               </div>
-              <div className={cn('my-3 h-px bg-neutral-200/80', collapsed ? 'block' : 'block lg:hidden')} />
+              <div className={cn('mx-2 my-2.5 h-px bg-black/[0.08]', collapsed ? 'block' : 'block lg:hidden')} />
               {adminNavItems.map(renderItem)}
             </>
           )}
         </nav>
 
-        <div className="shrink-0 border-t border-neutral-200/70 p-2.5">
-          <div className={cn('flex items-center gap-2', collapsed ? 'flex-col' : 'flex-col lg:flex-row')}>
+        <div className="shrink-0 border-t border-black/[0.06] px-2.5 py-2">
+          <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'flex-col lg:flex-row')}>
             <Link
               to="/minha-conta"
               title={user?.name}
               className={cn(
-                'flex min-w-0 items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-ink-900/[0.04]',
+                'flex min-w-0 items-center gap-2 rounded-md p-1.5 transition-colors duration-100 hover:bg-black/[0.04]',
                 collapsed ? '' : 'lg:flex-1',
               )}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[13px] font-semibold text-white shadow-sm">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-400 text-[11px] font-semibold text-white">
                 {initial}
               </span>
               <span className={cn('min-w-0 flex-1', labelClass)}>
-                <span className="block truncate text-[13px] font-medium text-ink-900">{user?.name}</span>
-                <span className="block truncate text-[11.5px] text-neutral-500">{user?.email}</span>
+                <span className="block truncate text-[13px] leading-tight font-medium text-ink-900">{user?.name}</span>
+                <span className="block truncate text-[11.5px] leading-tight text-neutral-600">{user?.email}</span>
               </span>
             </Link>
             <button
               onClick={handleLogout}
               aria-label="Sair"
               title="Sair"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-600 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900"
             >
-              <IconLogout className="h-[17px] w-[17px]" />
+              <IconLogout className="h-4 w-4" />
             </button>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { AddressFields, BuyerFields, InvoiceFields, WeightFields } from '../components/OrderFormFields'
-import { Alert, BackLink, Button, Card, Field, FormSection, Input, Page, Select } from '../components/ui'
+import { Alert, Button, Card, Field, FormSection, Input, Page, Select } from '../components/ui'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -180,6 +180,7 @@ export function NewOrder() {
 
   return (
     <Page
+      back={{ to: '/pedidos', label: 'Pedidos' }}
       title="Novo pedido"
       description={
         isNational
@@ -188,9 +189,6 @@ export function NewOrder() {
       }
       width="narrow"
     >
-      <div className="-mt-4 mb-5">
-        <BackLink to="/pedidos">Pedidos</BackLink>
-      </div>
 
       {duplicateFrom && (
         <div className="mb-4">

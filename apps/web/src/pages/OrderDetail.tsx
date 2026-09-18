@@ -12,8 +12,8 @@ import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
   Alert,
-  BackLink,
   Button,
+  buttonClasses,
   Card,
   Field,
   Input,
@@ -29,6 +29,7 @@ import {
   Th,
   Tr,
 } from '../components/ui'
+import { IconQuote } from '../components/icons'
 
 async function fetchOrder(id: string) {
   const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
@@ -38,7 +39,7 @@ async function fetchOrder(id: string) {
 function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <dt className="text-eyebrow text-neutral-400">{label}</dt>
+      <dt className="text-[12px] font-medium text-neutral-600">{label}</dt>
       <dd className="mt-1 whitespace-pre-line text-[13.5px] leading-relaxed text-ink-900">
         {value?.trim() ? value : '—'}
       </dd>
@@ -63,10 +64,11 @@ function DocLink({ href, children, tone = 'brand' }: { href: string; children: R
       href={href}
       target="_blank"
       rel="noreferrer"
-      className={`inline-flex h-8 items-center rounded-lg px-3 text-[12.5px] font-semibold text-white shadow-sm transition-[background-color,box-shadow,transform] duration-150 hover:shadow-md active:scale-[0.97] ${
-        tone === 'brand' ? 'bg-brand-600 hover:bg-brand-700' : 'bg-ink-900 hover:bg-black'
-      }`}
+      // Documento é arquivo, não ação principal: botão secundário com o
+      // glifo colorido pelo tipo (vermelho PDF, verde planilha), como no Finder.
+      className={buttonClasses()}
     >
+      <IconQuote className={`h-3.5 w-3.5 ${tone === 'brand' ? 'text-brand-600' : 'text-emerald-600'}`} />
       {children}
     </a>
   )
@@ -85,7 +87,7 @@ function ManualUpload({
 }) {
   return (
     <div className="border-t border-neutral-200/70 pt-4">
-      <h3 className="text-eyebrow mb-2 text-neutral-500">{title}</h3>
+      <h3 className="text-eyebrow mb-2 text-neutral-600">{title}</h3>
       {url ? (
         <a
           href={url}
@@ -96,7 +98,7 @@ function ManualUpload({
           Ver arquivo enviado
         </a>
       ) : (
-        <p className="text-[13px] text-neutral-400">Nenhum arquivo enviado.</p>
+        <p className="text-[13px] text-neutral-500">Nenhum arquivo enviado.</p>
       )}
       <DropZone
         className="mt-2.5 py-3"
@@ -106,7 +108,7 @@ function ManualUpload({
           if (file) onFile(file)
         }}
       >
-        <p className="text-[12.5px] text-neutral-500">
+        <p className="text-[12.5px] text-neutral-600">
           Arraste o arquivo ou <span className="font-medium text-brand-600">clique para selecionar</span>
         </p>
       </DropZone>
@@ -331,17 +333,15 @@ export function OrderDetail() {
 
   return (
     <Page
+      back={{ to: '/pedidos', label: 'Pedidos' }}
       title={`Pedido #${formatOrderNumber(order.orderNumber)}`}
       description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
       actions={
-        <Button size="sm" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
+        <Button size="md" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
           {editing ? 'Cancelar' : 'Editar'}
         </Button>
       }
     >
-      <div className="-mt-4 mb-6">
-        <BackLink to="/pedidos">Pedidos</BackLink>
-      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
@@ -530,7 +530,7 @@ export function OrderDetail() {
                 )}
               </div>
 
-              <p className="mt-4 text-[12px] leading-relaxed text-neutral-400">
+              <p className="mt-4 text-[12px] leading-relaxed text-neutral-500">
                 {isNational
                   ? 'Salvar regenera automaticamente a Packing List Box.'
                   : 'Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.'}
@@ -618,7 +618,7 @@ export function OrderDetail() {
                   <Td>
                     <p className="font-medium text-ink-900">{item.productName}</p>
                     {item.description && (
-                      <p className="mt-0.5 text-[12px] leading-relaxed text-neutral-500">{item.description}</p>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-neutral-600">{item.description}</p>
                     )}
                   </Td>
                   <Td className="tabular text-right">{item.quantity}</Td>
@@ -627,7 +627,7 @@ export function OrderDetail() {
                         negociado (menor). Um preço customizado maior não é
                         "especial" — é só o preço do item, sem riscado. */}
                     {item.listPrice && item.listPrice > item.unitPrice && (
-                      <span className="mr-1.5 text-neutral-400 line-through">
+                      <span className="mr-1.5 text-neutral-500 line-through">
                         {formatAmount(item.listPrice)}
                       </span>
                     )}

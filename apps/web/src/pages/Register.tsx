@@ -57,7 +57,7 @@ export function Register() {
             Seu cadastro foi enviado e está aguardando aprovação de um administrador. Você vai conseguir entrar assim
             que ele liberar seu acesso.
           </AuthNotice>
-          <ButtonLink to="/login" variant="primary" size="lg" className="w-full">
+          <ButtonLink to="/login" variant="primary" size="lg" className="h-10 w-full">
             Voltar para o login
           </ButtonLink>
         </div>
@@ -92,11 +92,11 @@ export function Register() {
             <Input placeholder="+55 (81) 90000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </Field>
 
-          <Button type="submit" variant="primary" size="lg" disabled={submitting} className="w-full">
+          <Button type="submit" variant="primary" size="lg" disabled={submitting} className="h-10 w-full">
             {submitting ? 'Enviando…' : 'Solicitar acesso'}
           </Button>
 
-          <p className="pt-1 text-center text-[13px] text-neutral-500">
+          <p className="pt-1 text-center text-[13px] text-neutral-600">
             Já tem conta?{' '}
             <Link to="/login" className="font-medium text-brand-600 hover:underline">
               Entrar

@@ -81,7 +81,7 @@ export function EditTaskModal({
           e.preventDefault()
           updateTask.mutate()
         }}
-        className="animate-scale-in max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+        className="animate-scale-in max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <h2 className="text-title text-ink-900">Editar tarefa</h2>
@@ -89,7 +89,7 @@ export function EditTaskModal({
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900 active:scale-90"
+            className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900"
           >
             ×
           </button>
@@ -135,7 +135,7 @@ export function EditTaskModal({
                     <button
                       type="button"
                       onClick={() => setTags((s) => s.filter((x) => x !== t))}
-                      className="text-neutral-400 transition-colors hover:text-brand-600"
+                      className="text-neutral-500 transition-colors hover:text-brand-600"
                       aria-label={`Remover tag ${t}`}
                     >
                       ×

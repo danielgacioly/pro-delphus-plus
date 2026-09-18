@@ -148,7 +148,7 @@ function ChartCard({
     <Card className={className}>
       <div className="px-5 pt-5">
         <h2 className="text-heading text-ink-900">{title}</h2>
-        {description && <p className="mt-1.5 text-[12.5px] leading-relaxed text-neutral-500">{description}</p>}
+        {description && <p className="mt-1.5 text-[12.5px] leading-relaxed text-neutral-600">{description}</p>}
       </div>
       <div className="px-2 pb-4 pt-4">{children}</div>
     </Card>
@@ -158,20 +158,20 @@ function ChartCard({
 function StatsSkeleton() {
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm">
+          <div key={i} className="rounded-2xl border border-black/[0.06] bg-white p-5">
             <Skeleton className="h-2.5 w-24" />
             <Skeleton className="mt-3 h-7 w-20" />
           </div>
         ))}
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm lg:col-span-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="rounded-2xl border border-black/[0.06] bg-white p-5 lg:col-span-2">
           <Skeleton className="h-3 w-32" />
           <Skeleton className="mt-4 h-64 rounded-xl" />
         </div>
-        <div className="rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-black/[0.06] bg-white p-5">
           <Skeleton className="h-3 w-32" />
           <Skeleton className="mt-4 h-64 rounded-xl" />
         </div>
@@ -191,18 +191,18 @@ function FunnelTable({
   empty: string
 }) {
   if (rows.length === 0) {
-    return <p className="px-5 pb-6 pt-2 text-[13px] text-neutral-400">{empty}</p>
+    return <p className="px-5 pb-6 pt-2 text-[13px] text-neutral-500">{empty}</p>
   }
   return (
     <div className="overflow-x-auto px-2 pb-3">
       <table className="w-full min-w-105 border-collapse">
         <thead>
           <tr className="border-b border-neutral-200/70">
-            <th className="px-2 py-2 text-left text-eyebrow text-neutral-400">{label}</th>
-            <th className="px-2 py-2 text-right text-eyebrow text-neutral-400">Orçam.</th>
-            <th className="px-2 py-2 text-right text-eyebrow text-neutral-400">Fechados</th>
-            <th className="px-2 py-2 text-left text-eyebrow text-neutral-400">Conversão</th>
-            <th className="whitespace-nowrap px-2 py-2 text-right text-eyebrow text-neutral-400">Tempo</th>
+            <th className="px-2 py-2 text-left text-[12px] font-medium text-neutral-600">{label}</th>
+            <th className="px-2 py-2 text-right text-[12px] font-medium text-neutral-600">Orçam.</th>
+            <th className="px-2 py-2 text-right text-[12px] font-medium text-neutral-600">Fechados</th>
+            <th className="px-2 py-2 text-left text-[12px] font-medium text-neutral-600">Conversão</th>
+            <th className="whitespace-nowrap px-2 py-2 text-right text-[12px] font-medium text-neutral-600">Tempo</th>
           </tr>
         </thead>
         <tbody>
@@ -305,7 +305,7 @@ export function Stats() {
         {/* `key` por visão: sem isso o React reaproveita os cartões da aba
             anterior e a contagem parte do número errado — "Pedidos totais: 11"
             virava um "1100%" piscando antes de assentar na taxa de conversão. */}
-        <div key="efficiency" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div key="efficiency" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <StatTile label="Taxa de conversão" value={<AnimatedNumber value={eff.overall.conversionRate} format={pct} />} />
           <StatTile
             label="Orçamentos emitidos"
@@ -337,7 +337,7 @@ export function Stats() {
             description="Por mês de emissão do orçamento. Um orçamento conta como fechado quando vira pedido, mesmo que o pedido tenha saído em outro mês."
           >
             {funnelChartData.length === 0 ? (
-              <p className="px-3 py-10 text-center text-[13px] text-neutral-400">Sem orçamentos ainda.</p>
+              <p className="px-3 py-10 text-center text-[13px] text-neutral-500">Sem orçamentos ainda.</p>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={funnelChartData}>
@@ -347,8 +347,8 @@ export function Stats() {
                   <Tooltip {...tooltipStyle} cursor={{ fill: 'rgb(23 22 26 / 0.04)' }} />
                   {/* Mesmo motivo do gráfico de status: a animação de entrada do
                       recharts não conclui e as barras ficam com altura zero. */}
-                  <Bar dataKey="Orçamentos" fill={INK} radius={[6, 6, 0, 0]} isAnimationActive={false} />
-                  <Bar dataKey="Fechados" fill={BRAND} radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Orçamentos" fill={INK} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Fechados" fill={BRAND} radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -390,7 +390,7 @@ export function Stats() {
 
   return page(
     <>
-      <div key="sales" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div key="sales" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatTile label="Pedidos totais" value={<AnimatedNumber value={data.totalOrders} />} />
         <StatTile
           label="Vendido (USD)"
@@ -410,7 +410,7 @@ export function Stats() {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <ChartCard title="Vendas por mês" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={monthChartData}>
@@ -433,9 +433,10 @@ export function Stats() {
                 data={statusChartData}
                 dataKey="value"
                 nameKey="name"
-                innerRadius={54}
-                outerRadius={92}
-                paddingAngle={2}
+                innerRadius={70}
+                outerRadius={88}
+                paddingAngle={3}
+                cornerRadius={4}
                 stroke="none"
                 isAnimationActive={false}
               >
@@ -449,7 +450,7 @@ export function Stats() {
         </ChartCard>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title="Vendas por ano">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={yearChartData}>
@@ -457,15 +458,15 @@ export function Stats() {
               <XAxis dataKey="label" {...axisProps} />
               <YAxis {...axisProps} />
               <Tooltip {...tooltipStyle} cursor={{ fill: 'rgb(23 22 26 / 0.04)' }} />
-              <Bar dataKey="USD" fill={BRAND} radius={[6, 6, 0, 0]} />
-              <Bar dataKey="BRL" fill={INK} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="USD" fill={BRAND} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="BRL" fill={INK} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Produtos mais vendidos" description="Por quantidade de unidades.">
           {productChartData.length === 0 ? (
-            <p className="px-3 py-10 text-center text-[13px] text-neutral-400">Sem dados suficientes ainda.</p>
+            <p className="px-3 py-10 text-center text-[13px] text-neutral-500">Sem dados suficientes ainda.</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={productChartData} layout="vertical" margin={{ left: 24 }}>
@@ -473,7 +474,7 @@ export function Stats() {
                 <XAxis type="number" {...axisProps} />
                 <YAxis dataKey="label" type="category" {...axisProps} fontSize={10} width={160} />
                 <Tooltip {...tooltipStyle} cursor={{ fill: 'rgb(23 22 26 / 0.04)' }} />
-                <Bar dataKey="Quantidade" fill={BRAND} radius={[0, 6, 6, 0]} />
+                <Bar dataKey="Quantidade" fill={BRAND} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -486,7 +487,7 @@ export function Stats() {
           description="Conta pedidos que tiveram pelo menos um item do setor — não a quantidade de produtos. Um pedido com itens de Breast e Thoracic conta uma vez para cada setor."
         >
           {sectorChartData.length === 0 ? (
-            <p className="px-3 py-10 text-center text-[13px] text-neutral-400">Sem dados suficientes ainda.</p>
+            <p className="px-3 py-10 text-center text-[13px] text-neutral-500">Sem dados suficientes ainda.</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(220, sectorChartData.length * 32)}>
               <BarChart data={sectorChartData} layout="vertical" margin={{ left: 24 }}>
@@ -494,7 +495,7 @@ export function Stats() {
                 <XAxis type="number" {...axisProps} allowDecimals={false} />
                 <YAxis dataKey="label" type="category" {...axisProps} fontSize={10} width={160} />
                 <Tooltip {...tooltipStyle} cursor={{ fill: 'rgb(23 22 26 / 0.04)' }} />
-                <Bar dataKey="Vendas" fill={INK} radius={[0, 6, 6, 0]} />
+                <Bar dataKey="Vendas" fill={INK} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

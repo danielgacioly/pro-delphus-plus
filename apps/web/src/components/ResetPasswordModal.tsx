@@ -19,9 +19,9 @@ export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, e
 
   return (
     <Modal onClose={onCancel}>
-      <div className="animate-scale-in w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+      <div className="animate-scale-in w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">Redefinir senha de {userName}</h2>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-600">
           Defina uma senha temporária. A pessoa poderá trocá-la depois em "Minha Conta".
         </p>
         <input
@@ -46,7 +46,7 @@ export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, e
           <button
             onClick={submit}
             disabled={!canConfirm || isPending}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 active:scale-[0.98] disabled:opacity-40"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 disabled:opacity-40"
           >
             {isPending ? 'Redefinindo…' : 'Redefinir senha'}
           </button>

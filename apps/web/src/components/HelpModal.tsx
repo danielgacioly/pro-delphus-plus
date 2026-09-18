@@ -95,18 +95,18 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
     <Modal onClose={onClose} dismissOnBackdrop>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-scale-in max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+        className="animate-scale-in max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-title text-ink-900">Ajuda</h2>
-            <p className="mt-1 text-[13px] text-neutral-500">Dúvidas rápidas e o passo a passo de uma venda completa.</p>
+            <p className="mt-1 text-[13px] text-neutral-600">Dúvidas rápidas e o passo a passo de uma venda completa.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-ink-900"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-ink-900"
           >
             ×
           </button>
@@ -129,19 +129,19 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             {FAQ.map((item) => (
               <div key={item.question}>
                 <p className="text-[13.5px] font-semibold text-ink-900">{item.question}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{item.answer}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-neutral-600">{item.answer}</p>
               </div>
             ))}
           </div>
         ) : (
           <div className="mt-5 space-y-4">
-            <p className="text-[13px] leading-relaxed text-neutral-500">
+            <p className="text-[13px] leading-relaxed text-neutral-600">
               O fluxo completo de uma venda, do primeiro contato até o envio confirmado:
             </p>
             {TUTORIAL.map((step) => (
               <div key={step.title} className="rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-3.5">
                 <p className="text-[13.5px] font-semibold text-ink-900">{step.title}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{step.description}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-neutral-600">{step.description}</p>
                 <Link
                   to={step.to}
                   onClick={onClose}

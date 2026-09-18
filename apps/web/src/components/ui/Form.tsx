@@ -5,12 +5,12 @@ import { IconChevronDown } from '../icons'
 
 /** Aparência compartilhada por todos os campos, para altura e foco consistentes. */
 const control =
-  'rounded-lg border border-neutral-200 bg-white text-sm text-ink-900 shadow-xs ' +
-  'placeholder:text-neutral-400 ' +
-  'transition-[border-color,box-shadow] duration-150 ease-out ' +
-  'hover:border-neutral-300 ' +
-  'focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus-visible:outline-none ' +
-  'disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400'
+  'rounded-lg border border-black/[0.12] bg-white text-[14px] text-ink-900 shadow-[inset_0_0.5px_1px_rgb(0_0_0/0.04)] ' +
+  'placeholder:text-neutral-500 ' +
+  'transition-[border-color,box-shadow] duration-100 ease-out ' +
+  'hover:border-black/[0.18] ' +
+  'focus:border-brand-500 focus:outline-none focus:ring-[3px] focus:ring-brand-500/20 focus-visible:outline-none ' +
+  'disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500'
 
 export function Field({
   label,
@@ -30,7 +30,7 @@ export function Field({
   return (
     <div className={cn('min-w-0', className)}>
       {label && (
-        <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+        <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-medium text-ink-800">
           {label}
         </label>
       )}
@@ -38,7 +38,7 @@ export function Field({
       {error ? (
         <p className="mt-1.5 text-[12px] text-danger-600">{error}</p>
       ) : (
-        hint && <p className="mt-1.5 text-[12px] text-neutral-500">{hint}</p>
+        hint && <p className="mt-1.5 text-[12px] text-neutral-600">{hint}</p>
       )}
     </div>
   )
@@ -54,7 +54,7 @@ function widthClass(className?: string) {
 }
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(control, 'h-10 px-3', widthClass(className), className)} {...props} />
+  return <input className={cn(control, 'h-9 px-3', widthClass(className), className)} {...props} />
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
@@ -82,14 +82,20 @@ export function Select({
   return (
     <div className={cn('relative', auto ? 'inline-block' : 'w-full')}>
       <select
-        className={cn(control, 'h-10 cursor-pointer appearance-none pl-3 pr-9', auto ? 'w-auto' : 'w-full', className)}
+        className={cn(
+          control,
+          'h-9 cursor-pointer appearance-none pl-3 pr-9',
+          // Em barra de filtro fica na mesma altura de busca e segmentado.
+          auto ? 'h-8 w-auto text-[13px]' : 'w-full',
+          className,
+        )}
         {...props}
       >
         {children}
       </select>
       <IconChevronDown
         aria-hidden
-        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400"
+        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500"
       />
     </div>
   )
@@ -108,9 +114,9 @@ export function FormSection({
   className?: string
 }) {
   return (
-    <section className={cn('border-t border-neutral-200/70 pt-6 first:border-t-0 first:pt-0', className)}>
-      <h2 className="text-eyebrow text-neutral-400">{title}</h2>
-      {description && <p className="mt-1.5 text-[13px] text-neutral-500">{description}</p>}
+    <section className={cn('border-t border-black/[0.06] pt-7 first:border-t-0 first:pt-0', className)}>
+      <h2 className="text-heading text-ink-900">{title}</h2>
+      {description && <p className="mt-1 text-[13px] text-neutral-600">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   )

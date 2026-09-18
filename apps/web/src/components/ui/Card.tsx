@@ -1,24 +1,22 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
-/** Superfície base: branco, cantos generosos, sombra suave em vez de borda pesada. */
+/**
+ * Superfície base: branco sobre o fundo cinza do app, com traço fino. Sem
+ * sombra — no fundo #f5f5f7 o próprio branco já destaca a superfície.
+ */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn('rounded-2xl border border-neutral-200/70 bg-white shadow-sm', className)}
-      {...props}
-    />
-  )
+  return <div className={cn('rounded-2xl border border-black/[0.06] bg-white', className)} {...props} />
 }
 
-/** Card clicável com elevação em hover. */
+/** Card clicável: responde com um traço mais firme, sem "pular" na tela. */
 export function InteractiveCard({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'rounded-2xl border border-neutral-200/70 bg-white shadow-sm',
-        'transition-[transform,box-shadow,border-color] duration-200 ease-out',
-        'hover:-translate-y-0.5 hover:border-neutral-200 hover:shadow-lg',
+        'rounded-2xl border border-black/[0.06] bg-white',
+        'transition-[border-color,box-shadow] duration-150 ease-out',
+        'hover:border-black/[0.12] hover:shadow-md',
         className,
       )}
       {...props}
@@ -38,10 +36,10 @@ export function CardHeader({
   className?: string
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-4 px-5 pt-5', className)}>
+    <div className={cn('flex items-start justify-between gap-4 px-5 pt-4', className)}>
       <div className="min-w-0">
         <h2 className="text-heading text-ink-900">{title}</h2>
-        {description && <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{description}</p>}
+        {description && <p className="mt-0.5 text-[13px] leading-relaxed text-neutral-600">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

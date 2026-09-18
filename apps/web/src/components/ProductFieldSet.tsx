@@ -143,7 +143,7 @@ export function ProductFieldSet({
                   <button
                     type="button"
                     onClick={() => removeSector(s)}
-                    className="text-neutral-400 transition-colors hover:text-brand-600"
+                    className="text-neutral-500 transition-colors hover:text-brand-600"
                     aria-label={`Remover setor ${s}`}
                   >
                     ×
@@ -170,7 +170,7 @@ export function ProductFieldSet({
                   <button
                     type="button"
                     onClick={() => removeVideoLink(link)}
-                    className="shrink-0 text-neutral-400 transition-colors hover:text-brand-600"
+                    className="shrink-0 text-neutral-500 transition-colors hover:text-brand-600"
                     aria-label={`Remover vídeo ${link}`}
                   >
                     ×

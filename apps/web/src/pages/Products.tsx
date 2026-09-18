@@ -55,7 +55,7 @@ const kindLabel: Record<ProductKind, string> = {
 function DetailBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-eyebrow text-neutral-400">{label}</dt>
+      <dt className="text-[12px] font-medium text-neutral-600">{label}</dt>
       <dd className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-600">{children}</dd>
     </div>
   )
@@ -64,7 +64,7 @@ function DetailBlock({ label, children }: { label: string; children: React.React
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4">
-      <h3 className="text-eyebrow mb-3 text-neutral-500">{title}</h3>
+      <h3 className="text-eyebrow mb-3 text-neutral-600">{title}</h3>
       {children}
     </div>
   )
@@ -236,7 +236,7 @@ export function Products() {
       description="Catálogo Pro Delphus — cadastrar aqui já adiciona o item à tabela de preços."
       actions={
         isAdmin && (
-          <ButtonLink to="/produtos/novo" variant="primary" size="sm">
+          <ButtonLink to="/produtos/novo" variant="primary" size="md">
             <IconPlus className="h-4 w-4" />
             Novo produto
           </ButtonLink>
@@ -265,7 +265,7 @@ export function Products() {
           value={sectorFilter}
           onChange={(e) => setSectorFilter(e.target.value)}
           auto
-          className="h-9 text-[13px]"
+          className="max-w-56 text-[13px]"
         >
           <option value="ALL">Todos os setores</option>
           {sectors?.map((s) => (
@@ -275,7 +275,7 @@ export function Products() {
           ))}
         </Select>
         {filteredProducts && !isLoading && (
-          <span className="tabular ml-auto text-[13px] text-neutral-400">
+          <span className="tabular ml-auto text-[13px] text-neutral-500">
             {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
           </span>
         )}
@@ -286,7 +286,7 @@ export function Products() {
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="flex items-center gap-4 rounded-2xl border border-neutral-200/70 bg-white p-4 shadow-sm"
+              className="flex items-center gap-4 rounded-2xl border border-black/[0.06] bg-white p-4"
             >
               <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
               <div className="flex-1 space-y-2">
@@ -303,7 +303,7 @@ export function Products() {
       )}
 
       {!isLoading && !isError && filteredProducts?.length === 0 && (
-        <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
           <EmptyState
             icon={IconBox}
             title="Nenhum produto encontrado"
@@ -346,9 +346,9 @@ export function Products() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-[15px] font-semibold text-ink-900">{product.name}</p>
-                    <span className="tabular shrink-0 text-[12.5px] text-neutral-400">{product.sku}</span>
+                    <span className="tabular shrink-0 text-[12.5px] text-neutral-500">{product.sku}</span>
                   </div>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-500">
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-600">
                     <Badge tone={product.kind === 'COMPLETE_MODEL' ? 'brand' : 'neutral'}>
                       {kindLabel[product.kind]}
                     </Badge>
@@ -369,7 +369,7 @@ export function Products() {
                         size="sm"
                         variant="ghost"
                         onClick={() => setDeletingProduct(product)}
-                        className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                        className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                       >
                         Excluir
                       </Button>
@@ -383,7 +383,7 @@ export function Products() {
                     }}
                     aria-label={isExpanded ? 'Fechar detalhes' : 'Ver detalhes'}
                     aria-expanded={isExpanded}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900 active:scale-90"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-[background-color,color,transform] duration-150 hover:bg-neutral-500/10 hover:text-ink-900"
                   >
                     <IconChevronDown
                       className={cn('h-4 w-4 transition-transform duration-300 ease-out', isExpanded && 'rotate-180')}
@@ -431,7 +431,7 @@ export function Products() {
                     )}
                     {product.videoLinks.length > 0 && (
                       <div className="lg:col-span-2">
-                        <dt className="text-eyebrow text-neutral-400">Links de vídeo</dt>
+                        <dt className="text-[12px] font-medium text-neutral-600">Links de vídeo</dt>
                         <dd className="mt-1.5 space-y-1">
                           {product.videoLinks.map((link) => (
                             <a
@@ -502,7 +502,7 @@ export function Products() {
                         </div>
                       )}
                       {product.media.length === 0 && !isAdmin && (
-                        <p className="text-[13px] text-neutral-400">Nenhuma mídia cadastrada.</p>
+                        <p className="text-[13px] text-neutral-500">Nenhuma mídia cadastrada.</p>
                       )}
                       {isAdmin && (
                         <DropZone
@@ -511,7 +511,7 @@ export function Products() {
                           className="py-3"
                           onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
                         >
-                          <p className="text-[12.5px] text-neutral-500">
+                          <p className="text-[12.5px] text-neutral-600">
                             Arraste imagens ou{' '}
                             <span className="font-medium text-brand-600">clique para selecionar</span>
                           </p>
@@ -535,7 +535,7 @@ export function Products() {
                               {isAdmin && (
                                 <button
                                   onClick={() => removeBrochure.mutate({ productId: product.id, brochureId: b.id })}
-                                  className="shrink-0 text-[12px] text-neutral-400 transition-colors hover:text-brand-600"
+                                  className="shrink-0 text-[12px] text-neutral-500 transition-colors hover:text-brand-600"
                                 >
                                   remover
                                 </button>
@@ -545,7 +545,7 @@ export function Products() {
                         </ul>
                       )}
                       {product.brochures.length === 0 && !isAdmin && (
-                        <p className="text-[13px] text-neutral-400">Nenhuma brochura enviada.</p>
+                        <p className="text-[13px] text-neutral-500">Nenhuma brochura enviada.</p>
                       )}
                       {isAdmin && (
                         <DropZone
@@ -554,7 +554,7 @@ export function Products() {
                           className="py-3"
                           onFiles={(files) => files.forEach((file) => uploadBrochure.mutate({ id: product.id, file }))}
                         >
-                          <p className="text-[12.5px] text-neutral-500">
+                          <p className="text-[12.5px] text-neutral-600">
                             Arraste PDFs ou <span className="font-medium text-brand-600">clique para selecionar</span>
                           </p>
                         </DropZone>
@@ -576,7 +576,7 @@ export function Products() {
                                 onClick={() =>
                                   removeCustomization.mutate({ productId: product.id, customizationId: c.id })
                                 }
-                                className="shrink-0 text-[12px] text-neutral-400 transition-colors hover:text-brand-600"
+                                className="shrink-0 text-[12px] text-neutral-500 transition-colors hover:text-brand-600"
                               >
                                 remover
                               </button>
@@ -586,7 +586,7 @@ export function Products() {
                       </ul>
                     )}
                     {product.customizations.length === 0 && !isAdmin && (
-                      <p className="text-[13px] text-neutral-400">Nenhuma customização cadastrada.</p>
+                      <p className="text-[13px] text-neutral-500">Nenhuma customização cadastrada.</p>
                     )}
                     {isAdmin && (
                       <form

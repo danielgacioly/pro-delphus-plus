@@ -41,13 +41,13 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
 
       <div className="mt-5 rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4">
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <h3 className="text-eyebrow text-neutral-500">Itens por caixa</h3>
+          <h3 className="text-eyebrow text-neutral-600">Itens por caixa</h3>
           <Button type="button" size="sm" onClick={editor.addCustomBoxLine}>
             <IconPlus className="h-3.5 w-3.5" />
             Item customizado
           </Button>
         </div>
-        <p className="mb-3 text-[12px] leading-relaxed text-neutral-500">
+        <p className="mb-3 text-[12px] leading-relaxed text-neutral-600">
           Cada item vai para uma única caixa. Se um modelo completo precisar ser dividido entre caixas, use “dividir”
           para desmembrar a linha em partes que podem ser renomeadas e realocadas.
         </p>
@@ -123,7 +123,7 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
                         type="button"
                         onClick={() => editor.removeBoxLine(line.id)}
                         aria-label="Remover linha"
-                        className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600 active:scale-90"
+                        className="flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-[background-color,color,transform] duration-150 hover:bg-brand-50 hover:text-brand-600"
                       >
                         ×
                       </button>
@@ -137,14 +137,14 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
       </div>
 
       <div className="mt-4 rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-4">
-        <h3 className="text-eyebrow mb-1.5 text-neutral-500">Peso por item</h3>
-        <p className="mb-3 text-[12px] text-neutral-500">Em kg por unidade — usado no Documento de Exportação.</p>
+        <h3 className="text-eyebrow mb-1.5 text-neutral-600">Peso por item</h3>
+        <p className="mb-3 text-[12px] text-neutral-600">Em kg por unidade — usado no Documento de Exportação.</p>
         <div className="space-y-2">
           {items.map((item, index) => (
             <div key={index} className="flex items-center gap-3">
               <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-600">
                 {item.productName}
-                {item.description && <span className="text-neutral-400"> — {item.description}</span>}
+                {item.description && <span className="text-neutral-500"> — {item.description}</span>}
               </span>
               <Input
                 type="number"

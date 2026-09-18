@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../../lib/api'
-import { Alert, BackLink, Button, Card, Field, Input, Page } from '../../components/ui'
+import { Alert, Button, Card, Field, Input, Page } from '../../components/ui'
 
 export function NewSector() {
   const navigate = useNavigate()
@@ -25,13 +25,11 @@ export function NewSector() {
 
   return (
     <Page
+      back={{ to: '/admin/setores', label: 'Setores' }}
       title="Novo setor"
       description="O nome precisa ser único — não pode repetir um setor já existente."
       width="narrow"
     >
-      <div className="-mt-4 mb-5">
-        <BackLink to="/admin/setores">Setores</BackLink>
-      </div>
 
       <Card className="max-w-md p-6">
         <form

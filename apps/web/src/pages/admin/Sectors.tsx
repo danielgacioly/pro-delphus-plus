@@ -97,7 +97,7 @@ export function AdminSectors() {
       title="Setores"
       description="Gerencie os setores usados no catálogo de produtos e na tabela de preços."
       actions={
-        <ButtonLink to="/admin/setores/novo" variant="primary" size="sm">
+        <ButtonLink to="/admin/setores/novo" variant="primary" size="md">
           <IconPlus className="h-4 w-4" />
           Novo setor
         </ButtonLink>
@@ -185,7 +185,7 @@ export function AdminSectors() {
                       {showPtColumn && <Td>{sector.namePt || '—'}</Td>}
                     </>
                   )}
-                  <Td className="tabular text-right text-neutral-500">{sector.productCount}</Td>
+                  <Td className="tabular text-right text-neutral-600">{sector.productCount}</Td>
                   <Td className="text-right">
                     {editingId !== sector.id && (
                       <div className="flex justify-end gap-1.5">
@@ -196,7 +196,7 @@ export function AdminSectors() {
                           size="sm"
                           variant="ghost"
                           onClick={() => setDeletingSector(sector)}
-                          className="text-neutral-500 hover:bg-brand-50 hover:text-brand-600"
+                          className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                         >
                           Excluir
                         </Button>

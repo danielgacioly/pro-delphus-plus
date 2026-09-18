@@ -4,7 +4,7 @@ import type { UserDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage as errorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { DropZone } from '../components/DropZone'
-import { BackLink, Button, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
+import { Button, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
 
 function SettingsCard({
   title,
@@ -18,7 +18,7 @@ function SettingsCard({
   return (
     <Card className="p-6">
       <h2 className="text-heading text-ink-900">{title}</h2>
-      {description && <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-500">{description}</p>}
+      {description && <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-600">{description}</p>}
       <div className="mt-5">{children}</div>
     </Card>
   )
@@ -130,10 +130,7 @@ export function Account() {
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? '?'
 
   return (
-    <Page title="Minha Conta" description={user?.email} width="narrow">
-      <div className="-mt-4 mb-6">
-        <BackLink to="/">Início</BackLink>
-      </div>
+    <Page back={{ to: '/', label: 'Início' }} title="Minha Conta" description={user?.email} width="narrow">
 
       <div className="mb-6 flex items-center gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[20px] font-semibold text-white shadow-sm">
@@ -141,7 +138,7 @@ export function Account() {
         </div>
         <div className="min-w-0">
           <p className="truncate text-[17px] font-semibold text-ink-900">{user?.name}</p>
-          <p className="truncate text-[13px] text-neutral-500">{user?.jobTitle || 'Sem cargo definido'}</p>
+          <p className="truncate text-[13px] text-neutral-600">{user?.jobTitle || 'Sem cargo definido'}</p>
         </div>
       </div>
 
@@ -224,7 +221,7 @@ export function Account() {
               </Button>
             </div>
           ) : (
-            <p className="mb-3 text-[13px] text-neutral-400">Nenhuma assinatura enviada ainda.</p>
+            <p className="mb-3 text-[13px] text-neutral-500">Nenhuma assinatura enviada ainda.</p>
           )}
 
           <DropZone
@@ -235,11 +232,11 @@ export function Account() {
               if (file) uploadSignature.mutate(file)
             }}
           >
-            <p className="text-[12.5px] text-neutral-500">
+            <p className="text-[12.5px] text-neutral-600">
               Arraste uma imagem ou <span className="font-medium text-brand-600">clique para selecionar</span>
             </p>
           </DropZone>
-          {uploadSignature.isPending && <p className="mt-2 text-[12px] text-neutral-400">Enviando…</p>}
+          {uploadSignature.isPending && <p className="mt-2 text-[12px] text-neutral-500">Enviando…</p>}
         </SettingsCard>
 
         <SettingsCard title="Trocar senha">

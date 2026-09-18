@@ -4,34 +4,30 @@ import { cn } from '../../lib/cn'
 /** Card com rolagem horizontal — tabelas largas nunca empurram a página. */
 export function TableShell({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm',
-        className,
-      )}
-    >
+    <div className={cn('overflow-hidden rounded-2xl border border-black/[0.06] bg-white', className)}>
       <div className="overflow-x-auto">{children}</div>
     </div>
   )
 }
 
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
-  return <table className={cn('min-w-full text-sm', className)} {...props} />
+  return <table className={cn('min-w-full text-[13.5px]', className)} {...props} />
 }
 
+/** Cabeçalho de lista do Finder: sem faixa colorida, só o traço fino embaixo. */
 export function THead({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn('bg-neutral-50/80', className)} {...props} />
+  return <thead className={className} {...props} />
 }
 
 export function TBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn('divide-y divide-neutral-200/60', className)} {...props} />
+  return <tbody className={cn('divide-y divide-black/[0.05]', className)} {...props} />
 }
 
 export function Th({ className, align, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
       className={cn(
-        'whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500',
+        'whitespace-nowrap border-b border-black/[0.08] px-4 pt-3 pb-2 text-left text-[12px] font-medium text-neutral-600',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         className,
@@ -42,7 +38,7 @@ export function Th({ className, align, ...props }: ThHTMLAttributes<HTMLTableCel
 }
 
 export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('px-4 py-3 align-middle text-neutral-600', className)} {...props} />
+  return <td className={cn('px-4 py-2.5 align-middle text-ink-800', className)} {...props} />
 }
 
 export function Tr({
@@ -53,8 +49,8 @@ export function Tr({
   return (
     <tr
       className={cn(
-        'transition-colors duration-150',
-        interactive ? 'cursor-pointer hover:bg-neutral-500/6' : 'hover:bg-neutral-500/4',
+        'transition-colors duration-100',
+        interactive ? 'cursor-pointer hover:bg-black/[0.03]' : 'hover:bg-black/[0.015]',
         className,
       )}
       {...props}

@@ -214,10 +214,10 @@ export function Neo() {
           <NeoAvatar thinking={loading} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
             <h1 className="text-display text-ink-900">NEO</h1>
-            <p className="mt-0.5 text-[13px] text-neutral-500">Ou Network Executive Operator. Seu assistente pessoal na Pro Delphus+</p>
+            <p className="mt-0.5 text-[13px] text-neutral-600">Ou Network Executive Operator. Seu assistente pessoal na Pro Delphus+</p>
           </div>
           {messages.length > 0 && (
-            <Button size="sm" onClick={handleNewChat} disabled={loading}>
+            <Button size="md" onClick={handleNewChat} disabled={loading}>
               Nova conversa
             </Button>
           )}
@@ -225,12 +225,12 @@ export function Neo() {
       </header>
 
       <div className="mx-auto flex w-full min-h-0 max-w-3xl flex-1 flex-col px-6 sm:px-8">
-        <div className="my-5 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm">
+        <div className="my-5 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-black/[0.06] bg-white p-5">
           {messages.length === 0 && !pending && (
             <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
               <NeoMascot className="h-40 w-40 sm:h-48 sm:w-48" />
               <h2 className="text-heading mt-1 text-ink-900">Oi, eu sou o NEO</h2>
-              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-500">
+              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-600">
                 Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
               </p>
             </div>
@@ -294,7 +294,9 @@ export function Neo() {
         </div>
 
         <div className="shrink-0 pb-6">
-          <div className="flex items-end gap-2">
+          {/* Campo em cápsula com o enviar por dentro, como no iMessage: o anel
+              de foco fica no contêiner, não no textarea. */}
+          <div className="flex items-end gap-1 rounded-[20px] border border-black/[0.12] bg-white p-1 pl-1.5 shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,box-shadow] duration-100 focus-within:border-brand-500 focus-within:ring-[3px] focus-within:ring-brand-500/20">
             <Textarea
               ref={textareaRef}
               value={input}
@@ -302,7 +304,7 @@ export function Neo() {
               onKeyDown={handleKeyDown}
               rows={1}
               placeholder="Pergunte alguma coisa ao NEO…"
-              className="max-h-32 flex-1 resize-none overflow-y-auto px-4 text-[13.5px] leading-relaxed"
+              className="max-h-32 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-1.5 text-[14px] leading-relaxed shadow-none [scrollbar-width:none] hover:border-0 focus:border-0 focus:ring-0"
             />
             <button
               onClick={handleSend}
@@ -310,13 +312,13 @@ export function Neo() {
               aria-label="Enviar mensagem"
               title="Enviar"
               className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white shadow-sm',
-                'transition-[transform,background-color,box-shadow] duration-150 ease-out',
-                'hover:bg-brand-700 hover:shadow-md active:scale-90',
-                'disabled:pointer-events-none disabled:opacity-40',
+                'mb-px flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white',
+                'transition-[background-color,opacity] duration-100 ease-out',
+                'hover:bg-brand-700',
+                'disabled:pointer-events-none disabled:opacity-30',
               )}
             >
-              <IconArrowUp className="h-4.5 w-4.5" />
+              <IconArrowUp className="h-4 w-4" strokeWidth={2.2} />
             </button>
           </div>
         </div>

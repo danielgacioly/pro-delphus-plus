@@ -76,7 +76,7 @@ function SkeletonGroup() {
       {[0, 1].map((g) => (
         <div key={g}>
           <Skeleton className="h-3.5 w-48" />
-          <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+          <div className="mt-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
             <div className="border-b border-neutral-200/70 bg-neutral-50/80 px-4 py-2.5">
               <Skeleton className="h-2.5 w-32" />
             </div>
@@ -98,7 +98,7 @@ function SkeletonGroup() {
 }
 
 const priceHeadClass =
-  'whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-right text-[12px] font-semibold text-neutral-500'
+  'whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-right text-[12px] font-semibold text-neutral-600'
 const priceCellClass = 'tabular whitespace-nowrap px-4 py-2.5 text-right text-ink-900'
 
 export function PriceTable() {
@@ -183,7 +183,7 @@ export function PriceTable() {
       title="Tabela de Preços"
       description="Consulta de preços por setor. Para alterar um preço, edite o produto correspondente."
       actions={
-        <Button variant="primary" size="sm" onClick={exportPdf} disabled={exporting}>
+        <Button variant="primary" size="md" onClick={exportPdf} disabled={exporting}>
           {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
         </Button>
       }
@@ -202,7 +202,7 @@ export function PriceTable() {
             onClick={() => setColumnsOpen((s) => !s)}
             className={cn(
               'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium shadow-xs',
-              'transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]',
+              'transition-[background-color,border-color,color] duration-150',
               columnsOpen
                 ? 'border-neutral-300 bg-neutral-50 text-ink-900'
                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-ink-900',
@@ -262,12 +262,12 @@ export function PriceTable() {
               >
                 <div className="mb-3 flex items-baseline gap-2.5">
                   <h2 className="text-title text-ink-900">{localizeSector(sector, sectorList, lang)}</h2>
-                  <span className="tabular text-[13px] text-neutral-400">
+                  <span className="tabular text-[13px] text-neutral-500">
                     {total} {total === 1 ? 'item' : 'itens'}
                   </span>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
                   {(['COMPLETE_MODEL', 'COMPONENT'] as ProductKind[]).map((kind) => {
                     const items = groups[kind]
                     if (items.length === 0) return null
@@ -275,25 +275,25 @@ export function PriceTable() {
                     return (
                       <div key={kind} className="border-t border-neutral-200/70 first:border-t-0">
                         <div className="bg-neutral-50/80 px-4 py-2">
-                          <h3 className="text-eyebrow text-neutral-500">{kindLabel[kind]}</h3>
+                          <h3 className="text-eyebrow text-neutral-600">{kindLabel[kind]}</h3>
                         </div>
                         <div className="overflow-x-auto">
                           <table className="min-w-full text-sm">
                             <thead>
                               <tr>
-                                <th className="whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                <th className="whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                   SKU
                                 </th>
-                                <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                   Nome
                                 </th>
                                 {columns.description && (
-                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                     Descrição
                                   </th>
                                 )}
                                 {showComponents && (
-                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-500">
+                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
                                     Componentes
                                   </th>
                                 )}
@@ -311,19 +311,19 @@ export function PriceTable() {
                                   title="Abrir no catálogo de produtos"
                                   className="group cursor-pointer transition-colors duration-150 hover:bg-neutral-500/6"
                                 >
-                                  <td className="tabular whitespace-nowrap px-4 py-2.5 font-medium text-neutral-500">
+                                  <td className="tabular whitespace-nowrap px-4 py-2.5 font-medium text-neutral-600">
                                     {product.sku}
                                   </td>
                                   <td className="px-4 py-2.5 font-medium text-ink-900 group-hover:text-brand-700">
                                     {product.name}
                                   </td>
                                   {columns.description && (
-                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-500">
+                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
                                       {localize(product.description, product.descriptionPt, lang) ?? '—'}
                                     </td>
                                   )}
                                   {showComponents && (
-                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-500">
+                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
                                       {localize(product.components, product.componentsPt, lang) ?? '—'}
                                     </td>
                                   )}
@@ -355,7 +355,7 @@ export function PriceTable() {
           })}
 
           {grouped.length === 0 && (
-            <div className="overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
               <EmptyState
                 title="Nenhum item encontrado"
                 description={search ? 'Tente ajustar sua busca.' : 'Ainda não há produtos cadastrados.'}

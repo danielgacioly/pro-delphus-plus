@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
 import { DropZone } from '../components/DropZone'
-import { Alert, BackLink, Button, Card, FormSection, Page } from '../components/ui'
+import { Alert, Button, Card, FormSection, Page } from '../components/ui'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -36,12 +36,12 @@ function FilePicker({
     <div className="col-span-4">
       <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">{label}</label>
       <DropZone accept={accept} multiple onFiles={onAdd}>
-        <p className="text-[12.5px] text-neutral-500">
+        <p className="text-[12.5px] text-neutral-600">
           {hint} ou <span className="font-medium text-brand-600">clique para selecionar</span>
         </p>
       </DropZone>
       {files.length > 0 && (
-        <p className="mt-1.5 text-[12px] text-neutral-500">
+        <p className="mt-1.5 text-[12px] text-neutral-600">
           {files.length} arquivo(s) selecionado(s) —{' '}
           <button type="button" onClick={onClear} className="font-medium text-brand-600 hover:underline">
             limpar
@@ -93,10 +93,7 @@ export function NewProduct() {
   })
 
   return (
-    <Page title="Novo produto" description="Cadastrar aqui já adiciona o produto à tabela de preços." width="narrow">
-      <div className="-mt-4 mb-5">
-        <BackLink to="/produtos">Produtos</BackLink>
-      </div>
+    <Page back={{ to: '/produtos', label: 'Produtos' }} title="Novo produto" description="Cadastrar aqui já adiciona o produto à tabela de preços." width="narrow">
 
       {error && (
         <div className="mb-4">

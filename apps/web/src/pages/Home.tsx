@@ -1,8 +1,11 @@
-import type { ComponentType, SVGProps } from 'react'
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@prodelphusplus/shared'
+import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
-import { Page, Section, ButtonLink } from '../components/ui'
+import { Badge, Page, Section, Skeleton } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
   IconBoard,
@@ -22,49 +25,169 @@ interface Shortcut {
   icon: ComponentType<SVGProps<SVGSVGElement>>
 }
 
-// Orçamentos, Pedidos e Clientes são o fluxo do dia a dia — cards maiores, tom
-// de marca. O resto é ferramenta de apoio, usada com menos frequência.
-const primaryShortcuts: Shortcut[] = [
+// "Principal" é onde se começa alguma coisa; navegar para as listas é papel
+// da lista de ferramentas abaixo (e da barra lateral, que tem tudo sempre).
+interface CreateAction extends Shortcut {
+  /** Rota protegida por papel — o card não aparece para quem não pode criar. */
+  adminOnly?: boolean
+}
+
+const createActions: CreateAction[] = [
   {
-    to: '/orcamentos',
-    title: 'Orçamentos',
-    description: 'Gere orçamentos em PDF ou Excel a partir do catálogo.',
+    to: '/orcamentos/novo',
+    title: 'Novo orçamento',
+    description: 'Monte em PDF ou Excel a partir do catálogo.',
     icon: IconQuote,
   },
   {
-    to: '/pedidos',
-    title: 'Pedidos',
-    description: 'Invoice, Packing List e documentos de exportação.',
+    to: '/pedidos/novo',
+    title: 'Novo pedido',
+    description: 'Gere invoice e documentos de exportação.',
     icon: IconTruck,
   },
   {
-    to: '/clientes',
-    title: 'Clientes',
-    description: 'Contatos, endereços e o histórico de cada cliente.',
+    to: '/clientes?novo=1',
+    title: 'Novo cliente',
+    description: 'Cadastre contato, endereços e dados fiscais.',
     icon: IconContacts,
+  },
+  {
+    to: '/produtos/novo',
+    title: 'Novo produto',
+    description: 'Adicione ao catálogo e à tabela de preços.',
+    icon: IconBox,
+    adminOnly: true,
   },
 ]
 
 const secondaryShortcuts: Shortcut[] = [
   {
+    to: '/orcamentos',
+    title: 'Orçamentos',
+    description: 'Todos os orçamentos emitidos',
+    icon: IconQuote,
+  },
+  {
+    to: '/pedidos',
+    title: 'Pedidos',
+    description: 'Invoice, Packing List e exportação',
+    icon: IconTruck,
+  },
+  {
+    to: '/clientes',
+    title: 'Clientes',
+    description: 'Contatos, endereços e histórico',
+    icon: IconContacts,
+  },
+  {
     to: '/minha-pro-delphus',
     title: 'Minha Pro Delphus',
-    description: 'Seu mural pessoal de tarefas e lembretes.',
+    description: 'Seu mural pessoal de tarefas e lembretes',
     icon: IconBoard,
   },
   {
     to: '/precos',
-    title: 'Tabela de preços',
-    description: 'Preços em real, dólar e euro por setor.',
+    title: 'Tabela de preço',
+    description: 'Preços em real, dólar e euro por setor',
     icon: IconTag,
   },
   {
     to: '/produtos',
     title: 'Produtos',
-    description: 'Catálogo, mídia e customizações disponíveis.',
+    description: 'Catálogo, mídia e customizações disponíveis',
     icon: IconBox,
   },
 ]
+
+const currencySymbol: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
+
+/** Última palavra do rótulo "em vendas em …", que troca junto com o valor. */
+const currencyPlural: Record<string, string> = { BRL: 'reais', USD: 'dólares', EUR: 'euros' }
+
+interface MonthSale {
+  currency: string
+  amount: string
+  /** Variação contra o mesmo recorte do mês anterior; null quando não havia base. */
+  change: number | null
+}
+
+/** Variação percentual; sem base no mês anterior não há porcentagem honesta. */
+function variation(current: number, previous: number): number | null {
+  if (!previous) return null
+  return ((current - previous) / previous) * 100
+}
+
+/** Mini-gráfico de tendência: só a linha, sem eixo nem grade. */
+function Sparkline({ values, up, className }: { values: number[]; up: boolean; className?: string }) {
+  if (values.length < 2) return null
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const span = max - min || 1
+  const points = values
+    .map((value, i) => `${(i / (values.length - 1)) * 100},${100 - ((value - min) / span) * 100}`)
+    .join(' ')
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden
+      className={cn('w-full', up ? 'text-emerald-600' : 'text-brand-600', className)}
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
+
+/** "▲ 12% vs. agosto" — contexto para o número não ficar solto. */
+function Change({ value, previousLabel }: { value: number | null; previousLabel: string }) {
+  // Sem registro no mês anterior não existe porcentagem honesta — e repetir
+  // "sem base" em cada coluna vira ruído. A linha simplesmente não aparece.
+  if (value === null) return null
+  const up = value >= 0
+  return (
+    <span className={up ? 'text-emerald-700' : 'text-brand-700'}>
+      {up ? '▲' : '▼'} {Math.abs(value).toFixed(0)}% vs. {previousLabel}
+    </span>
+  )
+}
+
+interface ExchangeRate {
+  pair: string
+  rate: number
+  pctChange: number
+  updatedAt: string
+  /** Fechamentos dos últimos dias, do mais antigo ao mais recente. */
+  history: number[]
+}
+
+const PAIR_LABEL: Record<string, { name: string; symbol: string }> = {
+  'USD-BRL': { name: 'Dólar', symbol: 'US$' },
+  'EUR-BRL': { name: 'Euro', symbol: '€' },
+}
+
+async function fetchRates() {
+  const { data } = await api.get<{ rates: ExchangeRate[] }>('/exchange-rates')
+  return data.rates
+}
+
+async function fetchQuotes() {
+  const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
+  return data.quotes
+}
+
+async function fetchOrders() {
+  const { data } = await api.get<{ orders: OrderDTO[] }>('/orders')
+  return data.orders
+}
 
 function greeting() {
   const hour = new Date().getHours()
@@ -73,56 +196,192 @@ function greeting() {
   return 'Boa noite'
 }
 
-function ShortcutCard({
-  shortcut,
-  tone,
-  size,
-  index,
-}: {
-  shortcut: Shortcut
-  tone: 'brand' | 'neutral'
-  size: 'lg' | 'sm'
-  index: number
-}) {
-  const { to, title, description, icon: Icon } = shortcut
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+/**
+ * Card de criação: fundo branco com traço fino e o vermelho só no glifo e no
+ * "+" — encher o card inteiro de cor deixaria quatro blocos gritando juntos.
+ */
+function CreateCard({ action }: { action: CreateAction }) {
+  const { to, title, description, icon: Icon } = action
   return (
     <Link
       to={to}
-      style={{ animationDelay: `${index * 40}ms` }}
-      className={cn(
-        'group animate-fade-in-up relative flex flex-col rounded-2xl border border-neutral-200/70 bg-white shadow-sm',
-        'transition-[transform,box-shadow,border-color] duration-200 ease-out',
-        'hover:-translate-y-0.5 hover:shadow-lg',
-        tone === 'brand' ? 'hover:border-brand-200' : 'hover:border-neutral-300',
-        size === 'lg' ? 'p-5' : 'p-4',
-      )}
+      className="group flex flex-col rounded-2xl border border-black/[0.06] bg-white p-4 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
     >
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-xl transition-colors duration-200',
-          size === 'lg' ? 'h-10 w-10' : 'h-8 w-8',
-          tone === 'brand'
-            ? 'bg-brand-50 text-brand-600 group-hover:bg-brand-100'
-            : 'bg-neutral-500/8 text-ink-800 group-hover:bg-neutral-500/14',
-        )}
-      >
-        <Icon className={size === 'lg' ? 'h-4.75 w-4.75' : 'h-4 w-4'} />
+      <div className="flex items-center justify-between">
+        <Icon className="h-5 w-5 text-brand-600" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 transition-colors duration-150 group-hover:bg-brand-500/16">
+          <IconPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
+        </span>
       </div>
-
-      <h3 className={cn('mt-3.5 text-ink-900', size === 'lg' ? 'text-heading' : 'text-[13.5px] font-semibold')}>
-        {title}
-      </h3>
-      <p className={cn('mt-1 leading-relaxed text-neutral-500', size === 'lg' ? 'text-[13px]' : 'text-[12.5px]')}>
-        {description}
-      </p>
-
-      <IconChevronRight
-        className={cn(
-          'absolute right-4 h-4 w-4 text-neutral-300 transition-[transform,color] duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-neutral-500',
-          size === 'lg' ? 'top-5' : 'top-4',
-        )}
-      />
+      <div className="pt-5">
+        <h3 className="text-[16px] font-semibold tracking-[-0.02em] text-ink-900">{title}</h3>
+        <p className="mt-0.5 text-[13px] leading-snug text-neutral-600">{description}</p>
+      </div>
     </Link>
+  )
+}
+
+const statValue = 'tabular truncate text-[24px] leading-tight font-semibold tracking-[-0.02em] text-ink-900'
+const statLabel = 'truncate text-[13px] text-neutral-600'
+const statColumn = (divider?: boolean, className?: string) =>
+  // O traço separador some quando as colunas empilham no celular.
+  cn('min-w-0', divider && 'sm:border-l sm:border-black/[0.07] sm:pl-4', className)
+
+/** Uma coluna do painel do mês: valor tabular grande, rótulo e comparação. */
+function MonthStat({
+  value,
+  label,
+  change,
+  previousLabel,
+  divider,
+}: {
+  value: ReactNode
+  label: string
+  change: number | null
+  previousLabel: string
+  divider?: boolean
+}) {
+  return (
+    <div className={statColumn(divider)}>
+      <p className={statValue}>{value}</p>
+      <p className={cn('mt-0.5', statLabel)}>{label}</p>
+      {change !== null && (
+        <p className="tabular mt-1 truncate text-[12px]">
+          <Change value={change} previousLabel={previousLabel} />
+        </p>
+      )}
+    </div>
+  )
+}
+
+const CYCLE_MS = 3800
+
+/**
+ * Moedas não se somam, então o total do mês roda entre elas: o valor e a última
+ * palavra do rótulo ("…em reais") trocam juntos. Com uma moeda só, fica parado.
+ */
+function SalesStat({
+  sales,
+  previousLabel,
+  divider,
+  className,
+}: {
+  sales: MonthSale[]
+  previousLabel: string
+  divider?: boolean
+  className?: string
+}) {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    setIndex(0)
+    if (sales.length < 2) return
+    const id = setInterval(() => setIndex((i) => (i + 1) % sales.length), CYCLE_MS)
+    return () => clearInterval(id)
+  }, [sales])
+
+  const current = sales[index] ?? sales[0]
+
+  return (
+    <div className={statColumn(divider, className)}>
+      <div>
+        <div className="min-w-0">
+          <div className="overflow-hidden">
+            <p key={index} className={cn('animate-value-roll', statValue)}>
+              {current ? current.amount : '—'}
+            </p>
+          </div>
+          <p className={cn('mt-0.5', statLabel)}>
+            em vendas
+            {current && (
+              <>
+                {' em '}
+                {/* Só a última palavra troca junto com o valor. */}
+                <span key={index} className="animate-value-roll inline-block">
+                  {currencyPlural[current.currency] ?? current.currency}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+      {current?.change != null && (
+        <p className="tabular mt-1 truncate text-[12px]">
+          <Change value={current.change} previousLabel={previousLabel} />
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Cotação do dia de uma moeda, com a variação e a linha dos últimos dias. */
+function RateRow({ pair, rate, pctChange, history }: ExchangeRate) {
+  const label = PAIR_LABEL[pair] ?? { name: pair, symbol: '' }
+  const up = pctChange >= 0
+  return (
+    <div className="min-w-0">
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[13px] font-medium text-ink-900">{label.name}</span>
+        <span className="text-[11.5px] text-neutral-500">{label.symbol}</span>
+      </div>
+      {/* Duas casas: a terceira e a quarta são ruído para quem só quer saber
+          como o dia está. */}
+      <p className="tabular mt-0.5 text-[20px] leading-tight font-semibold tracking-[-0.02em] whitespace-nowrap text-ink-900">
+        R$ {rate.toFixed(2).replace('.', ',')}
+      </p>
+      <p className={cn('tabular mt-0.5 text-[12px] whitespace-nowrap', up ? 'text-emerald-700' : 'text-brand-700')}>
+        {up ? '▲' : '▼'} {Math.abs(pctChange).toFixed(2).replace('.', ',')}% hoje
+      </p>
+      <Sparkline values={history} up={up} className="mt-1.5 h-6" />
+    </div>
+  )
+}
+
+/** Linha de lista de atividade: identificador + cliente, valor e data à direita. */
+function ActivityRow({
+  to,
+  title,
+  subtitle,
+  status,
+  amount,
+  date,
+  first,
+}: {
+  to: string
+  title: string
+  subtitle: string
+  status?: ReactNode
+  amount: string
+  date: string
+  first: boolean
+}) {
+  return (
+    <Link to={to} className="relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]">
+      {!first && <span aria-hidden className="absolute top-0 right-0 left-4 h-px bg-black/[0.06]" />}
+      <span className="tabular shrink-0 text-[13px] font-medium text-ink-900">{title}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-600">{subtitle}</span>
+      {status && <span className="shrink-0">{status}</span>}
+      <span className="tabular shrink-0 text-[13px] text-ink-800">{amount}</span>
+      <span className="tabular w-10 shrink-0 text-right text-[12px] text-neutral-500">{date}</span>
+    </Link>
+  )
+}
+
+function ActivityList({ title, to, empty, children }: { title: string; to: string; empty: boolean; children: ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
+      <div className="flex h-10 items-center justify-between border-b border-black/[0.06] px-4">
+        <h3 className="text-[13px] font-semibold text-ink-900">{title}</h3>
+        <Link to={to} className="text-[12.5px] text-brand-600 hover:text-brand-700">
+          Ver todos
+        </Link>
+      </div>
+      {empty ? <p className="px-4 py-5 text-[13px] text-neutral-500">Nada por aqui ainda.</p> : children}
+    </div>
   )
 }
 
@@ -131,64 +390,238 @@ export function Home() {
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
   const isAdmin = user?.role === 'ADMIN'
 
-  return (
-    <Page title={`${greeting()}, ${firstName}.`} description="Tudo em ordem. Vamos começar?">
-      <div className="flex flex-wrap gap-3">
-        <ButtonLink to="/orcamentos/novo" variant="primary" size="lg">
-          <IconPlus className="h-4 w-4" />
-          Novo Orçamento
-        </ButtonLink>
-        <ButtonLink to="/pedidos/novo" variant="primary" size="lg">
-          <IconPlus className="h-4 w-4" />
-          Novo Pedido
-        </ButtonLink>
-        <ButtonLink to="/clientes?novo=1" variant="secondary" size="lg">
-          <IconPlus className="h-4 w-4" />
-          Novo Cliente
-        </ButtonLink>
-        {isAdmin && (
-          <ButtonLink to="/produtos/novo" variant="secondary" size="lg">
-            <IconPlus className="h-4 w-4" />
-            Novo Produto
-          </ButtonLink>
-        )}
-      </div>
+  const { data: quotes, isLoading: loadingQuotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
+  const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
+  const loading = loadingQuotes || loadingOrders
 
-      <Link
-        to="/neo"
-        className={cn(
-          'group relative mt-8 flex flex-col items-start gap-4 overflow-hidden rounded-3xl bg-ink-900 p-6 text-white shadow-sm',
-          'transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg',
-          'sm:flex-row sm:items-center sm:justify-between',
-        )}
-      >
-        <div className="flex items-center gap-4">
-          <NeoAvatar className="h-14 w-14 shrink-0 ring-2 ring-white/15" />
-          <div>
-            <h3 className="text-heading text-white">Vamos bater um papo!</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-              Pergunte ao NEO sobre preços, clientes e produtos, ou peça para montar um orçamento ou um pedido por você.
+  // A API já guarda a cotação por 5 min; aqui só evitamos refazer a chamada a
+  // cada volta para o Início, e uma falha não vira tentativa infinita.
+  const { data: rates, isLoading: loadingRates } = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: fetchRates,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+  const ratesUpdatedAt = rates?.[0]
+    ? new Date(rates[0].updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : null
+
+  const myQuotes = useMemo(
+    () => (quotes ?? []).filter((q) => q.createdBy.id === user?.id),
+    [quotes, user?.id],
+  )
+  const myOrders = useMemo(
+    () => (orders ?? []).filter((o) => o.createdBy.id === user?.id),
+    [orders, user?.id],
+  )
+
+  const month = useMemo(() => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const inThisMonth = (iso: string) => new Date(iso).getTime() >= start.getTime()
+    const inPreviousMonth = (iso: string) => {
+      const time = new Date(iso).getTime()
+      return time >= previousStart.getTime() && time < start.getTime()
+    }
+
+    const ordersOfMonth = myOrders.filter((o) => inThisMonth(o.createdAt))
+    const ordersBefore = myOrders.filter((o) => inPreviousMonth(o.createdAt))
+
+    // O valor do pedido vive no orçamento vinculado; moedas não se somam entre
+    // si, então cada uma vira uma entrada própria (maior primeiro).
+    const totalsBy = (list: typeof myOrders) => {
+      const totals = new Map<string, number>()
+      for (const order of list) {
+        const currency = order.quote.currency
+        totals.set(currency, (totals.get(currency) ?? 0) + Number(order.quote.total))
+      }
+      return totals
+    }
+    const current = totalsBy(ordersOfMonth)
+    const previous = totalsBy(ordersBefore)
+
+    const sales: MonthSale[] = [...current.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([currency, total]) => ({
+        currency,
+        amount: `${currencySymbol[currency] ?? currency} ${formatAmount(total)}`,
+        change: variation(total, previous.get(currency) ?? 0),
+      }))
+
+    const quotesNow = myQuotes.filter((q) => inThisMonth(q.createdAt)).length
+    const quotesBefore = myQuotes.filter((q) => inPreviousMonth(q.createdAt)).length
+
+    return {
+      quotes: quotesNow,
+      quotesChange: variation(quotesNow, quotesBefore),
+      orders: ordersOfMonth.length,
+      ordersChange: variation(ordersOfMonth.length, ordersBefore.length),
+      sales,
+      label: now.toLocaleDateString('pt-BR', { month: 'long' }),
+      previousLabel: previousStart.toLocaleDateString('pt-BR', { month: 'long' }),
+    }
+  }, [myQuotes, myOrders])
+
+  const recentQuotes = useMemo(
+    () => [...myQuotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4),
+    [myQuotes],
+  )
+  const recentOrders = useMemo(
+    () => [...myOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4),
+    [myOrders],
+  )
+
+  return (
+    <Page
+      title={`${greeting()}, ${firstName}.`}
+      description="Tudo em ordem. Vamos começar?"
+    >
+      {/* Câmbio e NEO dividem a faixa do topo: informação de um lado, o
+          assistente do outro — as ações de criar moram na barra de cima. */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[13px] font-medium text-neutral-600">Câmbio de hoje</p>
+            {ratesUpdatedAt && <p className="text-[11.5px] text-neutral-500">{ratesUpdatedAt}</p>}
+          </div>
+          {rates && rates.length > 0 ? (
+            <div className="mt-2 grid grid-cols-2 gap-x-3 sm:gap-x-4">
+              {rates.map((rate, i) => (
+                <div key={rate.pair} className={i > 0 ? 'border-l border-black/[0.07] pl-3 sm:pl-4' : undefined}>
+                  <RateRow {...rate} />
+                </div>
+              ))}
+            </div>
+          ) : loadingRates ? (
+            <div className="mt-3 grid grid-cols-2 gap-x-4">
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+            </div>
+          ) : (
+            // Fonte pública fora do ar não pode deixar um buraco na tela.
+            <p className="mt-3 text-[13px] text-neutral-500">Cotação indisponível no momento.</p>
+          )}
+        </div>
+
+        <Link
+          to="/neo"
+          className="group flex items-center gap-3.5 rounded-2xl bg-ink-900 px-4 py-3 text-white transition-colors duration-150 ease-out hover:bg-ink-800"
+        >
+          <NeoAvatar className="h-10 w-10 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-semibold tracking-[-0.014em] text-white">Vamos bater um papo!</h3>
+            <p className="mt-0.5 text-[13px] leading-snug text-white/60">
+              Pergunte ao NEO sobre preços e clientes, ou peça um orçamento pronto.
             </p>
           </div>
-        </div>
-        <span className="inline-flex h-9.5 shrink-0 items-center gap-1.5 self-start rounded-lg bg-white px-4 text-sm font-semibold text-ink-900 transition-colors duration-150 group-hover:bg-neutral-100 sm:self-auto">
-          Conversar
-          <IconChevronRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
-        </span>
-      </Link>
+          <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-white/[0.12] px-3 text-[13px] font-medium text-white transition-colors duration-150 group-hover:bg-white/[0.18]">
+            Conversar
+            <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </span>
+        </Link>
+      </div>
 
-      <Section title="Principal">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {primaryShortcuts.map((shortcut, i) => (
-            <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="brand" size="lg" index={i} />
-          ))}
+      <Section title="Principal" className="mt-8">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {createActions
+            .filter((action) => !action.adminOnly || isAdmin)
+            .map((action) => (
+              <CreateCard key={action.to} action={action} />
+            ))}
         </div>
       </Section>
 
-      <Section title="Mais ferramentas">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {secondaryShortcuts.map((shortcut, i) => (
-            <ShortcutCard key={shortcut.to} shortcut={shortcut} tone="neutral" size="sm" index={i} />
+      <Section title="Minha atividade recente" className="mt-8">
+        <div className="mb-3 rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+          <p className="text-[13px] font-medium text-neutral-600">Em {month.label}, você fez</p>
+          {loading ? (
+            <div className="mt-3 flex gap-10">
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-24" />
+            </div>
+          ) : (
+            <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <MonthStat
+                value={month.quotes}
+                label="orçamentos"
+                change={month.quotesChange}
+                previousLabel={month.previousLabel}
+              />
+              <MonthStat
+                value={month.orders}
+                label="pedidos"
+                change={month.ordersChange}
+                previousLabel={month.previousLabel}
+                divider
+              />
+              <SalesStat
+                sales={month.sales}
+                previousLabel={month.previousLabel}
+                divider
+                className="col-span-2 sm:col-span-1"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-2">
+          <ActivityList title="Orçamentos" to="/orcamentos" empty={!loading && recentQuotes.length === 0}>
+            {loading
+              ? <div className="space-y-2 px-4 py-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-4" />)}</div>
+              : recentQuotes.map((q, i) => (
+                  <ActivityRow
+                    key={q.id}
+                    to={`/orcamentos/${q.id}/editar`}
+                    title={q.quoteNumber}
+                    subtitle={q.clientName}
+                    amount={`${currencySymbol[q.currency] ?? q.currency} ${formatAmount(q.total)}`}
+                    date={shortDate(q.createdAt)}
+                    first={i === 0}
+                  />
+                ))}
+          </ActivityList>
+
+          <ActivityList title="Pedidos" to="/pedidos" empty={!loading && recentOrders.length === 0}>
+            {loading
+              ? <div className="space-y-2 px-4 py-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-4" />)}</div>
+              : recentOrders.map((o, i) => (
+                  <ActivityRow
+                    key={o.id}
+                    to={`/pedidos/${o.id}`}
+                    title={`#${formatOrderNumber(o.orderNumber)}`}
+                    subtitle={o.quote.clientName}
+                    status={
+                      <Badge tone={o.status === 'COMPLETED' ? 'success' : 'warning'} dot>
+                        {o.status === 'COMPLETED' ? 'Concluído' : 'Pendente'}
+                      </Badge>
+                    }
+                    amount={`${currencySymbol[o.quote.currency] ?? o.quote.currency} ${formatAmount(o.quote.total)}`}
+                    date={shortDate(o.createdAt)}
+                    first={i === 0}
+                  />
+                ))}
+          </ActivityList>
+        </div>
+      </Section>
+
+      <Section title="Mais ferramentas" className="mt-8">
+        <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
+          {secondaryShortcuts.map(({ to, title, description, icon: Icon }, i) => (
+            <Link
+              key={to}
+              to={to}
+              className="group relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]"
+            >
+              {/* Separador recuado até o texto, como nas listas agrupadas do macOS. */}
+              {i > 0 && <span aria-hidden className="absolute top-0 right-0 left-11 h-px bg-black/[0.06]" />}
+              <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-600" />
+              <span className="text-[14px] font-medium text-ink-900">{title}</span>
+              <span className="hidden truncate text-[13px] text-neutral-600 sm:inline">{description}</span>
+              <IconChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-neutral-500" strokeWidth={2.2} />
+            </Link>
           ))}
         </div>
       </Section>

@@ -21,7 +21,7 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
     <Modal onClose={onCancel}>
       <div className="animate-scale-in w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
         <h2 className="text-base font-semibold text-ink-900">{title}</h2>
-        <p className="mt-1 text-sm text-neutral-500">{description}</p>
+        <p className="mt-1 text-sm text-neutral-600">{description}</p>
         {error && <p className="mt-3 text-sm text-danger-600">{error}</p>}
         <p className="mt-3 text-sm text-neutral-600">
           Para confirmar, digite <strong className="text-danger-600">excluir</strong> abaixo:
@@ -36,10 +36,10 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
           className="mt-2"
         />
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel}>
+          <Button variant="ghost" size="md" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button variant="danger" size="sm" onClick={onConfirm} disabled={!canConfirm} isLoading={isPending}>
+          <Button variant="danger" size="md" onClick={onConfirm} disabled={!canConfirm} isLoading={isPending}>
             Excluir
           </Button>
         </div>
