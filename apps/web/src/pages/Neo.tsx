@@ -206,8 +206,8 @@ export function Neo() {
     // Layout.tsx não tem altura própria, então uma % não teria de quê herdar.
     // `main` já ocupa exatamente 100vh (não há barra superior), então isto
     // bate com o espaço real disponível e deixa só o histórico rolar.
-    <div className="flex h-screen flex-col overflow-hidden">
-      <header className="shrink-0 border-b border-neutral-200/70 px-6 pt-8 pb-6 sm:px-8">
+          <div className="flex h-screen flex-col overflow-hidden">
+        <header className="shrink-0 border-b border-neutral-200/70 px-6 pt-8 pb-6 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3.5">
           {/* Só respira enquanto o NEO está pensando: o movimento vira sinal de
               estado, não enfeite se mexendo o tempo todo. */}
@@ -233,6 +233,26 @@ export function Neo() {
               <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-600">
                 Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
               </p>
+              <div className="mt-5 grid w-full max-w-3xl grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: 'Consultar um produto', prompt: 'Quero consultar um produto.' },
+                  { label: 'Buscar um cliente', prompt: 'Quero buscar um cliente.' },
+                  { label: 'Montar um orçamento', prompt: 'Quero montar um orçamento.' },
+                  { label: 'Criar um pedido', prompt: 'Quero criar um pedido.' },
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion.label}
+                    type="button"
+                    onClick={() => {
+                      setInput(suggestion.prompt)
+                      textareaRef.current?.focus()
+                    }}
+                    className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[12.5px] font-medium whitespace-nowrap text-neutral-700 shadow-xs transition-[background-color,border-color,color] duration-150 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    {suggestion.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

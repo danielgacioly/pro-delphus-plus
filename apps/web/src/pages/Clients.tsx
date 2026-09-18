@@ -225,26 +225,7 @@ export function Clients() {
       title="Clientes"
       description="Quem compra da Pro Delphus: contato, endereços, orçamentos e pedidos de cada um."
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {[
-          { label: 'Clientes cadastrados', value: totals.total },
-          { label: 'Com pedido fechado', value: totals.withOrders },
-          { label: 'Orçamentos vinculados', value: totals.quotes },
-        ].map((stat, i) => (
-          <div
-            key={stat.label}
-            style={{ animationDelay: `${i * 40}ms` }}
-            className="animate-fade-in-up rounded-2xl border border-black/[0.06] bg-white p-5"
-          >
-            <p className="text-[12px] font-medium text-neutral-600">{stat.label}</p>
-            <p className="tabular mt-2.5 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">
-              {isLoading ? '—' : <AnimatedNumber value={stat.value} />}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <Toolbar className="mt-8">
+      <Toolbar className="mb-6">
         <SegmentedControl
           aria-label="Tipo de cliente"
           value={kindFilter}
@@ -268,7 +249,28 @@ export function Clients() {
         </Button>
       </Toolbar>
 
-      <div className="mt-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          { label: 'Clientes cadastrados', value: totals.total },
+          { label: 'Com pedido fechado', value: totals.withOrders },
+          { label: 'Orçamentos vinculados', value: totals.quotes },
+        ].map((stat, i) => (
+          <div
+            key={stat.label}
+            style={{ animationDelay: `${i * 40}ms` }}
+            className="animate-fade-in-up rounded-2xl border border-black/[0.06] bg-white p-5"
+          >
+            <p className="text-[12px] font-medium text-neutral-600">{stat.label}</p>
+            <p className="tabular mt-2.5 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-ink-900">
+              {isLoading ? '—' : <AnimatedNumber value={stat.value} />}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="my-6 h-px bg-black/[0.08]" aria-hidden="true" />
+
+      <div>
         {isError ? (
           <Alert tone="error">Não foi possível carregar os clientes.</Alert>
         ) : isLoading ? (

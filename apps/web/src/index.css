@@ -8,13 +8,13 @@
   --color-brand-50: #fdf4f2;
   --color-brand-100: #fbe5e1;
   --color-brand-200: #f6cbc4;
-  --color-brand-300: #eda79c;
-  --color-brand-400: #e27d70;
-  --color-brand-500: #c95345;
-  --color-brand-600: #ae3a2c;
-  --color-brand-700: #933024;
-  --color-brand-800: #7b281e;
-  --color-brand-900: #66231b;
+  --color-brand-300: #efada3;
+  --color-brand-400: #e68a7e;
+  --color-brand-500: #d26052;
+  --color-brand-600: #b94a3c;
+  --color-brand-700: #9e382c;
+  --color-brand-800: #843027;
+  --color-brand-900: #6e261e;
 
   /* ---- Danger (dedicated red — distinct hue from the warm brand ramp) --- */
   --color-danger-50: #fef2f2;

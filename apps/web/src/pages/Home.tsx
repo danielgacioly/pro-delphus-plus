@@ -24,78 +24,24 @@ interface Shortcut {
   icon: ComponentType<SVGProps<SVGSVGElement>>
 }
 
-// "Principal" é onde se começa alguma coisa; navegar para as listas é papel
-// da lista de ferramentas abaixo (e da barra lateral, que tem tudo sempre).
 interface CreateAction extends Shortcut {
-  /** Rota protegida por papel — o card não aparece para quem não pode criar. */
   adminOnly?: boolean
 }
 
 const createActions: CreateAction[] = [
-  {
-    to: '/orcamentos/novo',
-    title: 'Novo orçamento',
-    description: 'Monte em PDF ou Excel a partir do catálogo.',
-    icon: IconQuote,
-  },
-  {
-    to: '/pedidos/novo',
-    title: 'Novo pedido',
-    description: 'Gere invoice e documentos de exportação.',
-    icon: IconTruck,
-  },
-  {
-    to: '/clientes?novo=1',
-    title: 'Novo cliente',
-    description: 'Cadastre contato, endereços e dados fiscais.',
-    icon: IconContacts,
-  },
-  {
-    to: '/produtos/novo',
-    title: 'Novo produto',
-    description: 'Adicione ao catálogo e à tabela de preços.',
-    icon: IconBox,
-    adminOnly: true,
-  },
+  { to: '/orcamentos/novo', title: 'Novo orçamento', description: 'Monte em PDF ou Excel a partir do catálogo.', icon: IconQuote },
+  { to: '/pedidos/novo', title: 'Novo pedido', description: 'Gere invoice e documentos de exportação.', icon: IconTruck },
+  { to: '/clientes?novo=1', title: 'Novo cliente', description: 'Cadastre contato, endereços e dados fiscais.', icon: IconContacts },
+  { to: '/produtos/novo', title: 'Novo produto', description: 'Adicione ao catálogo e à tabela de preços.', icon: IconBox, adminOnly: true },
 ]
 
 const secondaryShortcuts: Shortcut[] = [
-  {
-    to: '/orcamentos',
-    title: 'Orçamentos',
-    description: 'Todos os orçamentos emitidos',
-    icon: IconQuote,
-  },
-  {
-    to: '/pedidos',
-    title: 'Pedidos',
-    description: 'Invoice, Packing List e exportação',
-    icon: IconTruck,
-  },
-  {
-    to: '/clientes',
-    title: 'Clientes',
-    description: 'Contatos, endereços e histórico',
-    icon: IconContacts,
-  },
-  {
-    to: '/minha-pro-delphus',
-    title: 'Minha Pro Delphus',
-    description: 'Seu mural pessoal de tarefas e lembretes',
-    icon: IconBoard,
-  },
-  {
-    to: '/precos',
-    title: 'Tabela de preço',
-    description: 'Preços em real, dólar e euro por setor',
-    icon: IconTag,
-  },
-  {
-    to: '/produtos',
-    title: 'Produtos',
-    description: 'Catálogo, mídia e customizações disponíveis',
-    icon: IconBox,
-  },
+  { to: '/orcamentos', title: 'Orçamentos', description: 'Todos os orçamentos emitidos', icon: IconQuote },
+  { to: '/pedidos', title: 'Pedidos', description: 'Invoice, Packing List e exportação', icon: IconTruck },
+  { to: '/clientes', title: 'Clientes', description: 'Contatos, endereços e histórico', icon: IconContacts },
+  { to: '/minha-pro-delphus', title: 'Minha Pro Delphus', description: 'Seu mural pessoal de tarefas e lembretes', icon: IconBoard },
+  { to: '/precos', title: 'Tabela de preço', description: 'Preços em real, dólar e euro por setor', icon: IconTag },
+  { to: '/produtos', title: 'Produtos', description: 'Catálogo, mídia e customizações disponíveis', icon: IconBox },
 ]
 
 const currencySymbol: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
@@ -170,10 +116,7 @@ function shortDate(iso: string) {
 function CreateCard({ action }: { action: CreateAction }) {
   const { to, title, description, icon: Icon } = action
   return (
-    <Link
-      to={to}
-      className="group flex min-h-[88px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
-    >
+    <Link to={to} className="group flex min-h-[88px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600">
         <Icon className="h-5 w-5" />
       </div>
@@ -349,6 +292,7 @@ export function Home() {
   const { user } = useAuth()
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
   const isAdmin = user?.role === 'ADMIN'
+  const [now, setNow] = useState(() => new Date())
 
   const { data: quotes, isLoading: loadingQuotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
   const { data: orders, isLoading: loadingOrders } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
@@ -360,12 +304,16 @@ export function Home() {
     queryKey: ['exchange-rates'],
     queryFn: fetchRates,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     retry: 1,
   })
 
-  const ratesUpdatedAt = rates?.[0]
-    ? new Date(rates[0].updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : null
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const currentTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
   const myQuotes = useMemo(
     () => (quotes ?? []).filter((q) => q.createdBy.id === user?.id),
@@ -444,7 +392,7 @@ export function Home() {
         <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-[13px] font-medium text-neutral-600">Câmbio de hoje</p>
-            {ratesUpdatedAt && <p className="text-[11.5px] text-neutral-500">{ratesUpdatedAt}</p>}
+            <p className="text-[11.5px] text-neutral-500">Agora, {currentTime}</p>
           </div>
           {rates && rates.length > 0 ? (
             <div className="mt-2 grid grid-cols-2 gap-x-3 sm:gap-x-4">
@@ -485,11 +433,9 @@ export function Home() {
 
       <Section title="Principal" className="mt-8">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {createActions
-            .filter((action) => !action.adminOnly || isAdmin)
-            .map((action) => (
-              <CreateCard key={action.to} action={action} />
-            ))}
+          {createActions.filter((action) => !action.adminOnly || isAdmin).map((action) => (
+            <CreateCard key={action.to} action={action} />
+          ))}
         </div>
       </Section>
 
@@ -570,12 +516,7 @@ export function Home() {
       <Section title="Mais ferramentas" className="mt-8">
         <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
           {secondaryShortcuts.map(({ to, title, description, icon: Icon }, i) => (
-            <Link
-              key={to}
-              to={to}
-              className="group relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]"
-            >
-              {/* Separador recuado até o texto, como nas listas agrupadas do macOS. */}
+            <Link key={to} to={to} className="group relative flex h-11 items-center gap-3 px-4 transition-colors duration-100 hover:bg-black/[0.025]">
               {i > 0 && <span aria-hidden className="absolute top-0 right-0 left-11 h-px bg-black/[0.06]" />}
               <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-600" />
               <span className="text-[14px] font-medium text-ink-900">{title}</span>
@@ -585,6 +526,7 @@ export function Home() {
           ))}
         </div>
       </Section>
+
     </Page>
   )
 }

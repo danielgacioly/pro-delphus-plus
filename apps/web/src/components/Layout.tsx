@@ -173,7 +173,7 @@ export function Layout() {
                 collapsed ? '' : 'lg:flex-1',
               )}
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-400 text-[11px] font-semibold text-white">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-semibold text-white">
                 {initial}
               </span>
               <span className={cn('min-w-0 flex-1', labelClass)}>

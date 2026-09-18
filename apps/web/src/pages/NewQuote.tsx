@@ -20,6 +20,7 @@ import {
   Badge,
   Button,
   Card,
+  Combobox,
   Field,
   FormSection,
   Input,
@@ -388,32 +389,25 @@ export function NewQuote() {
                 <div key={index} className="rounded-xl border border-neutral-200/70 bg-neutral-50/60 p-3">
                   <div className="flex gap-2">
                     <Field label="Produto" hint="Busca por nome, SKU ou palavra da descrição" className="relative flex-1">
-                      <Input
-                        placeholder="Buscar por nome ou SKU"
-                        required
-                        value={item.query}
-                        onFocus={() => setActiveIndex(index)}
-                        onChange={(e) => {
-                          updateItem(index, { query: e.target.value, productId: '' })
+                      <Combobox
+                        options={(suggestions ?? []).map((product) => ({
+                          value: product.id,
+                          label: product.name,
+                          description: product.sku,
+                        }))}
+                        value={item.productId || undefined}
+                        inputValue={item.query}
+                        onInputValueChange={(query) => {
+                          updateItem(index, { query, productId: '' })
                           setActiveIndex(index)
                         }}
-                        onBlur={() => setTimeout(() => setActiveIndex((cur) => (cur === index ? null : cur)), 150)}
+                        onSelect={(productId) => {
+                          const product = suggestions?.find((candidate) => candidate.id === productId)
+                          if (product) selectProduct(index, product)
+                        }}
+                        placeholder="Buscar por nome ou SKU"
+                        emptyMessage={item.query.trim() ? 'Nenhum produto encontrado.' : 'Comece a digitar para buscar.'}
                       />
-                      {activeIndex === index && suggestions && suggestions.length > 0 && (
-                        <div className="animate-scale-in absolute z-20 mt-1.5 max-h-64 w-full origin-top overflow-y-auto rounded-xl border border-neutral-200/70 bg-white p-1 shadow-lg">
-                          {suggestions.map((product) => (
-                            <button
-                              type="button"
-                              key={product.id}
-                              onMouseDown={() => selectProduct(index, product)}
-                              className="block w-full rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-neutral-500/8"
-                            >
-                              <span className="font-medium text-ink-900">{product.name}</span>{' '}
-                              <span className="tabular text-neutral-500">{product.sku}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </Field>
                     <Field label="Qtd." className="w-20 shrink-0">
                       <Input

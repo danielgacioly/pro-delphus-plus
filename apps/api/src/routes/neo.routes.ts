@@ -372,10 +372,13 @@ const writeTools: FunctionDeclaration[] = [
   },
 ]
 
-// `args` chega como JSON dinâmico vindo do Gemini — sem tipo estático real.
-// Cada `proporX`/`buscarX` já valida com Zod por dentro (ver Tasks 7/8), então
-// o `as any` aqui só destrava o TypeScript; dado ruim ainda é pego na
-// validação, não silenciosamente aceito.
+function toolArgs<T>(args: Record<string, unknown>) {
+  return args as unknown as T
+}
+
+// `args` chega como JSON dinâmico vindo do Gemini. As ferramentas continuam
+// sendo a fronteira de validação Zod; aqui os tipos são derivados das próprias
+// assinaturas para o dispatcher não criar uma segunda definição de payload.
 async function dispatchTool(
   name: string,
   args: Record<string, unknown>,
@@ -383,43 +386,43 @@ async function dispatchTool(
 ): Promise<{ result: unknown; pendingAction?: Awaited<ReturnType<typeof proporOrcamento>>['pendingAction'] }> {
   switch (name) {
     case 'buscar_produtos':
-      return { result: await buscarProdutos(args as any) }
+      return { result: await buscarProdutos(toolArgs<Parameters<typeof buscarProdutos>[0]>(args)) }
     case 'listar_clientes':
-      return { result: await listarClientes(args as any) }
+      return { result: await listarClientes(toolArgs<Parameters<typeof listarClientes>[0]>(args)) }
     case 'buscar_cliente':
-      return { result: await buscarCliente(args as any) }
+      return { result: await buscarCliente(toolArgs<Parameters<typeof buscarCliente>[0]>(args)) }
     case 'listar_setores':
       return { result: await listarSetores() }
     case 'buscar_orcamentos':
-      return { result: await buscarOrcamentos(args as any) }
+      return { result: await buscarOrcamentos(toolArgs<Parameters<typeof buscarOrcamentos>[0]>(args)) }
     case 'buscar_pedidos':
-      return { result: await buscarPedidos(args as any) }
+      return { result: await buscarPedidos(toolArgs<Parameters<typeof buscarPedidos>[0]>(args)) }
     case 'verificar_pendencias':
       return { result: await verificarPendencias() }
     case 'criar_tarefa':
-      return { result: await criarTarefa(args as any, userId) }
+      return { result: await criarTarefa(toolArgs<Parameters<typeof criarTarefa>[0]>(args), userId) }
     case 'propor_orcamento': {
-      const { pendingAction, summaryForModel } = await proporOrcamento(args as any, userId)
+      const { pendingAction, summaryForModel } = await proporOrcamento(toolArgs<Parameters<typeof proporOrcamento>[0]>(args), userId)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_orcamento': {
-      const { pendingAction, summaryForModel } = await proporEdicaoOrcamento(args as any, userId)
+      const { pendingAction, summaryForModel } = await proporEdicaoOrcamento(toolArgs<Parameters<typeof proporEdicaoOrcamento>[0]>(args), userId)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_pedido': {
-      const { pendingAction, summaryForModel } = await proporPedido(args as any, userId)
+      const { pendingAction, summaryForModel } = await proporPedido(toolArgs<Parameters<typeof proporPedido>[0]>(args), userId)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_pedido': {
-      const { pendingAction, summaryForModel } = await proporEdicaoPedido(args as any, userId)
+      const { pendingAction, summaryForModel } = await proporEdicaoPedido(toolArgs<Parameters<typeof proporEdicaoPedido>[0]>(args), userId)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_cliente': {
-      const { pendingAction, summaryForModel } = await proporCliente(args as any, userId)
+      const { pendingAction, summaryForModel } = await proporCliente(toolArgs<Parameters<typeof proporCliente>[0]>(args), userId)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_cliente': {
-      const { pendingAction, summaryForModel } = await proporEdicaoCliente(args as any, userId)
+      const { pendingAction, summaryForModel } = await proporEdicaoCliente(toolArgs<Parameters<typeof proporEdicaoCliente>[0]>(args), userId)
       return { result: summaryForModel, pendingAction }
     }
     default:

@@ -16,6 +16,8 @@ export interface ComboboxOption<T extends string> {
 export function Combobox<T extends string>({
   options,
   value,
+  inputValue,
+  onInputValueChange,
   onSelect,
   placeholder = 'Buscar…',
   emptyMessage = 'Nada encontrado.',
@@ -23,6 +25,8 @@ export function Combobox<T extends string>({
 }: {
   options: ComboboxOption<T>[]
   value?: T
+  inputValue?: string
+  onInputValueChange?: (value: string) => void
   onSelect: (value: T) => void
   placeholder?: string
   emptyMessage?: string
@@ -33,6 +37,7 @@ export function Combobox<T extends string>({
   const [activeIndex, setActiveIndex] = useState(0)
   const anchorRef = useRef<HTMLDivElement>(null)
   const selected = options.find((o) => o.value === value)
+  const displayedValue = open ? (inputValue ?? query) : (selected?.label ?? inputValue ?? '')
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -61,9 +66,10 @@ export function Combobox<T extends string>({
         <div ref={anchorRef} className={cn('relative', className)}>
           <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <input
-            value={open ? query : (selected?.label ?? '')}
             onChange={(e) => {
-              setQuery(e.target.value)
+              const nextValue = e.target.value
+              setQuery(nextValue)
+              onInputValueChange?.(nextValue)
               setActiveIndex(0)
               if (!open) setOpen(true)
             }}
@@ -93,6 +99,7 @@ export function Combobox<T extends string>({
                 e.stopPropagation()
               }
             }}
+            value={displayedValue}
             placeholder={placeholder}
             role="combobox"
             aria-expanded={open}
