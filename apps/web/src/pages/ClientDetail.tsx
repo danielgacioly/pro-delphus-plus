@@ -26,7 +26,7 @@ import {
   Th,
   Tr,
 } from '../components/ui'
-import { IconGlobe, IconMail, IconPhone, IconPin, IconPlus, IconQuote } from '../components/icons'
+import { IconGlobe, IconMail, IconPencil, IconPhone, IconPin, IconPlus, IconQuote } from '../components/icons'
 
 interface ClientOrderRow {
   id: string
@@ -52,7 +52,8 @@ async function fetchClient(id: string) {
 const currencySymbol: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  // Sem o ano por extenso: na coluna estreita a data quebrava em três linhas.
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
 function ContactLine({ icon, children }: { icon: ReactNode; children: ReactNode }) {
@@ -155,11 +156,6 @@ export function ClientDetail() {
           {client.institution ? ` · ${client.institution}` : ''}
         </>
       }
-      actions={
-        <Button size="md" onClick={() => setEditing(true)}>
-          Editar
-        </Button>
-      }
     >
 
       {!client.active && (
@@ -170,9 +166,16 @@ export function ClientDetail() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-1">
-          <p className="text-[12px] font-medium text-neutral-600">Contato</p>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+        <Card className="p-5 xl:col-span-1">
+          {/* Editar fica junto dos dados que edita, e não solto no topo. */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[12px] font-medium text-neutral-600">Contato</p>
+            <Button size="sm" onClick={() => setEditing(true)}>
+              <IconPencil className="h-3.5 w-3.5" />
+              Editar
+            </Button>
+          </div>
           <div className="mt-3 space-y-2.5">
             {client.email ? (
               <ContactLine icon={<IconMail className="h-4 w-4" />}>
@@ -214,7 +217,7 @@ export function ClientDetail() {
           )}
         </Card>
 
-        <div className="lg:col-span-2">
+        <div className="min-w-0 xl:col-span-3">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               { label: 'Orçamentos', value: client.stats.quoteCount },
@@ -264,9 +267,9 @@ export function ClientDetail() {
                         <Td>
                           <span className="font-medium text-ink-900">{quote.quoteNumber}</span>
                         </Td>
-                        <Td className="text-neutral-600">{formatDate(quote.createdAt)}</Td>
+                        <Td className="whitespace-nowrap text-neutral-600">{formatDate(quote.createdAt)}</Td>
                         <Td className="text-neutral-600">{quote.items.length}</Td>
-                        <Td align="right" className="tabular font-medium text-ink-900">
+                        <Td align="right" className="tabular whitespace-nowrap font-medium text-ink-900">
                           {currencySymbol[quote.currency] ?? ''} {formatAmount(quote.total)}
                         </Td>
                         <Td className="text-neutral-600">{quote.createdBy.name}</Td>
@@ -304,8 +307,8 @@ export function ClientDetail() {
                           <span className="font-medium text-ink-900">#{formatOrderNumber(order.orderNumber)}</span>
                         </Td>
                         <Td className="text-neutral-600">{order.quoteNumber}</Td>
-                        <Td className="text-neutral-600">{formatDate(order.createdAt)}</Td>
-                        <Td align="right" className="tabular font-medium text-ink-900">
+                        <Td className="whitespace-nowrap text-neutral-600">{formatDate(order.createdAt)}</Td>
+                        <Td align="right" className="tabular whitespace-nowrap font-medium text-ink-900">
                           {currencySymbol[order.currency] ?? ''} {formatAmount(order.total)}
                         </Td>
                         <Td>

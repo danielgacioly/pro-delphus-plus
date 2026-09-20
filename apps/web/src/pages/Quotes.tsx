@@ -26,7 +26,7 @@ import {
   Toolbar,
   Tr,
 } from '../components/ui'
-import { IconPlus, IconQuote, IconTrash } from '../components/icons'
+import { IconPlus, IconQuote, IconPencil, IconTrash } from '../components/icons'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -207,9 +207,10 @@ export function Quotes() {
                         <Link
                           to={`/orcamentos/${q.id}/editar`}
                           title="Editar orçamento"
-                          className={buttonClasses({ size: 'sm' })}
+                          aria-label={`Editar orçamento ${q.quoteNumber}`}
+                          className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'px-2 text-neutral-600 hover:text-ink-900' })}
                         >
-                          Editar
+                          <IconPencil className="h-3.5 w-3.5" />
                         </Link>
                         {isAdmin && (
                           <Button

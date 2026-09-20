@@ -40,7 +40,17 @@ export function productFormToPayload(form: ProductFormState) {
   }
 }
 
-const spanClass = { 1: undefined, 2: 'col-span-2', 3: 'col-span-3', 4: 'col-span-4' } as const
+// Os campos largos acompanham a grade: numa coluna só eles não "esticam"
+// para 3 ou 4 trilhas inexistentes, que era o que quebrava o layout quando a
+// barra lateral estava aberta.
+const spanClass = {
+  1: undefined,
+  2: 'sm:col-span-2',
+  3: 'sm:col-span-2 xl:col-span-3',
+  4: 'sm:col-span-2 xl:col-span-4',
+} as const
+
+const fieldGrid = 'grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-4'
 
 export function ProductFieldSet({
   value,
@@ -94,7 +104,7 @@ export function ProductFieldSet({
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+      <div className={fieldGrid}>
         <Field label="SKU">
           <Input value={value.sku} onChange={(e) => onChange({ sku: e.target.value })} />
         </Field>
@@ -194,7 +204,7 @@ export function ProductFieldSet({
       </div>
 
       <FormSection title="Descrição (opcional)">
-        <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+        <div className={fieldGrid}>
           <Field label="Em inglês" className={spanClass[2]}>
             <Input value={value.description} onChange={(e) => onChange({ description: e.target.value })} />
           </Field>
@@ -206,7 +216,7 @@ export function ProductFieldSet({
 
       {value.kind === 'COMPLETE_MODEL' && (
         <FormSection title="Componentes do kit (opcional)">
-          <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+          <div className={fieldGrid}>
             <Field label="Em inglês" className={spanClass[2]}>
               <Input
                 placeholder="ex: Components: 1 MMT-0, 1 MMT-1"
@@ -225,7 +235,7 @@ export function ProductFieldSet({
         title="Preços"
         description="Até quatro moedas independentes — um produto sem preço numa delas simplesmente não pode ser orçado nela, mas continua visível no catálogo."
       >
-        <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+        <div className={fieldGrid}>
           <Field label="Preço final BRL">
             <Input type="number" step="0.01" value={value.priceBRL} onChange={(e) => onChange({ priceBRL: e.target.value })} />
           </Field>

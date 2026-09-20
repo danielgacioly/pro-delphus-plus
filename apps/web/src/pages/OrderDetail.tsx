@@ -29,7 +29,7 @@ import {
   Th,
   Tr,
 } from '../components/ui'
-import { IconQuote } from '../components/icons'
+import { IconPencil, IconQuote } from '../components/icons'
 
 async function fetchOrder(id: string) {
   const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
@@ -336,11 +336,6 @@ export function OrderDetail() {
       back={{ to: '/pedidos', label: 'Pedidos' }}
       title={`Pedido #${formatOrderNumber(order.orderNumber)}`}
       description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
-      actions={
-        <Button size="md" variant={editing ? 'secondary' : 'primary'} onClick={editing ? () => setEditing(false) : startEdit}>
-          {editing ? 'Cancelar' : 'Editar'}
-        </Button>
-      }
     >
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -420,7 +415,12 @@ export function OrderDetail() {
                 updateOrder.mutate()
               }}
             >
-              <h2 className="text-heading mb-4 text-ink-900">Editar pedido</h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-heading text-ink-900">Editar pedido</h2>
+                <Button type="button" size="sm" onClick={() => setEditing(false)}>
+                  Cancelar
+                </Button>
+              </div>
 
               <div className="space-y-4">
                 <BuyerFields
@@ -548,7 +548,14 @@ export function OrderDetail() {
             </form>
           ) : (
             <>
-              <h2 className="text-heading text-ink-900">Dados do pedido</h2>
+              {/* A ação mora no card que ela edita, não no canto da página. */}
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-heading text-ink-900">Dados do pedido</h2>
+                <Button size="sm" onClick={startEdit}>
+                  <IconPencil className="h-3.5 w-3.5" />
+                  Editar
+                </Button>
+              </div>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
                 <ReadField label="Pedido de compra" value={order.purchaseOrder ?? order.quoteNumber} />
                 <ReadField label="E-mail do comprador" value={order.orderedByEmail} />

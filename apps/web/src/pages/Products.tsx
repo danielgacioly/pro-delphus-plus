@@ -22,7 +22,7 @@ import {
   Skeleton,
   Toolbar,
 } from '../components/ui'
-import { IconBox, IconChevronDown, IconPlus } from '../components/icons'
+import { IconBox, IconChevronDown, IconPencil, IconPlus, IconTrash } from '../components/icons'
 import {
   ProductFieldSet,
   emptyProductForm,
@@ -360,16 +360,25 @@ export function Products() {
                 <div className="flex shrink-0 items-center gap-1.5">
                   {isAdmin && (
                     <>
-                      <Button size="sm" onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}>
-                        {isEditing ? 'Cancelar' : 'Editar'}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={isEditing ? 'Cancelar edição' : 'Editar produto'}
+                        aria-label={isEditing ? 'Cancelar edição' : `Editar ${product.name}`}
+                        onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}
+                        className={cn('px-2 text-neutral-600 hover:text-ink-900', isEditing && 'bg-black/[0.06] text-ink-900')}
+                      >
+                        <IconPencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
+                        title="Excluir produto"
+                        aria-label={`Excluir ${product.name}`}
                         onClick={() => setDeletingProduct(product)}
-                        className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
+                        className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                       >
-                        Excluir
+                        <IconTrash className="h-3.5 w-3.5" />
                       </Button>
                     </>
                   )}
@@ -398,13 +407,14 @@ export function Products() {
                   }}
                   className="animate-fade-in border-t border-neutral-200/70 p-5"
                 >
-                  <div className="grid grid-cols-4 gap-x-4 gap-y-5">
-                    <ProductFieldSet
-                      value={editForm}
-                      onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))}
-                      sectors={sectors ?? []}
-                    />
-                  </div>
+                  {/* Sem grade aqui: o ProductFieldSet traz as próprias. Envolver
+                      tudo numa grid-cols-4 fazia cada bloco interno virar um item
+                      espremido em 1/4 da largura. */}
+                  <ProductFieldSet
+                    value={editForm}
+                    onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))}
+                    sectors={sectors ?? []}
+                  />
                   <div className="mt-5 flex justify-end gap-2">
                     <Button type="button" onClick={() => setEditingId(null)}>
                       Cancelar
