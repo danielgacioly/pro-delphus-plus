@@ -23,7 +23,7 @@ import {
   Tr,
   buttonClasses,
 } from '../components/ui'
-import { IconPlus, IconTruck } from '../components/icons'
+import { IconAlert, IconPlus, IconTruck } from '../components/icons'
 
 async function fetchOrders() {
   const { data } = await api.get<{ orders: OrderDTO[] }>('/orders')
@@ -180,13 +180,28 @@ export function Orders() {
               filteredOrders.map((o) => (
                 <Tr key={o.id} interactive onClick={() => navigate(`/pedidos/${o.id}`)}>
                   <Td>
-                    {/* Continua sendo link para permitir abrir em nova aba (cmd/ctrl+clique). */}
-                    <Link
-                      to={`/pedidos/${o.id}`}
-                      className="tabular font-semibold text-ink-900 transition-colors hover:text-brand-600"
-                    >
-                      #{formatOrderNumber(o.orderNumber)}
-                    </Link>
+                    <span className="inline-flex items-center gap-1.5">
+                      {/* Continua sendo link para permitir abrir em nova aba (cmd/ctrl+clique). */}
+                      <Link
+                        to={`/pedidos/${o.id}`}
+                        className="tabular font-semibold text-ink-900 transition-colors hover:text-brand-600"
+                      >
+                        #{formatOrderNumber(o.orderNumber)}
+                      </Link>
+                      {/* O mesmo aviso que o detalhe do pedido mostra por extenso,
+                          reduzido ao sinal: quem edita um orçamento já virado
+                          pedido precisa enxergar daqui qual linha ficou para trás. */}
+                      {o.documentsStale && (
+                        <span
+                          role="img"
+                          aria-label="Documentos desatualizados"
+                          title="O orçamento foi editado depois destes documentos — abra o pedido e salve para regerá-los."
+                          className="flex text-amber-600"
+                        >
+                          <IconAlert className="h-3.5 w-3.5 shrink-0" />
+                        </span>
+                      )}
+                    </span>
                   </Td>
                   <Td className="max-w-88">
                     <p className="truncate font-medium text-ink-900">{o.quote.clientName}</p>

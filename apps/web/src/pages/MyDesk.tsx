@@ -237,6 +237,21 @@ export function MyDesk() {
     },
   })
 
+  // Abrir um formulário de criação é reversível: Esc ou Cancelar fecham e
+  // descartam o rascunho. Sem isso o formulário ficava aberto esperando um
+  // envio que ninguém queria mais fazer.
+  function cancelTaskForm() {
+    setShowForm(false)
+    setDraft(emptyDraft)
+    setDraftTags([])
+    setTagDraft('')
+  }
+
+  function cancelColumnForm() {
+    setAddingColumn(false)
+    setNewColumnName('')
+  }
+
   const createColumn = useMutation({
     mutationFn: async (name: string) => api.post('/tasks/board-columns', { name }),
     onSuccess: () => {
@@ -405,6 +420,9 @@ export function MyDesk() {
             e.preventDefault()
             if (newColumnName.trim()) createColumn.mutate(newColumnName.trim())
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') cancelColumnForm()
+          }}
           className="animate-fade-in mb-4 flex items-center gap-2 rounded-2xl border border-black/[0.06] bg-white p-3"
         >
           <Input
@@ -412,11 +430,11 @@ export function MyDesk() {
             placeholder="Nome do quadro"
             value={newColumnName}
             onChange={(e) => setNewColumnName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setAddingColumn(false)
-            }}
             className="flex-1"
           />
+          <Button type="button" onClick={cancelColumnForm}>
+            Cancelar
+          </Button>
           <Button type="submit" variant="primary" disabled={createColumn.isPending}>
             Criar quadro
           </Button>
@@ -428,6 +446,9 @@ export function MyDesk() {
           onSubmit={(e) => {
             e.preventDefault()
             createTask.mutate()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') cancelTaskForm()
           }}
           className="animate-fade-in mb-5 rounded-2xl border border-black/[0.06] bg-white p-5"
         >
@@ -546,7 +567,10 @@ export function MyDesk() {
             </Field>
           </div>
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" onClick={cancelTaskForm}>
+              Cancelar
+            </Button>
             <Button type="submit" variant="primary" disabled={createTask.isPending}>
               {createTask.isPending ? 'Criando…' : 'Criar tarefa'}
             </Button>

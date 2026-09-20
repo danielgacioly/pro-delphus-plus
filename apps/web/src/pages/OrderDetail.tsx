@@ -23,7 +23,7 @@ import {
   Th,
   Tr,
 } from '../components/ui'
-import { IconDownload, IconPencil, IconQuote } from '../components/icons'
+import { IconDownload, IconPencil, IconQuote, IconTrash } from '../components/icons'
 
 async function fetchOrder(id: string) {
   const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
@@ -318,22 +318,37 @@ export function OrderDetail() {
         </Card>
 
         <Card className="p-5">
-          {/* A ação mora no card que ela edita, não no canto da página. Editar
-              abre a mesma tela de criar pedido — ver NewOrder. */}
+          {/* As ações moram no card que representa o pedido, não soltas no
+              canto da página — lápis e lixeira lado a lado, como nas linhas de
+              Orçamentos e Produtos. Editar abre a mesma tela de criar pedido. */}
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-heading text-ink-900">Dados do pedido</h2>
-            <Link
-              to={`/pedidos/${order.id}/editar`}
-              title="Editar pedido"
-              aria-label="Editar pedido"
-              className={buttonClasses({
-                variant: 'ghost',
-                size: 'sm',
-                className: 'px-2 text-neutral-600 hover:text-ink-900',
-              })}
-            >
-              <IconPencil className="h-3.5 w-3.5" />
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                to={`/pedidos/${order.id}/editar`}
+                title="Editar pedido"
+                aria-label="Editar pedido"
+                className={buttonClasses({
+                  variant: 'ghost',
+                  size: 'sm',
+                  className: 'px-2 text-neutral-600 hover:text-ink-900',
+                })}
+              >
+                <IconPencil className="h-3.5 w-3.5" />
+              </Link>
+              {user?.role === 'ADMIN' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Excluir pedido"
+                  aria-label="Excluir pedido"
+                  onClick={() => setDeleting(true)}
+                  className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
+                >
+                  <IconTrash className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
             <ReadField label="Pedido de compra" value={order.purchaseOrder ?? order.quoteNumber} />
@@ -423,14 +438,6 @@ export function OrderDetail() {
           </Table>
         </TableShell>
       </Section>
-
-      {user?.role === 'ADMIN' && (
-        <div className="mt-8 flex justify-end">
-          <Button variant="ghost" className="text-brand-600" onClick={() => setDeleting(true)}>
-            Excluir pedido
-          </Button>
-        </div>
-      )}
 
       {deleting && (
         <ConfirmDeleteModal
