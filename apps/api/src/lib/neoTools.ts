@@ -7,6 +7,17 @@ import { ensureColumns } from '../routes/tasks.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
 
+/**
+ * O catálogo separa o que é um simulador inteiro do que é peça de reposição.
+ * O enum do banco não diz isso a quem lê a resposta, então a ferramenta
+ * entrega o rótulo que o site usa — o modelo não precisa adivinhar o que
+ * COMPLETE_MODEL significa nem inventar tradução.
+ */
+const PRODUCT_KIND_LABEL: Record<string, string> = {
+  COMPLETE_MODEL: 'modelo completo',
+  COMPONENT: 'componente (peça)',
+}
+
 function productSummary(p: {
   id: string
   sku: string
@@ -22,7 +33,7 @@ function productSummary(p: {
     id: p.id,
     sku: p.sku,
     name: p.name,
-    kind: p.kind,
+    tipo: PRODUCT_KIND_LABEL[p.kind] ?? p.kind,
     sectors: p.sectors,
     priceBRL: p.priceBRL?.toString() ?? null,
     priceUSD: p.priceUSD?.toString() ?? null,
@@ -71,6 +82,7 @@ type PriceCurrency = keyof typeof PRICE_COLUMN
 
 interface BuscarProdutosArgs {
   setores?: string[]
+  tipo?: 'modelo_completo' | 'componente'
   texto?: string
   moeda?: PriceCurrency
   ordenar?: 'preco_desc' | 'preco_asc' | 'nome'
@@ -80,7 +92,7 @@ interface BuscarProdutosArgs {
 }
 
 export async function buscarProdutos(args: BuscarProdutosArgs) {
-  const { texto, ordenar = 'nome', precoMin, precoMax } = args
+  const { texto, tipo, ordenar = 'nome', precoMin, precoMax } = args
   const moeda: PriceCurrency = args.moeda ?? 'BRL'
   const coluna = PRICE_COLUMN[moeda]
   const porPreco = ordenar !== 'nome' || precoMin !== undefined || precoMax !== undefined
@@ -90,10 +102,15 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
     return { produtos: [], aviso: `Nenhum destes setores existe: ${notFound.join(', ')}. Use os nomes de listar_setores.` }
   }
   const limite = Math.min(Math.max(args.limite ?? PRODUCT_LIMIT, 1), PRODUCT_LIMIT)
+  const kind =
+    tipo === 'modelo_completo' ? ('COMPLETE_MODEL' as const) : tipo === 'componente' ? ('COMPONENT' as const) : undefined
   const where = {
     active: true,
     AND: [
       setores.length > 0 ? { sectors: { hasSome: setores } } : {},
+      // Filtrar aqui (e não depois, na lista) é o que faz "quantos modelos
+      // completos existem" bater: `total` conta o mesmo recorte.
+      kind ? { kind } : {},
       texto
         ? {
             OR: [

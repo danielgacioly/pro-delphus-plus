@@ -90,11 +90,17 @@ const readTools: FunctionDeclaration[] = [
   {
     name: 'buscar_produtos',
     description:
-      'Busca produtos ativos do catálogo por setor(es) e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo, setores e todos os preços. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total".',
+      'Busca produtos ativos do catálogo por setor(es), tipo e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo ("modelo completo" ou "componente (peça)"), setores e todos os preços. Pra "quais são os modelos completos" ou "quantos componentes existem", use o parâmetro tipo — sem ele a lista e o total misturam os dois. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total".',
     parameters: {
       type: Type.OBJECT,
       properties: {
         setores: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Nomes de setor, pode incluir vários (inclusive correlatos)' },
+        tipo: {
+          type: Type.STRING,
+          enum: ['modelo_completo', 'componente'],
+          description:
+            'modelo_completo = o simulador inteiro, que é o que se vende como produto principal; componente = peça isolada (reposição/parte de um modelo). Sem este filtro vêm os dois misturados.',
+        },
         texto: { type: Type.STRING, description: 'Texto livre pra buscar no nome/descrição do produto' },
         moeda: { type: Type.STRING, enum: ['BRL', 'USD', 'EUR', 'USD_DISTRIBUIDOR'], description: 'Moeda usada pra ordenar/filtrar preço (padrão BRL)' },
         ordenar: { type: Type.STRING, enum: ['nome', 'preco_desc', 'preco_asc'], description: 'preco_desc = mais caro primeiro; preco_asc = mais barato primeiro' },
