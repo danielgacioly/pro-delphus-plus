@@ -40,7 +40,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+      # Precisa rodar dentro de apps/api: o prisma.config.ts (que carrega o
+      # .env e define datasource.url) só é descoberto a partir do cwd.
+      - run: npm run prisma:deploy --workspace=apps/api
       # generated/ é gitignored: sem gerar o client aqui, o build da API não compila.
       - run: npm run prisma:generate --workspace=apps/api
       - run: npm run build
@@ -52,4 +54,5 @@ jobs:
       - run: npm run test:integration
       - name: API log
         if: failure()
-        run: cat /tmp/prodelphus-api.log
+        # Pode não existir se a falha foi antes de subir a API.
+        run: cat /tmp/prodelphus-api.log || true
