@@ -333,8 +333,11 @@ export function Home() {
     const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     // Mês corrido contra o MESMO trecho do mês passado. Comparar cinco dias
     // com trinta faria todo dia 2 acusar uma queda de 90% que não existe.
+    // O teto é o início deste mês: sem ele, um mês passado mais curto deixa a
+    // janela invadir o atual (em 30/03 ela ia até 2 de março) e o registro de
+    // hoje entraria também na base de comparação.
     const elapsed = now.getTime() - start.getTime()
-    const previousEnd = previousStart.getTime() + elapsed
+    const previousEnd = Math.min(previousStart.getTime() + elapsed, start.getTime())
     const inThisMonth = (iso: string) => new Date(iso).getTime() >= start.getTime()
     const inPreviousWindow = (iso: string) => {
       const time = new Date(iso).getTime()
