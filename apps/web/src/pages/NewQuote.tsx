@@ -277,7 +277,6 @@ export function NewQuote() {
           ? 'Altera os dados do orçamento e regenera o PDF e o Excel automaticamente.'
           : 'Gere um orçamento automático em PDF ou Excel buscando produtos por nome ou SKU.'
       }
-      width="narrow"
     >
 
       <form
@@ -292,8 +291,12 @@ export function NewQuote() {
           </div>
         )}
 
-        <Card className="space-y-7 p-6">
-          <FormSection title="Documento">
+        {/* Duas colunas a partir de xl: o documento é montado à esquerda e o
+            que fecha o orçamento — valores, observações e a ação — acompanha a
+            rolagem à direita, em vez de esperar lá embaixo. */}
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <Card className="space-y-7 p-6">
+            <FormSection title="Documento">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Field label="Tipo" hint={exportScope === 'NATIONAL' ? 'Português, valores em Reais' : undefined}>
                 <Select
@@ -579,7 +582,11 @@ export function NewQuote() {
             </div>
           </FormSection>
 
-          <FormSection title="Valores e observações">
+          </Card>
+
+          <div className="xl:sticky xl:top-16">
+            <Card className="p-5">
+              <FormSection title="Valores e observações">
             <div className="flex flex-wrap gap-4">
               <Field label="Frete" hint="Em branco = a definir" className="w-36">
                 <Input
@@ -612,22 +619,24 @@ export function NewQuote() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </Field>
-          </FormSection>
-        </Card>
+              </FormSection>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" onClick={() => navigate('/orcamentos')}>
-            Cancelar
-          </Button>
-          <Button type="submit" variant="primary" size="lg" disabled={createQuote.isPending}>
-            {createQuote.isPending
-              ? isEditing
-                ? 'Salvando…'
-                : 'Gerando…'
-              : isEditing
-                ? 'Salvar orçamento'
-                : 'Gerar orçamento'}
-          </Button>
+              <div className="mt-6 flex flex-col gap-2 border-t border-black/[0.06] pt-5">
+                <Button type="submit" variant="primary" size="lg" disabled={createQuote.isPending}>
+                  {createQuote.isPending
+                    ? isEditing
+                      ? 'Salvando…'
+                      : 'Gerando…'
+                    : isEditing
+                      ? 'Salvar orçamento'
+                      : 'Gerar orçamento'}
+                </Button>
+                <Button type="button" onClick={() => navigate('/orcamentos')}>
+                  Cancelar
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
       </form>
 

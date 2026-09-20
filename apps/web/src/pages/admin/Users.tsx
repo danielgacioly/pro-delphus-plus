@@ -260,7 +260,7 @@ export function AdminUsers() {
                 <Th>E-mail</Th>
                 <Th>Papel</Th>
                 <Th>Situação</Th>
-                <Th align="right">Ações</Th>
+                <Th>Ações</Th>
               </tr>
             </THead>
             <TBody>

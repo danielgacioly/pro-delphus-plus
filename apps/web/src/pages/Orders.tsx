@@ -161,7 +161,7 @@ export function Orders() {
               <Th>Criado por</Th>
               <Th align="right">Total</Th>
               <Th>Status</Th>
-              <Th align="right">Ações</Th>
+              <Th>Ações</Th>
             </tr>
           </THead>
           <TBody>
@@ -202,7 +202,7 @@ export function Orders() {
                   <Td>
                     <StatusToggle order={o} />
                   </Td>
-                  <Td className="text-right">
+                  <Td>
                     <Link
                       to={`/pedidos/novo?duplicateFrom=${o.id}`}
                       onClick={(e) => e.stopPropagation()}

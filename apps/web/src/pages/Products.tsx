@@ -6,13 +6,14 @@ import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
+import { Modal } from '../components/Modal'
+import { ProductForm } from '../components/ProductForm'
 import { DropZone } from '../components/DropZone'
 import { localize, localizeSector } from '../lib/catalogTranslation'
 import {
   Alert,
   Badge,
   Button,
-  ButtonLink,
   EmptyState,
   Input,
   Page,
@@ -82,6 +83,19 @@ export function Products() {
   const [sectorFilter, setSectorFilter] = useState('ALL')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  // Atalho do Início (/produtos?novo=1) abre o cadastro direto.
+  useEffect(() => {
+    if (searchParams.get('novo') === '1') {
+      setCreating(true)
+      setSearchParams((params) => {
+        params.delete('novo')
+        return params
+      }, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [deletingProduct, setDeletingProduct] = useState<ProductDTO | null>(null)
   const [customizationDraft, setCustomizationDraft] = useState({ name: '', options: '' })
 
@@ -272,10 +286,10 @@ export function Products() {
           className="ml-auto w-full sm:w-64"
         />
         {isAdmin && (
-          <ButtonLink to="/produtos/novo" variant="primary" size="md">
+          <Button variant="primary" size="md" onClick={() => setCreating(true)}>
             <IconPlus className="h-4 w-4" />
             Novo produto
-          </ButtonLink>
+          </Button>
         )}
       </Toolbar>
 
@@ -630,6 +644,23 @@ export function Products() {
           )
         })}
       </div>
+
+      {creating && (
+        <Modal onClose={() => setCreating(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-scale-in max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
+          >
+            <h2 className="text-title text-ink-900">Novo produto</h2>
+            <p className="mt-1 text-[13px] text-neutral-600">
+              Cadastrar aqui já adiciona o produto à tabela de preços.
+            </p>
+            <div className="mt-5">
+              <ProductForm onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {deletingProduct && (
         <ConfirmDeleteModal

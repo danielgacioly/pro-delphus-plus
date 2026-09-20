@@ -29,7 +29,7 @@ import {
   Th,
   Tr,
 } from '../components/ui'
-import { IconPencil, IconQuote } from '../components/icons'
+import { IconDownload, IconPencil, IconQuote } from '../components/icons'
 
 async function fetchOrder(id: string) {
   const { data } = await api.get<{ order: OrderDTO }>(`/orders/${id}`)
@@ -340,14 +340,7 @@ export function OrderDetail() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-heading text-ink-900">Documentos</h2>
-            {(order.invoicePdfUrl || order.packingListPdfUrl || order.packingListBoxPdfUrl || order.exportDocXlsxUrl) && (
-              <Button size="sm" variant="secondary" disabled={downloadingAll} onClick={downloadAllDocuments}>
-                {downloadingAll ? 'Baixando…' : 'Baixar tudo'}
-              </Button>
-            )}
-          </div>
+          <h2 className="text-heading text-ink-900">Documentos</h2>
 
           {order.documentsStale && (
             <div className="mt-4">
@@ -371,7 +364,9 @@ export function OrderDetail() {
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          {/* Baixar tudo fecha a própria lista que ele empacota, em vez de
+              flutuar no cabeçalho longe dos arquivos. */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             {order.invoicePdfUrl && <DocLink href={order.invoicePdfUrl}>Invoice</DocLink>}
             {order.packingListPdfUrl && <DocLink href={order.packingListPdfUrl}>Packing List</DocLink>}
             {order.packingListBoxPdfUrl && <DocLink href={order.packingListBoxPdfUrl}>Packing List Box</DocLink>}
@@ -379,6 +374,18 @@ export function OrderDetail() {
               <DocLink href={order.exportDocXlsxUrl} tone="ink">
                 Doc. de Exportação
               </DocLink>
+            )}
+            {(order.invoicePdfUrl || order.packingListPdfUrl || order.packingListBoxPdfUrl || order.exportDocXlsxUrl) && (
+              <Button
+                size="md"
+                variant="ghost"
+                disabled={downloadingAll}
+                onClick={downloadAllDocuments}
+                className="text-neutral-600 hover:text-ink-900"
+              >
+                <IconDownload className="h-3.5 w-3.5" />
+                {downloadingAll ? 'Baixando…' : 'Baixar tudo'}
+              </Button>
             )}
           </div>
 
@@ -551,9 +558,15 @@ export function OrderDetail() {
               {/* A ação mora no card que ela edita, não no canto da página. */}
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-heading text-ink-900">Dados do pedido</h2>
-                <Button size="sm" onClick={startEdit}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Editar pedido"
+                  aria-label="Editar pedido"
+                  onClick={startEdit}
+                  className="px-2 text-neutral-600 hover:text-ink-900"
+                >
                   <IconPencil className="h-3.5 w-3.5" />
-                  Editar
                 </Button>
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">

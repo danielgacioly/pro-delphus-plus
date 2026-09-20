@@ -187,7 +187,6 @@ export function NewOrder() {
           ? 'Selecione um orçamento já gerado para criar a Packing List Box.'
           : 'Selecione um orçamento já gerado para criar o Invoice, Packing List, Packing List Box e Documento de Exportação.'
       }
-      width="narrow"
     >
 
       {duplicateFrom && (
@@ -212,21 +211,13 @@ export function NewOrder() {
           createOrder.mutate()
         }}
       >
-        <Card className="space-y-7 p-6">
-          <FormSection title="Orçamento de origem">
-            <Field label="Orçamento" hint={currency ? `Moeda do orçamento: ${currency}` : undefined}>
-              <Select required value={form.quoteId} onChange={(e) => selectQuote(e.target.value)}>
-                <option value="">Selecione um orçamento…</option>
-                {quotes?.map((q) => (
-                  <option key={q.id} value={q.id}>
-                    {q.quoteNumber} — {q.clientName} — {q.currency} {formatAmount(q.total)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </FormSection>
-
-          <FormSection title="Comprador">
+        {/* O orçamento de origem manda no pedido inteiro — ele acompanha a
+            rolagem à direita, junto da ação, em vez de sumir no topo do
+            formulário. No celular volta a ser o primeiro bloco. */}
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="order-last xl:order-none">
+            <Card className="space-y-7 p-6">
+              <FormSection title="Comprador">
             <BuyerFields value={form} onChange={update} variant="create" />
           </FormSection>
 
@@ -309,16 +300,35 @@ export function NewOrder() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <InvoiceFields value={form} onChange={update} />
             </div>
-          </FormSection>
-        </Card>
+              </FormSection>
+            </Card>
+          </div>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" onClick={() => navigate('/pedidos')}>
-            Cancelar
-          </Button>
-          <Button type="submit" variant="primary" size="lg" disabled={createOrder.isPending}>
-            {createOrder.isPending ? 'Gerando documentos…' : 'Criar pedido e gerar documentos'}
-          </Button>
+          <div className="xl:sticky xl:top-16">
+            <Card className="p-5">
+              <FormSection title="Orçamento de origem">
+                <Field label="Orçamento" hint={currency ? `Moeda do orçamento: ${currency}` : undefined}>
+                  <Select required value={form.quoteId} onChange={(e) => selectQuote(e.target.value)}>
+                    <option value="">Selecione um orçamento…</option>
+                    {quotes?.map((q) => (
+                      <option key={q.id} value={q.id}>
+                        {q.quoteNumber} — {q.clientName} — {q.currency} {formatAmount(q.total)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </FormSection>
+
+              <div className="mt-6 flex flex-col gap-2 border-t border-black/[0.06] pt-5">
+                <Button type="submit" variant="primary" size="lg" disabled={createOrder.isPending}>
+                  {createOrder.isPending ? 'Gerando documentos…' : 'Criar pedido e gerar documentos'}
+                </Button>
+                <Button type="button" onClick={() => navigate('/pedidos')}>
+                  Cancelar
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
       </form>
     </Page>

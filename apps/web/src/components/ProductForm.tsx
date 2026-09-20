@@ -1,16 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import type { ProductDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
-import { DropZone } from '../components/DropZone'
-import { Alert, Button, Card, FormSection, Page } from '../components/ui'
-import {
-  ProductFieldSet,
-  emptyProductForm,
-  productFormToPayload,
-  type ProductFormState,
-} from '../components/ProductFieldSet'
+import { DropZone } from './DropZone'
+import { Alert, Button, FormSection } from './ui'
+import { ProductFieldSet, emptyProductForm, productFormToPayload, type ProductFormState } from './ProductFieldSet'
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: string[] }>('/products/sectors')
@@ -33,8 +27,8 @@ function FilePicker({
   hint: string
 }) {
   return (
-    <div className="col-span-4">
-      <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">{label}</label>
+    <div>
+      <label className="mb-1.5 block text-[13px] font-medium text-ink-800">{label}</label>
       <DropZone accept={accept} multiple onFiles={onAdd}>
         <p className="text-[12.5px] text-neutral-600">
           {hint} ou <span className="font-medium text-brand-600">clique para selecionar</span>
@@ -52,10 +46,12 @@ function FilePicker({
   )
 }
 
-export function NewProduct() {
-  const navigate = useNavigate()
+/**
+ * Cadastro de produto. Vive num modal (Produtos), como o de cliente — criar
+ * coisa nova não tira ninguém da lista onde ela vai aparecer.
+ */
+export function ProductForm({ onCreated, onCancel }: { onCreated: () => void; onCancel: () => void }) {
   const queryClient = useQueryClient()
-
   const [form, setForm] = useState<ProductFormState>(emptyProductForm)
   const [files, setFiles] = useState<File[]>([])
   const [brochureFiles, setBrochureFiles] = useState<File[]>([])
@@ -85,67 +81,55 @@ export function NewProduct() {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['products-price-table'] })
       queryClient.invalidateQueries({ queryKey: ['product-sectors'] })
-      navigate('/produtos')
+      onCreated()
     },
-    onError: (err: unknown) => {
-      setError(getErrorMessage(err, 'Não foi possível criar o produto.'))
-    },
+    onError: (err: unknown) => setError(getErrorMessage(err, 'Não foi possível criar o produto.')),
   })
 
   return (
-    <Page back={{ to: '/produtos', label: 'Produtos' }} title="Novo produto" description="Cadastrar aqui já adiciona o produto à tabela de preços." width="narrow">
-
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        createProduct.mutate()
+      }}
+    >
       {error && (
         <div className="mb-4">
           <Alert tone="error">{error}</Alert>
         </div>
       )}
 
-      <Card className="p-6">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            createProduct.mutate()
-          }}
-        >
-          <ProductFieldSet
-            value={form}
-            onChange={(patch) => setForm((s) => ({ ...s, ...patch }))}
-            sectors={sectors ?? []}
+      <ProductFieldSet value={form} onChange={(patch) => setForm((s) => ({ ...s, ...patch }))} sectors={sectors ?? []} />
+
+      <FormSection title="Arquivos (opcional)">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FilePicker
+            label="Mídias"
+            accept="image/*"
+            hint="Arraste imagens"
+            files={files}
+            onAdd={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+            onClear={() => setFiles([])}
           />
+          <FilePicker
+            label="Brochuras"
+            accept=".pdf,application/pdf"
+            hint="Arraste PDFs"
+            files={brochureFiles}
+            onAdd={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
+            onClear={() => setBrochureFiles([])}
+          />
+        </div>
+      </FormSection>
 
-          <FormSection title="Arquivos (opcional)">
-            <div className="grid grid-cols-4 gap-x-4 gap-y-5">
-              <FilePicker
-                label="Mídias"
-                accept="image/*"
-                hint="Arraste imagens"
-                files={files}
-                onAdd={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
-                onClear={() => setFiles([])}
-              />
-
-              <FilePicker
-                label="Brochuras"
-                accept=".pdf,application/pdf"
-                hint="Arraste PDFs"
-                files={brochureFiles}
-                onAdd={(newFiles) => setBrochureFiles((prev) => [...prev, ...newFiles])}
-                onClear={() => setBrochureFiles([])}
-              />
-            </div>
-          </FormSection>
-
-          <div className="mt-6 flex justify-end gap-2 border-t border-neutral-200/70 pt-5">
-            <Button type="button" onClick={() => navigate('/produtos')}>
-              Cancelar
-            </Button>
-            <Button type="submit" variant="primary" disabled={createProduct.isPending}>
-              {createProduct.isPending ? 'Salvando…' : 'Adicionar produto'}
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </Page>
+      <div className="mt-6 flex justify-end gap-2 border-t border-black/[0.06] pt-5">
+        <Button type="button" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" variant="primary" isLoading={createProduct.isPending}>
+          {createProduct.isPending ? 'Salvando…' : 'Adicionar produto'}
+        </Button>
+      </div>
+    </form>
   )
 }

@@ -32,7 +32,7 @@ const createActions: CreateAction[] = [
   { to: '/orcamentos/novo', title: 'Novo orçamento', description: 'Monte em PDF ou Excel a partir do catálogo.', icon: IconQuote },
   { to: '/pedidos/novo', title: 'Novo pedido', description: 'Gere invoice e documentos de exportação.', icon: IconTruck },
   { to: '/clientes?novo=1', title: 'Novo cliente', description: 'Cadastre contato, endereços e dados fiscais.', icon: IconContacts },
-  { to: '/produtos/novo', title: 'Novo produto', description: 'Adicione ao catálogo e à tabela de preços.', icon: IconBox, adminOnly: true },
+  { to: '/produtos?novo=1', title: 'Novo produto', description: 'Adicione ao catálogo e à tabela de preços.', icon: IconBox, adminOnly: true },
 ]
 
 const secondaryShortcuts: Shortcut[] = [

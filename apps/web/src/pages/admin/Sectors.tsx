@@ -22,7 +22,7 @@ import {
   Toolbar,
   Tr,
 } from '../../components/ui'
-import { IconLayers, IconPlus } from '../../components/icons'
+import { IconLayers, IconPencil, IconPlus, IconTrash } from '../../components/icons'
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: SectorDTO[] }>('/sectors')
@@ -128,7 +128,7 @@ export function AdminSectors() {
               {showEnColumn && <Th>Nome (inglês)</Th>}
               {showPtColumn && <Th>Nome (português)</Th>}
               <Th align="right">Produtos</Th>
-              <Th align="right">Ações</Th>
+              <Th>Ações</Th>
             </tr>
           </THead>
           <TBody>
@@ -186,17 +186,26 @@ export function AdminSectors() {
                   <Td className="tabular text-right text-neutral-600">{sector.productCount}</Td>
                   <Td className="text-right">
                     {editingId !== sector.id && (
-                      <div className="flex justify-end gap-1.5">
-                        <Button size="sm" onClick={() => startEdit(sector)}>
-                          Editar
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Editar setor"
+                          aria-label={`Editar ${sector.name}`}
+                          onClick={() => startEdit(sector)}
+                          className="px-2 text-neutral-600 hover:text-ink-900"
+                        >
+                          <IconPencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
+                          title="Excluir setor"
+                          aria-label={`Excluir ${sector.name}`}
                           onClick={() => setDeletingSector(sector)}
-                          className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
+                          className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                         >
-                          Excluir
+                          <IconTrash className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     )}

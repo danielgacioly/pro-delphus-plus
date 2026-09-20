@@ -156,8 +156,8 @@ export function Quotes() {
               <Th>Data</Th>
               <Th>Criado por</Th>
               <Th align="right">Total</Th>
-              <Th align="right">Arquivos</Th>
-              <Th align="right">Ações</Th>
+              <Th>Arquivos</Th>
+              <Th>Ações</Th>
             </tr>
           </THead>
           <TBody>
@@ -201,13 +201,13 @@ export function Quotes() {
                     <Td className="tabular whitespace-nowrap text-right font-semibold text-ink-900">
                       {formatAmount(q.total)}
                     </Td>
-                    <Td className="text-right">
+                    <Td>
                       <span className="inline-flex items-center gap-1">
                         {q.pdfUrl && <FileLink href={q.pdfUrl}>PDF</FileLink>}
                         {q.xlsxUrl && <FileLink href={q.xlsxUrl}>Excel</FileLink>}
                       </span>
                     </Td>
-                    <Td className="text-right">
+                    <Td>
                       <span className="inline-flex items-center gap-1">
                         <Link
                           to={`/orcamentos/${q.id}/editar`}

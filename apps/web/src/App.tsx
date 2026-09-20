@@ -9,7 +9,6 @@ import { MyDesk } from './pages/MyDesk'
 import { Neo } from './pages/Neo'
 import { PriceTable } from './pages/PriceTable'
 import { Products } from './pages/Products'
-import { NewProduct } from './pages/NewProduct'
 import { Clients } from './pages/Clients'
 import { ClientDetail } from './pages/ClientDetail'
 import { Quotes } from './pages/Quotes'
@@ -46,7 +45,6 @@ function App() {
           <Route path="/neo" element={<Neo />} />
 
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/produtos/novo" element={<NewProduct />} />
             <Route path="/admin/contas" element={<AdminUsers />} />
             <Route path="/admin/setores" element={<AdminSectors />} />
             <Route path="/admin/setores/novo" element={<NewSector />} />
