@@ -233,7 +233,10 @@ export function Stats() {
     <Page
       title="Métricas"
       description="Vendas por período, status dos pedidos e a eficiência do funil de orçamentos."
-      actions={
+    >
+      {/* Trocar de visão é navegação, não ação: encostado no título, como um
+          par de abas, em vez de solto no canto da barra. */}
+      <div className="mb-5">
         <SegmentedControl
           aria-label="Visão das métricas"
           value={view}
@@ -243,8 +246,7 @@ export function Stats() {
             { value: 'efficiency', label: 'Eficiência' },
           ]}
         />
-      }
-    >
+      </div>
       {children}
     </Page>
   )
