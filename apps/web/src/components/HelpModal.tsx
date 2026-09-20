@@ -25,7 +25,8 @@ const FAQ: FaqItem[] = [
   },
   {
     question: 'Posso editar um orçamento depois de gerado?',
-    answer: "Sim. Clique em 'Editar' na lista de Orçamentos — o PDF e o Excel são regenerados automaticamente.",
+    answer:
+      'Sim. Clique no lápis na lista de Orçamentos — o PDF e o Excel são regenerados automaticamente. O mesmo vale para pedidos, pelo lápis no detalhe do pedido.',
   },
   {
     question: 'O câmbio USD/BRL do pedido é automático?',

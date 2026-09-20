@@ -291,9 +291,10 @@ export function NewQuote() {
           </div>
         )}
 
-        {/* Duas colunas a partir de xl: o documento é montado à esquerda e o
-            que fecha o orçamento — valores, observações e a ação — acompanha a
-            rolagem à direita, em vez de esperar lá embaixo. */}
+        {/* Duas colunas a partir de xl, ancoradas: o documento é montado à
+            esquerda e o que fecha o orçamento — valores, observações e a ação —
+            fica à direita. A página rola inteira, sem uma coluna deslizando
+            sobre a outra. */}
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
           <Card className="space-y-7 p-6">
             <FormSection title="Documento">
@@ -584,7 +585,7 @@ export function NewQuote() {
 
           </Card>
 
-          <div className="xl:sticky xl:top-16">
+          <div>
             <Card className="p-5">
               <FormSection title="Valores e observações">
             <div className="flex flex-wrap gap-4">

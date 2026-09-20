@@ -1,13 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
-import { formatAmount, formatOrderNumber, type OrderDTO, type PrepaymentMethod } from '@prodelphusplus/shared'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { formatAmount, formatOrderNumber, type OrderDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
-import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
-import { AddressFields, BuyerFields, InvoiceFields, WeightFields } from '../components/OrderFormFields'
 import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import {
@@ -15,11 +12,8 @@ import {
   Button,
   buttonClasses,
   Card,
-  Field,
-  Input,
   Page,
   Section,
-  Select,
   Skeleton,
   TBody,
   THead,
@@ -133,72 +127,13 @@ export function OrderDetail() {
     enabled: !!id,
   })
 
-  const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [downloadingAll, setDownloadingAll] = useState(false)
-  const boxEditor = useBoxAssignmentEditor()
-  const [editForm, setEditForm] = useState<
-    Partial<{
-      purchaseOrder: string
-      orderedByEmail: string
-      shipDate: string
-      billToText: string
-      shipToText: string
-      shipToNote: string
-      netWeightKg: string
-      grossWeightKg: string
-      awbNumber: string
-      incoterms: string
-      shippingMethod: string
-      prepaymentBy: PrepaymentMethod
-      paypalFee: string
-      nfNumber: string
-      nfDate: string
-      exchangeRate: string
-    }>
-  >({})
-
-  function updateEditForm(patch: Partial<typeof editForm>) {
-    setEditForm((s) => ({ ...s, ...patch }))
-  }
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['order', id] })
     queryClient.invalidateQueries({ queryKey: ['orders'] })
   }
-
-  const updateOrder = useMutation({
-    mutationFn: async () => {
-      const { itemWeightsKg, packageCount, boxAssignments } = boxEditor.buildPayload()
-      const payload = {
-        purchaseOrder: editForm.purchaseOrder || undefined,
-        orderedByEmail: editForm.orderedByEmail || undefined,
-        shipDate: editForm.shipDate || undefined,
-        billToText: editForm.billToText || undefined,
-        shipToText: editForm.shipToText || undefined,
-        shipToNote: editForm.shipToNote || undefined,
-        netWeightKg: editForm.netWeightKg ? Number(editForm.netWeightKg) : undefined,
-        grossWeightKg: editForm.grossWeightKg ? Number(editForm.grossWeightKg) : undefined,
-        awbNumber: editForm.awbNumber || undefined,
-        incoterms: editForm.incoterms || undefined,
-        shippingMethod: editForm.shippingMethod || undefined,
-        prepaymentBy: editForm.prepaymentBy,
-        paypalFee: editForm.paypalFee ? Number(editForm.paypalFee) : undefined,
-        nfNumber: editForm.nfNumber || undefined,
-        nfDate: editForm.nfDate || undefined,
-        exchangeRate: editForm.exchangeRate ? Number(editForm.exchangeRate) : undefined,
-        itemWeightsKg,
-        packageCount,
-        boxAssignments,
-      }
-      await api.patch(`/orders/${id}`, payload)
-    },
-    onSuccess: () => {
-      invalidate()
-      setEditing(false)
-      toast.success('Pedido atualizado.')
-    },
-  })
 
   const uploadAwb = useMutation({
     mutationFn: async (file: File) => {
@@ -268,35 +203,6 @@ export function OrderDetail() {
     }
   }
 
-  function startEdit() {
-    if (!order) return
-    setEditForm({
-      purchaseOrder: order.purchaseOrder ?? '',
-      orderedByEmail: order.orderedByEmail,
-      shipDate: order.shipDate ? order.shipDate.slice(0, 10) : '',
-      billToText: order.billToText,
-      shipToText: order.shipToText,
-      shipToNote: order.shipToNote ?? '',
-      netWeightKg: order.netWeightKg ?? '',
-      grossWeightKg: order.grossWeightKg ?? '',
-      awbNumber: order.awbNumber ?? '',
-      incoterms: order.incoterms ?? '',
-      shippingMethod: order.shippingMethod ?? '',
-      prepaymentBy: order.prepaymentBy,
-      paypalFee: order.paypalFee ?? '',
-      nfNumber: order.nfNumber ?? '',
-      nfDate: order.nfDate ? order.nfDate.slice(0, 10) : '',
-      exchangeRate: order.exchangeRate ?? '',
-    })
-    boxEditor.loadExisting({
-      items: order.quote.items,
-      packageCount: order.packageCount,
-      itemWeightsKg: order.itemWeightsKg,
-      boxAssignments: order.boxAssignments,
-    })
-    setEditing(true)
-  }
-
   if (isLoading) {
     return (
       <Page title="Pedido">
@@ -347,15 +253,12 @@ export function OrderDetail() {
               <Alert
                 tone="warning"
                 action={
-                  !editing && (
-                    <button
-                      type="button"
-                      onClick={startEdit}
-                      className="text-[13px] font-medium underline underline-offset-2"
-                    >
-                      Editar pedido
-                    </button>
-                  )
+                  <Link
+                    to={`/pedidos/${order.id}/editar`}
+                    className="text-[13px] font-medium underline underline-offset-2"
+                  >
+                    Editar pedido
+                  </Link>
                 }
               >
                 O orçamento vinculado foi editado depois da última geração destes documentos — os arquivos abaixo podem
@@ -414,210 +317,68 @@ export function OrderDetail() {
           </div>
         </Card>
 
-        <Card className={editing ? 'p-5 lg:col-span-2' : 'p-5'}>
-          {editing ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                updateOrder.mutate()
-              }}
+        <Card className="p-5">
+          {/* A ação mora no card que ela edita, não no canto da página. Editar
+              abre a mesma tela de criar pedido — ver NewOrder. */}
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-heading text-ink-900">Dados do pedido</h2>
+            <Link
+              to={`/pedidos/${order.id}/editar`}
+              title="Editar pedido"
+              aria-label="Editar pedido"
+              className={buttonClasses({
+                variant: 'ghost',
+                size: 'sm',
+                className: 'px-2 text-neutral-600 hover:text-ink-900',
+              })}
             >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-heading text-ink-900">Editar pedido</h2>
-                <Button type="button" size="sm" onClick={() => setEditing(false)}>
-                  Cancelar
-                </Button>
-              </div>
+              <IconPencil className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+            <ReadField label="Pedido de compra" value={order.purchaseOrder ?? order.quoteNumber} />
+            <ReadField label="E-mail do comprador" value={order.orderedByEmail} />
+            <ReadField
+              label="Data de expedição"
+              value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null}
+            />
+            <ReadField label="Data do invoice" value={new Date(order.invoiceDate).toLocaleDateString('pt-BR')} />
+            <ReadField label="Nº de pacotes" value={order.numberOfPackages} />
+            <ReadField label="Peso líquido" value={order.netWeightKg ? `${order.netWeightKg} KG` : null} />
+            <ReadField label="Peso bruto" value={order.grossWeightKg ? `${order.grossWeightKg} KG` : null} />
+            {isNational ? (
+              <ReadField label="Via de envio" value={order.shippingMethod} />
+            ) : (
+              <>
+                <ReadField label="Incoterms" value={order.incoterms} />
+                <ReadField label="AWB #" value={order.awbNumber} />
+              </>
+            )}
+            <ReadField
+              label="Forma de pagamento"
+              value={
+                order.prepaymentBy === 'PAYPAL'
+                  ? `PayPal (taxa ${currency} ${formatAmount(order.paypalFee ?? 0)})`
+                  : order.prepaymentBy === 'PIX'
+                    ? 'Pix'
+                    : 'Transferência bancária'
+              }
+            />
+            <ReadField label="Número da NF" value={order.nfNumber} />
+            <ReadField
+              label="Emissão da NF"
+              value={order.nfDate ? new Date(order.nfDate).toLocaleDateString('pt-BR') : null}
+            />
+            {!isNational && <ReadField label={`Câmbio ${currency}/BRL`} value={order.exchangeRate} />}
+            <ReadField label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
+            <ReadField label="Total do pedido (Invoice)" value={`${currency} ${formatAmount(invoiceTotal)}`} />
+          </dl>
 
-              <div className="space-y-4">
-                <BuyerFields
-                  value={{
-                    purchaseOrder: editForm.purchaseOrder ?? '',
-                    orderedByEmail: editForm.orderedByEmail ?? '',
-                    shipDate: editForm.shipDate ?? '',
-                  }}
-                  onChange={updateEditForm}
-                  variant="edit"
-                />
-
-                <AddressFields
-                  value={{
-                    billToText: editForm.billToText ?? '',
-                    shipToText: editForm.shipToText ?? '',
-                    shipToNote: editForm.shipToNote ?? '',
-                  }}
-                  onChange={updateEditForm}
-                  variant="edit"
-                />
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <WeightFields
-                    value={{
-                      netWeightKg: editForm.netWeightKg ?? '',
-                      grossWeightKg: editForm.grossWeightKg ?? '',
-                    }}
-                    onChange={updateEditForm}
-                  />
-                </div>
-
-                <BoxAssignmentFields editor={boxEditor} items={order.quote.items} />
-
-                <div className="grid grid-cols-2 gap-4">
-                  {isNational ? (
-                    <Field label="Via de envio" hint='ex: "PAC", "SEDEX", "Transportadora XPTO"'>
-                      <Input
-                        placeholder="ex: SEDEX"
-                        value={editForm.shippingMethod}
-                        onChange={(e) => setEditForm((s) => ({ ...s, shippingMethod: e.target.value }))}
-                      />
-                    </Field>
-                  ) : (
-                    <>
-                      <Field label="AWB #">
-                        <Input
-                          value={editForm.awbNumber}
-                          onChange={(e) => setEditForm((s) => ({ ...s, awbNumber: e.target.value }))}
-                        />
-                      </Field>
-                      <Field label="Incoterms">
-                        <Input
-                          value={editForm.incoterms}
-                          onChange={(e) => setEditForm((s) => ({ ...s, incoterms: e.target.value }))}
-                        />
-                      </Field>
-                    </>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Forma de pagamento">
-                    <Select
-                      value={editForm.prepaymentBy}
-                      onChange={(e) => setEditForm((s) => ({ ...s, prepaymentBy: e.target.value as PrepaymentMethod }))}
-                    >
-                      <option value="WIRE_TRANSFER">Transferência bancária</option>
-                      {isNational ? (
-                        <option value="PIX">Pix</option>
-                      ) : (
-                        <option value="PAYPAL">PayPal</option>
-                      )}
-                    </Select>
-                  </Field>
-                  {editForm.prepaymentBy === 'PAYPAL' && (
-                    <Field label="Taxa do PayPal">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        className="tabular"
-                        value={editForm.paypalFee}
-                        onChange={(e) => setEditForm((s) => ({ ...s, paypalFee: e.target.value }))}
-                      />
-                    </Field>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <InvoiceFields
-                    value={{ nfNumber: editForm.nfNumber ?? '', nfDate: editForm.nfDate ?? '' }}
-                    onChange={updateEditForm}
-                  />
-                </div>
-
-                {!isNational && (
-                  <Field label={`Câmbio ${currency}/BRL`}>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      required
-                      className="tabular"
-                      value={editForm.exchangeRate}
-                      onChange={(e) => setEditForm((s) => ({ ...s, exchangeRate: e.target.value }))}
-                    />
-                  </Field>
-                )}
-              </div>
-
-              <p className="mt-4 text-[12px] leading-relaxed text-neutral-500">
-                {isNational
-                  ? 'Salvar regenera automaticamente a Packing List Box.'
-                  : 'Salvar regenera automaticamente o Invoice, Packing List, Packing List Box e Documento de Exportação.'}
-              </p>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                disabled={updateOrder.isPending}
-                className="mt-4 w-full"
-              >
-                {updateOrder.isPending ? 'Salvando…' : 'Salvar e regenerar documentos'}
-              </Button>
-            </form>
-          ) : (
-            <>
-              {/* A ação mora no card que ela edita, não no canto da página. */}
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-heading text-ink-900">Dados do pedido</h2>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title="Editar pedido"
-                  aria-label="Editar pedido"
-                  onClick={startEdit}
-                  className="px-2 text-neutral-600 hover:text-ink-900"
-                >
-                  <IconPencil className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-                <ReadField label="Pedido de compra" value={order.purchaseOrder ?? order.quoteNumber} />
-                <ReadField label="E-mail do comprador" value={order.orderedByEmail} />
-                <ReadField
-                  label="Data de expedição"
-                  value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null}
-                />
-                <ReadField label="Data do invoice" value={new Date(order.invoiceDate).toLocaleDateString('pt-BR')} />
-                <ReadField label="Nº de pacotes" value={order.numberOfPackages} />
-                <ReadField label="Peso líquido" value={order.netWeightKg ? `${order.netWeightKg} KG` : null} />
-                <ReadField label="Peso bruto" value={order.grossWeightKg ? `${order.grossWeightKg} KG` : null} />
-                {isNational ? (
-                  <ReadField label="Via de envio" value={order.shippingMethod} />
-                ) : (
-                  <>
-                    <ReadField label="Incoterms" value={order.incoterms} />
-                    <ReadField label="AWB #" value={order.awbNumber} />
-                  </>
-                )}
-                <ReadField
-                  label="Forma de pagamento"
-                  value={
-                    order.prepaymentBy === 'PAYPAL'
-                      ? `PayPal (taxa ${currency} ${formatAmount(order.paypalFee ?? 0)})`
-                      : order.prepaymentBy === 'PIX'
-                        ? 'Pix'
-                        : 'Transferência bancária'
-                  }
-                />
-                <ReadField label="Número da NF" value={order.nfNumber} />
-                <ReadField
-                  label="Emissão da NF"
-                  value={order.nfDate ? new Date(order.nfDate).toLocaleDateString('pt-BR') : null}
-                />
-                {!isNational && <ReadField label={`Câmbio ${currency}/BRL`} value={order.exchangeRate} />}
-                <ReadField label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
-                <ReadField
-                  label="Total do pedido (Invoice)"
-                  value={`${currency} ${formatAmount(invoiceTotal)}`}
-                />
-              </dl>
-
-              <div className="mt-5 space-y-4 border-t border-neutral-200/70 pt-4">
-                <ReadField label="Faturamento (Bill To)" value={order.billToText} />
-                <ReadField label="Entrega (Ship To)" value={order.shipToText} />
-                {order.shipToNote && <ReadField label="Observação de entrega" value={order.shipToNote} />}
-              </div>
-            </>
-          )}
+          <div className="mt-5 space-y-4 border-t border-neutral-200/70 pt-4">
+            <ReadField label="Faturamento (Bill To)" value={order.billToText} />
+            <ReadField label="Entrega (Ship To)" value={order.shipToText} />
+            {order.shipToNote && <ReadField label="Observação de entrega" value={order.shipToNote} />}
+          </div>
         </Card>
       </div>
 

@@ -40,6 +40,7 @@ function App() {
           <Route path="/pedidos" element={<Orders />} />
           <Route path="/pedidos/novo" element={<NewOrder />} />
           <Route path="/pedidos/:id" element={<OrderDetail />} />
+          <Route path="/pedidos/:id/editar" element={<NewOrder />} />
           <Route path="/minha-conta" element={<Account />} />
           <Route path="/minha-pro-delphus" element={<MyDesk />} />
           <Route path="/neo" element={<Neo />} />
