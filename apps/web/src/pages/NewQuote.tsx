@@ -407,6 +407,7 @@ export function NewQuote() {
                         }}
                         placeholder="Buscar por nome ou SKU"
                         emptyMessage={item.query.trim() ? 'Nenhum produto encontrado.' : 'Comece a digitar para buscar.'}
+                        filterOptions={false}
                       />
                     </Field>
                     <Field label="Qtd." className="w-20 shrink-0">

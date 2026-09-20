@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -13,6 +13,7 @@ import { api, getErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/cn'
+import { useClickOutside } from '../lib/useClickOutside'
 import { toIsoFromDatetimeLocal } from '../lib/datetimeLocal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { EditTaskModal } from '../components/EditTaskModal'
@@ -178,6 +179,9 @@ export function MyDesk() {
 
   const [showForm, setShowForm] = useState(false)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const createMenuRef = useRef<HTMLDivElement>(null)
+  const closeCreateMenu = useCallback(() => setCreateMenuOpen(false), [])
+  useClickOutside(createMenuRef, closeCreateMenu)
   const [draft, setDraft] = useState(emptyDraft)
   const [tagDraft, setTagDraft] = useState('')
   const [draftTags, setDraftTags] = useState<string[]>([])
@@ -327,19 +331,28 @@ export function MyDesk() {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-heading text-ink-900">Mural de tarefas</h2>
-        <div className="relative">
+        <div
+          ref={createMenuRef}
+          className="relative"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setCreateMenuOpen(false)
+          }}
+        >
           <Button
-            size="sm"
+            size="md"
             variant="primary"
             onClick={() => setCreateMenuOpen((open) => !open)}
             aria-expanded={createMenuOpen}
             aria-haspopup="menu"
           >
-            <IconPlus className="h-3.5 w-3.5" />
+            <IconPlus className="h-4 w-4" />
             Criar
           </Button>
           {createMenuOpen && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-neutral-200/70 bg-white p-1.5 shadow-lg">
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-black/[0.08] bg-white p-1 shadow-lg"
+            >
               <button
                 type="button"
                 role="menuitem"

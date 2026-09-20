@@ -41,10 +41,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+      # generated/ é gitignored: sem gerar o client aqui, o build da API não compila.
+      - run: npm run prisma:generate --workspace=apps/api
       - run: npm run build
       - run: npm run lint --workspace=apps/web
       - name: Start API
-        run: npm run dev:api > /tmp/prodelphus-api.log 2>&1 &
+        run: npm start --workspace=apps/api > /tmp/prodelphus-api.log 2>&1 &
       - name: Wait for API
         run: node -e "const wait=async()=>{for(let i=0;i<30;i++){try{if((await fetch('http://localhost:4000/api/health')).ok)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)};wait()"
       - run: npm run test:integration
+      - name: API log
+        if: failure()
+        run: cat /tmp/prodelphus-api.log

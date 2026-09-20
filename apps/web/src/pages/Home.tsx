@@ -222,7 +222,7 @@ function SalesStat({
   )
 }
 
-/** Cotação do dia de uma moeda, com a variação e a linha dos últimos dias. */
+/** Cotação do dia de uma moeda, com a variação em relação ao fechamento anterior. */
 function RateRow({ pair, rate, pctChange }: ExchangeRate) {
   const label = PAIR_LABEL[pair] ?? { name: pair, symbol: '' }
   const up = pctChange >= 0

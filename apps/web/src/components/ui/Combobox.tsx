@@ -21,6 +21,7 @@ export function Combobox<T extends string>({
   onSelect,
   placeholder = 'Buscar…',
   emptyMessage = 'Nada encontrado.',
+  filterOptions = true,
   className,
 }: {
   options: ComboboxOption<T>[]
@@ -30,6 +31,12 @@ export function Combobox<T extends string>({
   onSelect: (value: T) => void
   placeholder?: string
   emptyMessage?: string
+  /**
+   * `false` quando a lista já vem filtrada de fora (busca no servidor). Sem
+   * isso o filtro local peneira de novo, só por `label`/`description`, e
+   * esconde resultado legítimo que casou por outro campo no servidor.
+   */
+  filterOptions?: boolean
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -40,12 +47,13 @@ export function Combobox<T extends string>({
   const displayedValue = open ? (inputValue ?? query) : (selected?.label ?? inputValue ?? '')
 
   const filtered = useMemo(() => {
+    if (!filterOptions) return options
     const q = query.trim().toLowerCase()
     if (!q) return options
     return options.filter(
       (o) => o.label.toLowerCase().includes(q) || o.description?.toLowerCase().includes(q),
     )
-  }, [options, query])
+  }, [filterOptions, options, query])
 
   // Recoloca activeIndex dentro dos limites se `filtered` encolher por fora
   // (ex.: options trocado após busca assíncrona), senão Enter fica sem alvo
