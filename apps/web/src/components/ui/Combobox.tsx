@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { cn } from '../../lib/cn'
+import { control } from './Form'
 import { IconSearch } from '../icons'
 
 export interface ComboboxOption<T extends string> {
@@ -43,6 +44,7 @@ export function Combobox<T extends string>({
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const anchorRef = useRef<HTMLDivElement>(null)
+  const listId = useId()
   const selected = options.find((o) => o.value === value)
   const displayedValue = open ? (inputValue ?? query) : (selected?.label ?? inputValue ?? '')
 
@@ -88,6 +90,10 @@ export function Combobox<T extends string>({
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault()
+                if (!open) {
+                  setOpen(true)
+                  return
+                }
                 setActiveIndex((i) => Math.min(i + 1, filtered.length - 1))
               } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
@@ -111,13 +117,12 @@ export function Combobox<T extends string>({
             placeholder={placeholder}
             role="combobox"
             aria-expanded={open}
+            aria-controls={listId}
+            aria-activedescendant={open && filtered[activeIndex] ? `${listId}-${activeIndex}` : undefined}
             autoComplete="off"
-            className={cn(
-              'h-10 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm text-ink-900 shadow-xs',
-              'placeholder:text-neutral-500',
-              'transition-[border-color,box-shadow] duration-150 ease-out hover:border-neutral-300',
-              'focus:border-brand-400 focus:outline-none focus:ring-[3px] focus:ring-brand-500/20 focus-visible:outline-none',
-            )}
+            // Mesma receita dos outros campos: um campo de busca que destoa
+            // em altura e borda denuncia o formulário inteiro.
+            className={cn(control, 'h-9 w-full pl-9 pr-3')}
           />
         </div>
       </PopoverPrimitive.Anchor>
@@ -139,10 +144,11 @@ export function Combobox<T extends string>({
           {filtered.length === 0 ? (
             <p className="px-3 py-6 text-center text-[13px] text-neutral-600">{emptyMessage}</p>
           ) : (
-            <ul role="listbox" className="max-h-64 overflow-y-auto">
+            <ul role="listbox" id={listId} className="max-h-64 overflow-y-auto">
               {filtered.map((option, i) => (
                 <li
                   key={option.value}
+                  id={`${listId}-${i}`}
                   role="option"
                   aria-selected={i === activeIndex}
                   onMouseEnter={() => setActiveIndex(i)}

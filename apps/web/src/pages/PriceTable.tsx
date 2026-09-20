@@ -6,8 +6,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { localize, localizeSector } from '../lib/catalogTranslation'
 import { useClickOutside } from '../lib/useClickOutside'
-import { cn } from '../lib/cn'
-import { Alert, Button, EmptyState, Page, SearchField, Skeleton, Toolbar } from '../components/ui'
+import { Alert, Button, EmptyState, Page, SearchField, Skeleton, Toolbar, buttonClasses } from '../components/ui'
 import { IconSliders } from '../components/icons'
 
 async function fetchProducts(search: string) {
@@ -188,13 +187,7 @@ export function PriceTable() {
           <button
             type="button"
             onClick={() => setColumnsOpen((s) => !s)}
-            className={cn(
-              'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium shadow-xs',
-              'transition-[background-color,border-color,color] duration-150',
-              columnsOpen
-                ? 'border-neutral-300 bg-neutral-50 text-ink-900'
-                : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-ink-900',
-            )}
+            className={buttonClasses({ className: columnsOpen ? 'bg-neutral-100' : undefined })}
           >
             <IconSliders className="h-4 w-4" />
             Colunas

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from './Modal'
+import { Button, Input } from './ui'
 
 interface ResetPasswordModalProps {
   userName: string
@@ -20,11 +21,11 @@ export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, e
   return (
     <Modal onClose={onCancel}>
       <div className="animate-scale-in w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
-        <h2 className="text-base font-semibold text-ink-900">Redefinir senha de {userName}</h2>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h2 className="text-heading text-ink-900">Redefinir senha de {userName}</h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-neutral-600">
           Defina uma senha temporária. A pessoa poderá trocá-la depois em "Minha Conta".
         </p>
-        <input
+        <Input
           autoFocus
           type="password"
           placeholder="Nova senha (mínimo 6 caracteres)"
@@ -33,23 +34,16 @@ export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, e
           onKeyDown={(e) => {
             if (e.key === 'Enter' && canConfirm) submit()
           }}
-          className="mt-3 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-shadow focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          className="mt-3"
         />
-        {error && <p className="mt-2 text-sm text-brand-600">{error}</p>}
+        {error && <p className="mt-2 text-[13px] text-danger-600">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100"
-          >
+          <Button variant="ghost" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            onClick={submit}
-            disabled={!canConfirm || isPending}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 disabled:opacity-40"
-          >
+          </Button>
+          <Button variant="primary" onClick={submit} disabled={!canConfirm} isLoading={isPending}>
             {isPending ? 'Redefinindo…' : 'Redefinir senha'}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

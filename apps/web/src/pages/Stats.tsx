@@ -94,7 +94,7 @@ const STATUS_COLORS = { PENDING: 'var(--color-amber-500)', COMPLETED: BRAND }
 
 const axisProps = {
   fontSize: 11,
-  stroke: '#8a8580',
+  stroke: 'var(--color-neutral-500)',
   tickLine: false,
   axisLine: false,
 } as const
@@ -102,8 +102,8 @@ const axisProps = {
 const tooltipStyle = {
   contentStyle: {
     borderRadius: 12,
-    border: '1px solid #e8e6e3',
-    boxShadow: '0 14px 36px rgb(23 22 26 / 0.09)',
+    border: '1px solid var(--color-neutral-200)',
+    boxShadow: '0 8px 28px rgb(0 0 0 / 0.12)',
     fontSize: 12,
   },
 } as const

@@ -555,9 +555,9 @@ export function MyDesk() {
       )}
 
       {!columns && (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="grid w-full grid-cols-1 gap-4 pb-2 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="w-[288px] shrink-0 rounded-2xl bg-black/[0.035] p-2.5">
+            <div key={i} className="rounded-2xl bg-black/[0.035] p-2.5">
               <Skeleton className="h-2.5 w-24" />
               <div className="mt-4 space-y-2">
                 <Skeleton className="h-16 rounded-xl" />
@@ -589,8 +589,8 @@ export function MyDesk() {
               }}
               className={cn(
                 'min-w-0 cursor-grab rounded-2xl bg-black/[0.035] p-2.5 active:cursor-grabbing',
-                'transition-[opacity,background-color,width] duration-200 ease-out',
-                isCollapsed ? 'min-h-12' : 'min-h-52',
+                'transition-[opacity,background-color] duration-200 ease-out',
+                isCollapsed ? 'min-h-12' : 'min-h-32 md:min-h-52',
                 draggingColumnId === col.id ? 'opacity-40' : 'hover:bg-black/[0.05]',
               )}
             >

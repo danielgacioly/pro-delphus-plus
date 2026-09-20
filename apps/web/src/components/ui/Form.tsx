@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import { IconChevronDown } from '../icons'
 
 /** Aparência compartilhada por todos os campos, para altura e foco consistentes. */
-const control =
+export const control =
   'rounded-lg border border-black/[0.12] bg-white text-[14px] text-ink-900 shadow-[inset_0_0.5px_1px_rgb(0_0_0/0.04)] ' +
   'placeholder:text-neutral-500 ' +
   'transition-[border-color,box-shadow] duration-100 ease-out ' +

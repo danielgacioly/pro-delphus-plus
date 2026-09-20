@@ -12,12 +12,10 @@ export interface SegmentedOption<T extends string> {
  * numa pastilha branca com traço fino.
  *
  * Convenção de “estado selecionado/ativo” no app (documentada aqui por ser
- * o primeiro primitivo do arquivo; vale para FilterChip abaixo e para
- * Badge.tsx também):
+ * o primeiro primitivo do arquivo; vale também para Badge.tsx):
  *   - Controle de alternância exclusiva num trilho (como este SegmentedControl):
  *     pastilha branca sobre o item ativo.
- *   - Filtro booleano solto (como FilterChip abaixo): preenchimento sólido
- *     bg-ink-900 quando ativo.
+ *   - Filtro booleano solto: preenchimento sólido bg-ink-900 quando ativo.
  *   - Rótulo de status/contagem (Badge, em Feedback.tsx): tom suave da cor
  *     semântica, nunca preenchimento sólido.
  * Três linguagens visuais diferentes de propósito — cada uma sinaliza um
@@ -73,37 +71,6 @@ export function SegmentedControl<T extends string>({
         )
       })}
     </div>
-  )
-}
-
-/** Filtro booleano em pastilha — para alternâncias soltas como “Só meus”. */
-export function FilterChip({
-  active,
-  onClick,
-  children,
-  className,
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px]',
-        'transition-[background-color,color,border-color] duration-100 ease-out',
-        active
-          ? 'border border-transparent bg-ink-900 font-medium text-white'
-          : 'border border-black/[0.1] bg-white text-ink-800 hover:bg-neutral-50',
-        className,
-      )}
-    >
-      {children}
-    </button>
   )
 }
 

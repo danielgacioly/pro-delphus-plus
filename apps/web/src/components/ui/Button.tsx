@@ -47,26 +47,3 @@ export function ButtonLink({
     </Link>
   )
 }
-
-/** Botão-ícone quadrado, para ações discretas em barras e cabeçalhos. */
-export function IconButton({
-  className,
-  label,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
-  return (
-    <button
-      aria-label={label}
-      title={label}
-      className={cn(
-        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
-        variants.ghost,
-        'text-neutral-600 hover:text-ink-900',
-        'transition-[background-color,color] duration-100 ease-out',
-        'disabled:pointer-events-none disabled:opacity-40',
-        className,
-      )}
-      {...props}
-    />
-  )
-}

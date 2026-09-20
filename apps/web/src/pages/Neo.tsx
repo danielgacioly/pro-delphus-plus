@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
-import { Alert, Badge, Button, Textarea } from '../components/ui'
+import { Alert, Badge, Button, Textarea, buttonClasses } from '../components/ui'
 import { NeoAvatar, NeoMascot } from '../components/NeoMascot'
+import { NeoAsciiBackground } from '../components/NeoAsciiBackground'
 import { IconArrowUp, IconCheckCircle } from '../components/icons'
 
 interface ChatMessage {
@@ -206,15 +207,17 @@ export function Neo() {
     // Layout.tsx não tem altura própria, então uma % não teria de quê herdar.
     // `main` já ocupa exatamente 100vh (não há barra superior), então isto
     // bate com o espaço real disponível e deixa só o histórico rolar.
-          <div className="flex h-screen flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-neutral-200/70 px-6 pt-8 pb-6 sm:px-8">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-canvas">
+      <NeoAsciiBackground />
+
+      <header className="relative z-10 shrink-0 border-b border-neutral-200/70 bg-canvas/88 backdrop-blur-sm px-6 pt-8 pb-6 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3.5">
           {/* Só respira enquanto o NEO está pensando: o movimento vira sinal de
               estado, não enfeite se mexendo o tempo todo. */}
           <NeoAvatar thinking={loading} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
             <h1 className="text-display text-ink-900">NEO</h1>
-            <p className="mt-0.5 text-[13px] text-neutral-600">Ou Network Executive Operator. Seu assistente pessoal na Pro Delphus+</p>
+            <p className="mt-0.5 text-[13px] text-neutral-600">Network Executive Operator · Seu assistente pessoal na Pro Delphus+</p>
           </div>
           {messages.length > 0 && (
             <Button size="md" onClick={handleNewChat} disabled={loading}>
@@ -224,7 +227,7 @@ export function Neo() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full min-h-0 max-w-3xl flex-1 flex-col px-6 sm:px-8">
+      <div className="relative z-10 mx-auto flex w-full min-h-0 max-w-3xl flex-1 flex-col px-6 sm:px-8">
         <div className="my-5 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-black/[0.06] bg-white p-5">
           {messages.length === 0 && !pending && (
             <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
@@ -247,7 +250,7 @@ export function Neo() {
                       setInput(suggestion.prompt)
                       textareaRef.current?.focus()
                     }}
-                    className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[12.5px] font-medium whitespace-nowrap text-neutral-700 shadow-xs transition-[background-color,border-color,color] duration-150 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                    className={buttonClasses({ size: 'sm', className: 'w-full justify-center' })}
                   >
                     {suggestion.label}
                   </button>

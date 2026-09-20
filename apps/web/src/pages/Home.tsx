@@ -69,7 +69,10 @@ function Change({ value, previousLabel }: { value: number | null; previousLabel:
   if (value === null) return null
   const up = value >= 0
   return (
-    <span className={up ? 'text-emerald-700' : 'text-brand-700'}>
+    <span
+      className={up ? 'text-emerald-700' : 'text-brand-700'}
+      title={`Comparado com o mesmo trecho de ${previousLabel}`}
+    >
       {up ? '▲' : '▼'} {Math.abs(value).toFixed(0)}% vs. {previousLabel}
     </span>
   )
@@ -328,14 +331,18 @@ export function Home() {
     const now = new Date()
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
     const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    // Mês corrido contra o MESMO trecho do mês passado. Comparar cinco dias
+    // com trinta faria todo dia 2 acusar uma queda de 90% que não existe.
+    const elapsed = now.getTime() - start.getTime()
+    const previousEnd = previousStart.getTime() + elapsed
     const inThisMonth = (iso: string) => new Date(iso).getTime() >= start.getTime()
-    const inPreviousMonth = (iso: string) => {
+    const inPreviousWindow = (iso: string) => {
       const time = new Date(iso).getTime()
-      return time >= previousStart.getTime() && time < start.getTime()
+      return time >= previousStart.getTime() && time < previousEnd
     }
 
     const ordersOfMonth = myOrders.filter((o) => inThisMonth(o.createdAt))
-    const ordersBefore = myOrders.filter((o) => inPreviousMonth(o.createdAt))
+    const ordersBefore = myOrders.filter((o) => inPreviousWindow(o.createdAt))
 
     // O valor do pedido vive no orçamento vinculado; moedas não se somam entre
     // si, então cada uma vira uma entrada própria (maior primeiro).
@@ -359,7 +366,7 @@ export function Home() {
       }))
 
     const quotesNow = myQuotes.filter((q) => inThisMonth(q.createdAt)).length
-    const quotesBefore = myQuotes.filter((q) => inPreviousMonth(q.createdAt)).length
+    const quotesBefore = myQuotes.filter((q) => inPreviousWindow(q.createdAt)).length
 
     return {
       quotes: quotesNow,
