@@ -171,9 +171,15 @@ export function ClientDetail() {
           {/* Editar fica junto dos dados que edita, e não solto no topo. */}
           <div className="flex items-center justify-between gap-3">
             <p className="text-[12px] font-medium text-neutral-600">Contato</p>
-            <Button size="sm" onClick={() => setEditing(true)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              title="Editar cliente"
+              aria-label="Editar cliente"
+              onClick={() => setEditing(true)}
+              className="px-2 text-neutral-600 hover:text-ink-900"
+            >
               <IconPencil className="h-3.5 w-3.5" />
-              Editar
             </Button>
           </div>
           <div className="mt-3 space-y-2.5">

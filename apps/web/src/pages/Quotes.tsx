@@ -50,7 +50,7 @@ const monthLabels = [
   'Dezembro',
 ]
 
-const COLUMNS = 7
+const COLUMNS = 8
 
 export function Quotes() {
   const { user } = useAuth()
@@ -157,6 +157,7 @@ export function Quotes() {
               <Th>Criado por</Th>
               <Th align="right">Total</Th>
               <Th align="right">Arquivos</Th>
+              <Th align="right">Ações</Th>
             </tr>
           </THead>
           <TBody>
@@ -204,6 +205,10 @@ export function Quotes() {
                       <span className="inline-flex items-center gap-1">
                         {q.pdfUrl && <FileLink href={q.pdfUrl}>PDF</FileLink>}
                         {q.xlsxUrl && <FileLink href={q.xlsxUrl}>Excel</FileLink>}
+                      </span>
+                    </Td>
+                    <Td className="text-right">
+                      <span className="inline-flex items-center gap-1">
                         <Link
                           to={`/orcamentos/${q.id}/editar`}
                           title="Editar orçamento"
@@ -219,7 +224,7 @@ export function Quotes() {
                             title="Excluir orçamento"
                             aria-label="Excluir orçamento"
                             onClick={() => setDeletingQuote(q)}
-                            className="text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
+                            className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
                           >
                             <IconTrash className="h-3.5 w-3.5" />
                           </Button>
