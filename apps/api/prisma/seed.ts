@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { hash } from 'bcryptjs'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { MIN_PASSWORD_LENGTH } from '@prodelphusplus/shared'
 import { PrismaClient } from '../generated/prisma/client.js'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
@@ -12,8 +13,8 @@ async function main() {
   // Sem default: uma senha conhecida no código viraria a porta de entrada de
   // qualquer instalação que rodasse o seed sem configurar o .env.
   const password = process.env.ADMIN_SEED_PASSWORD
-  if (!password || password.length < 10) {
-    console.error('Defina ADMIN_SEED_PASSWORD no .env (mínimo 10 caracteres) antes de rodar o seed.')
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    console.error(`Defina ADMIN_SEED_PASSWORD no .env (mínimo ${MIN_PASSWORD_LENGTH} caracteres) antes de rodar o seed.`)
     process.exit(1)
   }
 

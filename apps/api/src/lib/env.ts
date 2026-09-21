@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import { z } from 'zod'
+import { MIN_PASSWORD_LENGTH } from '@prodelphusplus/shared'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -63,7 +64,10 @@ const envSchema = z.object({
   ADMIN_SEED_EMAIL: z.string().email().default('admin@prodelphus.com'),
   // Sem default: o seed é o que cria a primeira conta de admin, e um default
   // conhecido no código é uma porta aberta em qualquer instalação nova.
-  ADMIN_SEED_PASSWORD: z.string().min(10, 'ADMIN_SEED_PASSWORD precisa de pelo menos 10 caracteres').optional(),
+  ADMIN_SEED_PASSWORD: z
+    .string()
+    .min(MIN_PASSWORD_LENGTH, `ADMIN_SEED_PASSWORD precisa de pelo menos ${MIN_PASSWORD_LENGTH} caracteres`)
+    .optional(),
 
   // Google AI Studio free-tier key — https://aistudio.google.com/apikey.
   // Sem default: sem chave, o NEO não tem como funcionar, e é melhor a API

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal } from './Modal'
 import { Button, Input } from './ui'
+import { MIN_PASSWORD_LENGTH } from '@prodelphusplus/shared'
 
 interface ResetPasswordModalProps {
   userName: string
@@ -12,7 +13,7 @@ interface ResetPasswordModalProps {
 
 export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, error }: ResetPasswordModalProps) {
   const [password, setPassword] = useState('')
-  const canConfirm = password.length >= 6
+  const canConfirm = password.length >= MIN_PASSWORD_LENGTH
 
   function submit() {
     if (canConfirm) onConfirm(password)
@@ -28,7 +29,7 @@ export function ResetPasswordModal({ userName, onConfirm, onCancel, isPending, e
         <Input
           autoFocus
           type="password"
-          placeholder="Nova senha (mínimo 6 caracteres)"
+          placeholder={`Nova senha (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {

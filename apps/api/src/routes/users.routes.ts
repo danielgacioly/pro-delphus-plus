@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { hash } from 'bcryptjs'
 import { z } from 'zod'
+import { MIN_PASSWORD_LENGTH } from '@prodelphusplus/shared'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
@@ -21,7 +22,7 @@ usersRouter.get(
 const createUserSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
   role: z.enum(['ADMIN', 'USER']).default('USER'),
   phone: z.string().min(1).optional(),
   jobTitle: z.string().min(1).optional(),
@@ -138,7 +139,7 @@ usersRouter.delete(
 )
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(6),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
 })
 
 usersRouter.post(

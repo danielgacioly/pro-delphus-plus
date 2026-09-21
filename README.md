@@ -179,7 +179,7 @@ Isso aplica o schema (`apps/api/prisma/schema.prisma`) no banco e gera o client 
 npm run prisma:seed
 ```
 
-Isso cria a primeira conta admin com os dados de `apps/api/.env`. **`ADMIN_SEED_PASSWORD` não tem valor padrão** — preencha com pelo menos 10 caracteres antes de rodar, senão o seed recusa.
+Isso cria a primeira conta admin com os dados de `apps/api/.env`. **`ADMIN_SEED_PASSWORD` não tem valor padrão** — preencha com pelo menos 6 caracteres antes de rodar, senão o seed recusa.
 
 > Não existe recuperação de senha por e-mail. Quem esquece a senha pede a um admin, que define uma nova em **Administração → Contas**.
 
@@ -250,7 +250,7 @@ openssl rand -base64 48   # JWT_REFRESH_SECRET
 openssl rand -base64 32   # POSTGRES_PASSWORD
 ```
 
-Ajuste `PUBLIC_URL` para o endereço real (vira o `CORS_ORIGIN` da API) e `ADMIN_SEED_PASSWORD` com no mínimo 10 caracteres.
+Ajuste `PUBLIC_URL` para o endereço real (vira o `CORS_ORIGIN` da API) e `ADMIN_SEED_PASSWORD` com no mínimo 6 caracteres.
 
 ### 2. Onde os dados ficam guardados
 

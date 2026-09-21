@@ -1,6 +1,7 @@
 import { Router, type Response } from 'express'
 import { compare, hash } from 'bcryptjs'
 import { z } from 'zod'
+import { MIN_PASSWORD_LENGTH } from '@prodelphusplus/shared'
 import { prisma } from '../lib/prisma.js'
 import { COOKIE_SECURE } from '../lib/env.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt.js'
@@ -79,7 +80,7 @@ authRouter.post(
 const registerSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
   phone: z.string().min(1).optional(),
   jobTitle: z.string().min(1).optional(),
 })
@@ -229,7 +230,7 @@ authRouter.delete(
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(6),
+  newPassword: z.string().min(MIN_PASSWORD_LENGTH),
 })
 
 authRouter.post(

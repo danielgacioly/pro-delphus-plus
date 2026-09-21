@@ -3,6 +3,7 @@
  * um importador nunca precise saber em qual módulo interno a coisa mora.
  */
 export * from './enums.js'
+export * from './auth.js'
 export * from './clients.js'
 export * from './dto.js'
 export * from './format.js'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import type { UserDTO } from '@prodelphusplus/shared'
+import { MIN_PASSWORD_LENGTH, type UserDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage as errorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { DropZone } from '../components/DropZone'
@@ -253,7 +253,7 @@ export function Account() {
                   onChange={(e) => setCurrentPassword(e.target.value)}
                 />
               </Field>
-              <Field label="Nova senha" hint="Mínimo de 6 caracteres.">
+              <Field label="Nova senha" hint={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres.`}>
                 <Input
                   type="password"
                   required

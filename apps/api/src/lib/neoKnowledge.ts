@@ -4,8 +4,8 @@
  * mais nada do código do NEO.
  *
  * Fornecido pelo Daniel em 2026-09-16 (voz, transcrito) e revisado com ele —
- * mistura o relato dele com o tutorial de venda que existia na tela de Ajuda
- * (components/HelpModal.tsx), hoje sem porta de entrada na UI.
+ * mistura o relato dele com o tutorial de venda que existia na tela de Ajuda,
+ * removida do front por ser justamente o que o NEO responde.
  */
 export const NEO_SALES_PROCESS = `
 1. Cadastro do cliente. Depois do primeiro contato (ligação, reunião,
