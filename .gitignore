@@ -23,3 +23,6 @@ backups/
 
 # Worktrees isolados de trabalho em andamento
 .worktrees/
+
+# Config local das ferramentas de desenvolvimento (não faz parte do produto)
+.claude/
