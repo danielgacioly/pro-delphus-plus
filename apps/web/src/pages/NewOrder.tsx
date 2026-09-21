@@ -102,10 +102,10 @@ export function NewOrder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveRate, form.quoteId])
 
-  // Pre-fill the form from an existing order once both it and the quotes list
-  // have loaded — guarded so it only runs once. Ao duplicar, os campos únicos
-  // de cada remessa (PO, data de expedição, AWB, NF, câmbio) ficam em branco;
-  // ao editar, o pedido é carregado inteiro.
+  // Pré-preenche o formulário a partir de um pedido existente assim que ele e
+  // a lista de orçamentos carregam, uma única vez. Ao duplicar, os campos que
+  // são únicos de cada remessa (pedido de compra, data de expedição, AWB, NF e
+  // câmbio) ficam em branco; ao editar, o pedido é carregado inteiro.
   useEffect(() => {
     if (!sourceOrder || !quotes || prefilled.current) return
     prefilled.current = true

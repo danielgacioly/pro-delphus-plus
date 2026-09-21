@@ -2,8 +2,9 @@ import { clsx, type ClassValue } from 'clsx'
 import { extendTailwindMerge } from 'tailwind-merge'
 
 // index.css defines .text-display/.text-title/.text-heading/.text-eyebrow as
-// font-size utilities; without this, tailwind-merge's isAny validator files them
-// under `text-color` and silently drops them when composed with a text color.
+// utilitários de tamanho de fonte. Sem isso, o validador isAny do tailwind-merge
+// os classifica como `text-color` e os descarta em silêncio quando compostos
+// com uma cor de texto.
 const twMerge = extendTailwindMerge({
   extend: { classGroups: { 'font-size': ['text-display', 'text-title', 'text-heading', 'text-eyebrow'] } },
 })

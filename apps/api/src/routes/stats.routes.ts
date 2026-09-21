@@ -24,9 +24,9 @@ statsRouter.get(
     const byMonthMap = new Map<string, { year: number; month: number; count: number; totalUSD: number; totalBRL: number }>()
     const byYearMap = new Map<number, { year: number; count: number; totalUSD: number; totalBRL: number }>()
     const productMap = new Map<string, { productName: string; quantity: number; revenueUSD: number; revenueBRL: number }>()
-    // Counts orders that touched each sector — not units sold. A single
-    // order with 100 units of one product still counts once for its
-    // sector; an order spanning Breast + Thoracic counts once for each.
+    // Conta pedidos que passaram por cada setor, não unidades vendidas: um
+    // pedido com 100 unidades de um produto conta uma vez para o setor dele;
+    // um pedido que cruza Breast e Thoracic conta uma vez para cada.
     const sectorMap = new Map<string, number>()
 
     for (const order of orders) {

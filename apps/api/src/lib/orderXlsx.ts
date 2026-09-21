@@ -66,8 +66,8 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   titleCell.value = `Documento de Exportação — Pedido ${formatOrderNumber(data.orderNumber)}`
   titleCell.font = { bold: true, size: 14, color: { argb: INK } }
 
-  // Label gets its own merged range (B:C) so its text never overflows into —
-  // and gets visually clipped by — the rate cell's fill right next to it.
+  // O rótulo ganha um intervalo mesclado só dele (B:C) para o texto não
+  // transbordar na célula do câmbio ao lado, cujo preenchimento o cortaria.
   sheet.mergeCells('B3:C3')
   sheet.getCell('B3').value = `Câmbio ${data.currency}/BRL`
   sheet.getCell('B3').font = { bold: true, size: 10, color: { argb: INK } }
@@ -122,17 +122,19 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
     row.getCell(2).value = item.quantity
     row.getCell(3).value = item.code
     row.getCell(3).alignment = { wrapText: true, vertical: 'top' }
-    // Column C is 42 chars wide — estimate wrapped line count so long product
-    // names get a tall enough row instead of being visually clipped.
+    // A coluna C tem 42 caracteres: estimar quantas linhas o texto vai ocupar
+    // é o que dá altura suficiente à linha de um nome de produto longo, em vez
+    // de ele sair cortado.
     const charsPerLine = 40
     const lineCount = Math.max(1, Math.ceil(item.code.length / charsPerLine))
     row.height = Math.max(18, lineCount * 14)
     row.getCell(4).value = item.unitPriceUsd
     row.getCell(5).value = { formula: `D${rowIndex}*$D$3` }
     row.getCell(6).value = { formula: `E${rowIndex}*B${rowIndex}` }
-    // Weight per unit isn't always known from the catalog — leave it blank and
-    // highlighted for manual entry, but the dependent formulas are always wired
-    // up so filling it in later immediately cascades through the row.
+    // O peso por unidade nem sempre existe no catálogo. Nesse caso a célula
+    // fica em branco e destacada para preenchimento à mão, mas as fórmulas que
+    // dependem dela já estão montadas: preencher depois recalcula a linha
+    // inteira na hora.
     if (item.weightKgUnit !== null) {
       row.getCell(7).value = item.weightKgUnit
     }
@@ -176,8 +178,8 @@ export async function generateExportDocXlsx(data: ExportDocData): Promise<Buffer
   totalsRow.getCell(2).numFmt = '0'
   totalsRow.getCell(11).font = { bold: true, color: { argb: RED } }
 
-  // Weight summary lines live in column G — the same "KG Unit." column the
-  // per-item weights are entered in — stacked right under the totals row.
+  // O resumo de pesos fica na coluna G, a mesma "KG Unit." onde os pesos por
+  // item são digitados, logo abaixo da linha de totais.
   const totalsRowIndex = lastItemRow + 1
 
   // Peso líquido vem direto do pedido, igual ao Peso Bruto logo abaixo — não

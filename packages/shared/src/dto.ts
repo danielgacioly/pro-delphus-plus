@@ -90,7 +90,7 @@ export interface QuoteItemInput {
   productId: string
   quantity: number
   description?: string
-  /** Manual price override — falls back to the catalog price for the quote's tier/currency when omitted. */
+  /** Preço negociado. Em branco, vale o preço de catálogo da moeda e tabela do orçamento. */
   unitPrice?: number
 }
 
@@ -184,9 +184,9 @@ export interface CreateOrderInput {
   nfNumber?: string
   nfDate?: string
   exchangeRate?: number
-  /** Per-item weight in kg, aligned by index with the source quote's items — feeds the export document. */
+  /** Peso em kg por item, alinhado por índice com os itens do orçamento de origem — alimenta o Documento de Exportação. */
   itemWeightsKg?: (number | null)[]
-  /** Number of physical boxes/cartons — drives how many pages the Packing List Box gets. */
+  /** Quantidade de caixas físicas — define quantas páginas o Packing List Box tem. */
   packageCount?: number
   boxAssignments?: BoxAssignments
 }

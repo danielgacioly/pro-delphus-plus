@@ -85,9 +85,9 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   const LABEL = colLetter(labelCol)
   const LAST = TOTAL
 
-  // Column A is 10 chars (~75px) wide — just for the item-number cells, but
-  // also wide enough to hold the 60px header/signature logo without it
-  // spilling into column B and overlapping the company name/signature text.
+  // A coluna A tem 10 caracteres (~75px): o bastante para o número do item e
+  // também para o logo de 60px do cabeçalho e da assinatura, que sem essa
+  // folga transborda para a coluna B e cobre o nome da empresa.
   sheet.columns = [
     { width: 10 },
     { width: 8 },
@@ -152,8 +152,8 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   })
   headerRow.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' }
 
-  // Item rows get extra height so the (up to 44px) photo has room to sit
-  // inside its cell without being clipped by the default ~20px row height.
+  // A linha de item ganha altura extra para a foto (até 44px) caber dentro da
+  // célula — na altura padrão de ~20px ela sai cortada.
   const ITEM_ROW_HEIGHT = 46
 
   data.items.forEach((item, index) => {
@@ -207,8 +207,9 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
     if (item.photoDataUri) {
       const { base64, extension } = dataUriToImage(item.photoDataUri)
       const photoImageId = workbook.addImage({ base64, extension })
-      // Row index is 0-based for addImage; center the ~40px photo in the
-      // ~46pt-tall, ~75px-wide cell with a small inset on every side.
+      // O índice de linha do addImage começa em zero. A foto de ~40px fica
+      // centrada na célula (~46pt de altura por ~75px de largura), com uma
+      // pequena folga de cada lado.
       sheet.addImage(photoImageId, {
         tl: { col: 3.13, row: rowIndex - 1 + 0.12 },
         ext: { width: 40, height: 40 },
@@ -219,22 +220,23 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   const lastItemRow = headerRowIndex + data.items.length
   const summaryTop = lastItemRow + 1
 
-  // Tracks how far down the notes merge extends (0 if there are no notes)
-  // so the signature block below is guaranteed to start after it — the
-  // notes span is dynamic, and any signature row landing inside a merged
-  // range would silently overwrite the merge's shared value.
+  // Até onde a mesclagem das notas desce (0 quando não há notas), para o bloco
+  // de assinatura abaixo começar depois dela. A altura das notas é variável, e
+  // uma linha de assinatura que caia dentro de um intervalo mesclado
+  // sobrescreve em silêncio o valor compartilhado da mesclagem.
   let notesBottom = summaryTop - 1
 
-  // Notes span every column up to right before the summary labels (LABEL),
-  // not just A:C — stopping at C left D/E as a blank gap between the notes
-  // box and the Shipping/Total block, since both sit on the same rows.
+  // As notas ocupam todas as colunas até imediatamente antes dos rótulos do
+  // resumo (LABEL), não só A:C — parando em C, as colunas D e E ficavam como
+  // um vão branco entre a caixa de notas e o bloco Shipping/Total, que estão
+  // nas mesmas linhas.
   const notesLastCol = colLetter(labelCol - 1)
 
   if (data.notes) {
-    // Give the notes block exactly as many rows as it has lines (plus a
-    // little breathing room), instead of a fixed count that clipped longer
-    // note lists — each line here is short enough to stay on one wrapped
-    // row within the combined column width.
+    // O bloco de notas recebe exatamente uma linha por linha de texto (mais
+    // uma folga), em vez de um número fixo que cortava listas mais longas.
+    // Cada linha aqui é curta o bastante para não quebrar dentro da largura
+    // somada das colunas.
     const noteLineCount = data.notes.split('\n').length
     const notesRowSpan = Math.max(6, noteLineCount + 1)
     notesBottom = summaryTop + notesRowSpan - 1

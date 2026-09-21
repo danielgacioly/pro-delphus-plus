@@ -28,10 +28,11 @@ export type ClientKind = 'INDIVIDUAL' | 'INSTITUTION' | 'DISTRIBUTOR'
 export type PrepaymentMethod = 'PAYPAL' | 'WIRE_TRANSFER' | 'PIX'
 export type OrderStatus = 'PENDING' | 'COMPLETED'
 /**
- * One line inside one box/carton — just a label and a quantity, freely
- * editable. Decoupled from quote-item identity so a complete model's sale
- * can be re-described as its individual physical components when a shipment
- * needs to split those components across boxes.
+ * Uma linha dentro de uma caixa: rótulo e quantidade, livremente editáveis.
+ *
+ * Propositalmente solta da identidade do item do orçamento — é o que permite
+ * descrever a venda de um modelo completo como os componentes físicos dele
+ * quando a remessa precisa dividi-los entre caixas.
  */
 export interface BoxAssignmentEntry {
   label: string

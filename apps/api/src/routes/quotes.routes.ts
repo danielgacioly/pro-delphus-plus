@@ -93,7 +93,7 @@ async function photoToDataUri(url: string | undefined): Promise<string | null> {
 quotesRouter.get(
   '/',
   asyncHandler(async (_req, res) => {
-    // Quotes are visible to every authenticated user, not just their creator or admins.
+    // Orçamento é visível para qualquer usuário autenticado, não só para quem o criou ou para admin.
     const quotes = await prisma.quote.findMany({
       include,
       orderBy: { createdAt: 'desc' },
@@ -114,8 +114,8 @@ quotesRouter.get(
 export const createQuoteSchema = z.object({
   exportScope: z.enum(['NATIONAL', 'INTERNATIONAL']).default('INTERNATIONAL'),
   language: z.enum(['PT', 'EN', 'ES']).default('PT'),
-  // Optional for backward compatibility — older clients that don't send it
-  // fall back to the historical language-implies-currency behavior.
+  // Opcional por compatibilidade: cliente antigo que não manda o campo cai no
+  // comportamento histórico, em que o idioma decidia a moeda.
   currency: z.enum(['BRL', 'USD', 'EUR']).optional(),
   priceTier: z.enum(['FINAL', 'DISTRIBUTOR']).default('FINAL'),
   clientPrefix: z.enum(['NONE', 'MR', 'MS']).default('NONE'),
@@ -197,7 +197,7 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
         typedUnitPrice: item.unitPrice,
         quantity: item.quantity,
       })
-      // Title (product name/code) is rendered in bold; the descriptive text follows it.
+      // O título (nome/código do produto) sai em negrito; a descrição vem logo depois.
       // Both accept a per-item override: o nome digitado no orçamento é
       // guardado no item (`titleOverride`) para que o documento não mude se o
       // produto for renomeado no catálogo depois.
@@ -317,10 +317,11 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
   return { pdfUrl: versionedUrlFor(pdfFilename), xlsxUrl: versionedUrlFor(xlsxFilename) }
 }
 
-// `quoteNumber` is the only unique field on Quote besides `id` (server-generated,
-// effectively never collides), so any P2002 here means a quoteNumber race.
-// (Prisma 7's driver-adapter errors don't reliably populate `meta.target`
-// with the field name — checked against a live P2002 before relying on it.)
+// `quoteNumber` é o único campo único de Quote além de `id` (gerado pelo
+// servidor, que na prática nunca colide), então qualquer P2002 aqui é disputa
+// pelo número do orçamento. O `meta.target` do adaptador do Prisma 7 não traz
+// o nome do campo de forma confiável — conferido num P2002 real antes de
+// depender dele.
 function isQuoteNumberConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }

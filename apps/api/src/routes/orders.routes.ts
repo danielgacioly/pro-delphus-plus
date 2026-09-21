@@ -220,10 +220,11 @@ async function nextOrderNumber() {
   return last ? last.orderNumber + 1 : env.ORDER_NUMBER_START
 }
 
-// `orderNumber` is the only unique field on Order besides `id` (server-generated,
-// effectively never collides), so any P2002 here means an orderNumber race.
-// (Prisma 7's driver-adapter errors don't reliably populate `meta.target`
-// with the field name — checked against a live P2002 before relying on it.)
+// `orderNumber` é o único campo único de Order além de `id` (gerado pelo
+// servidor, que na prática nunca colide), então qualquer P2002 aqui é disputa
+// pelo número do pedido. O `meta.target` do adaptador do Prisma 7 não traz o
+// nome do campo de forma confiável — conferido num P2002 real antes de
+// depender dele.
 function isOrderNumberConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
@@ -336,8 +337,8 @@ async function buildAndWriteDocuments(
     paypalFee: order.paypalFee,
   })
 
-  // If no purchase order was given, the invoice falls back to the source
-  // quote's number (not the order's own number).
+  // Sem pedido de compra informado, o Invoice usa o número do orçamento de
+  // origem — não o número do próprio pedido.
   const purchaseOrderDisplay = order.purchaseOrder || quote.quoteNumber
 
   const docData = {
@@ -386,8 +387,8 @@ async function buildAndWriteDocuments(
     grossWeightKg: order.grossWeightKg,
     packageCount: order.packageCount,
     items: quote.items.map((item, index) => {
-      // A manually entered per-order weight (from the order form) takes
-      // priority over the product's catalog weight, which is often blank.
+      // O peso digitado no pedido vence o peso de catálogo do produto, que
+      // com frequência está em branco.
       const manualWeight = order.itemWeightsKg?.[index]
       const weightKgUnit =
         manualWeight !== undefined && manualWeight !== null
@@ -625,8 +626,8 @@ ordersRouter.patch(
 
 const statusSchema = z.object({ status: z.enum(['PENDING', 'COMPLETED']) })
 
-// Lightweight status toggle — unlike PATCH /:id, this never regenerates the
-// PDF/xlsx documents (there's nothing document-relevant about status).
+// Troca de status é operação leve: diferente do PATCH /:id, nunca regera
+// PDF nem planilha (status não muda nada em documento).
 ordersRouter.patch(
   '/:id/status',
   asyncHandler(async (req, res) => {

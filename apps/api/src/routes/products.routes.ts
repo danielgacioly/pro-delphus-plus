@@ -13,9 +13,9 @@ productsRouter.use(requireAuth)
 
 const include = { media: true, brochures: true, customizations: true } as const
 
-// Sectors live in a scalar array on Product, which Prisma can only filter by
-// exact membership (`has`) — not substring. The catalog is small (~500 rows),
-// so free-text search across sku/name/sectors/description is done in JS instead.
+// Setor é um array escalar em Product, e o Prisma só sabe filtrar array por
+// pertencimento exato (`has`), não por trecho. Como o catálogo é pequeno
+// (~500 linhas), a busca livre por SKU, nome, setor e descrição é feita em JS.
 function matchesSearch(
   product: { sku: string; name: string; sectors: string[]; description: string | null },
   needle: string,

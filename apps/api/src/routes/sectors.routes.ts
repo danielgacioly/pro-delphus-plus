@@ -12,7 +12,7 @@ sectorsRouter.get(
   '/',
   asyncHandler(async (_req, res) => {
     const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } })
-    // Product.sectors is a scalar array, so counting per sector name happens in JS.
+    // Product.sectors é um array escalar; a contagem por nome de setor é feita em JS.
     const products = await prisma.product.findMany({ where: { active: true }, select: { sectors: true } })
     const countBySector = new Map<string, number>()
     for (const product of products) {
@@ -62,8 +62,8 @@ sectorsRouter.patch(
     }
 
     // Sector.name isn't a foreign key on Product (kept as free text), so a
-    // rename has to be propagated to every product carrying the old name —
-    // replacing just that one entry in each product's sectors array.
+    // renomear exige propagar o novo nome para todo produto que carrega o
+    // antigo — trocando apenas aquela entrada no array de setores de cada um.
     await prisma.$transaction([
       prisma.$executeRaw`UPDATE products SET sectors = array_replace(sectors, ${sector.name}, ${data.name}) WHERE ${sector.name} = ANY(sectors)`,
       prisma.sector.update({ where: { id: sector.id }, data: { name: data.name, namePt: data.namePt ?? sector.namePt } }),
