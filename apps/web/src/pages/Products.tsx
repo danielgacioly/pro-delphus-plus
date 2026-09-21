@@ -24,12 +24,12 @@ import {
   Toolbar,
 } from '../components/ui'
 import { IconBox, IconChevronDown, IconPencil, IconPlus, IconTrash } from '../components/icons'
+import { ProductFieldSet } from '../components/ProductFieldSet'
 import {
-  ProductFieldSet,
   emptyProductForm,
   productFormToPayload,
   type ProductFormState,
-} from '../components/ProductFieldSet'
+} from '../components/productForm.model'
 
 async function fetchProducts(search: string) {
   const { data } = await api.get<{ products: ProductDTO[] }>('/products', {

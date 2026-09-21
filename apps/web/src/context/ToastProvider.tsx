@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
 import { IconAlert, IconCheckCircle } from '../components/icons'
+import { ToastContext, type ToastContextValue } from './ToastContext'
 
 type ToastTone = 'success' | 'error'
 
@@ -10,15 +11,6 @@ interface ToastItem {
   tone: ToastTone
   message: string
 }
-
-interface ToastContextValue {
-  /** Confirmação positiva e breve — "Orçamento salvo", não "Sucesso!". */
-  success: (message: string) => void
-  /** Só para falhas que não têm um banner de erro melhor por perto. */
-  error: (message: string) => void
-}
-
-const ToastContext = createContext<ToastContextValue | undefined>(undefined)
 
 const DURATION_MS = 3800
 
@@ -82,10 +74,4 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       )}
     </ToastContext.Provider>
   )
-}
-
-export function useToast() {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used within ToastProvider')
-  return ctx
 }

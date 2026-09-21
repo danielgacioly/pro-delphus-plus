@@ -4,7 +4,8 @@ import type { ProductDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
 import { DropZone } from './DropZone'
 import { Alert, Button, FormSection } from './ui'
-import { ProductFieldSet, emptyProductForm, productFormToPayload, type ProductFormState } from './ProductFieldSet'
+import { ProductFieldSet } from './ProductFieldSet'
+import { emptyProductForm, productFormToPayload, type ProductFormState } from './productForm.model'
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: string[] }>('/products/sectors')

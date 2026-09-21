@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
-import { CLIENT_KIND_LABEL, ClientForm, type ClientFormValues } from '../components/ClientForm'
+import { ClientForm } from '../components/ClientForm'
+import { CLIENT_KIND_LABEL, type ClientFormValues } from '../components/clientForm.model'
 import {
   Alert,
   AnimatedNumber,

@@ -5,6 +5,7 @@ import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
+import { isInCurrentMonth, isInPreviousWindow, monthWindow, variation } from '../lib/period'
 import { Badge, Page, Section, Skeleton } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
@@ -57,11 +58,6 @@ interface MonthSale {
 }
 
 /** Variação percentual; sem base no mês anterior não há porcentagem honesta. */
-function variation(current: number, previous: number): number | null {
-  if (!previous) return null
-  return ((current - previous) / previous) * 100
-}
-
 /** "▲ 12% vs. agosto" — contexto para o número não ficar solto. */
 function Change({ value, previousLabel }: { value: number | null; previousLabel: string }) {
   // Sem registro no mês anterior não existe porcentagem honesta — e repetir
@@ -329,20 +325,10 @@ export function Home() {
 
   const month = useMemo(() => {
     const now = new Date()
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    // Mês corrido contra o MESMO trecho do mês passado. Comparar cinco dias
-    // com trinta faria todo dia 2 acusar uma queda de 90% que não existe.
-    // O teto é o início deste mês: sem ele, um mês passado mais curto deixa a
-    // janela invadir o atual (em 30/03 ela ia até 2 de março) e o registro de
-    // hoje entraria também na base de comparação.
-    const elapsed = now.getTime() - start.getTime()
-    const previousEnd = Math.min(previousStart.getTime() + elapsed, start.getTime())
-    const inThisMonth = (iso: string) => new Date(iso).getTime() >= start.getTime()
-    const inPreviousWindow = (iso: string) => {
-      const time = new Date(iso).getTime()
-      return time >= previousStart.getTime() && time < previousEnd
-    }
+    // A regra do recorte comparável mora em lib/period.ts, com teste.
+    const window = monthWindow(now)
+    const inThisMonth = (iso: string) => isInCurrentMonth(window, iso)
+    const inPreviousWindow = (iso: string) => isInPreviousWindow(window, iso)
 
     const ordersOfMonth = myOrders.filter((o) => inThisMonth(o.createdAt))
     const ordersBefore = myOrders.filter((o) => inPreviousWindow(o.createdAt))
@@ -378,7 +364,7 @@ export function Home() {
       ordersChange: variation(ordersOfMonth.length, ordersBefore.length),
       sales,
       label: now.toLocaleDateString('pt-BR', { month: 'long' }),
-      previousLabel: previousStart.toLocaleDateString('pt-BR', { month: 'long' }),
+      previousLabel: new Date(window.previousStart).toLocaleDateString('pt-BR', { month: 'long' }),
     }
   }, [myQuotes, myOrders])
 
