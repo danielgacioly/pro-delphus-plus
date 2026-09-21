@@ -185,7 +185,7 @@ tasksRouter.get(
       select: { clientName: true },
       distinct: ['clientName'],
     })
-    res.json({ clients: rows.map((r) => r.clientName!).sort() })
+    res.json({ clients: rows.map((r) => r.clientName!).toSorted() })
   }),
 )
 
@@ -198,7 +198,7 @@ tasksRouter.get(
     })
     const tags = new Set<string>()
     for (const row of rows) for (const tag of row.tags) tags.add(tag)
-    res.json({ tags: Array.from(tags).sort() })
+    res.json({ tags: Array.from(tags).toSorted() })
   }),
 )
 

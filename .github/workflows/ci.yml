@@ -45,8 +45,9 @@ jobs:
       - run: npm run prisma:deploy --workspace=apps/api
       # generated/ é gitignored: sem gerar o client aqui, o build da API não compila.
       - run: npm run prisma:generate --workspace=apps/api
+      - run: npm run lint
       - run: npm run build
-      - run: npm run lint --workspace=apps/web
+      - run: npm run test
       - name: Start API
         run: npm start --workspace=apps/api > /tmp/prodelphus-api.log 2>&1 &
       - name: Wait for API

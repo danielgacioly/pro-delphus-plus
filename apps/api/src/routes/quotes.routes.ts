@@ -210,7 +210,7 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
       const description = item.description || catalogDescription || ''
       const primaryImage =
         product.media.find((m) => m.type === 'IMAGE' && m.isPrimary) ??
-        product.media.filter((m) => m.type === 'IMAGE').sort((a, b) => a.order - b.order)[0]
+        product.media.filter((m) => m.type === 'IMAGE').toSorted((a, b) => a.order - b.order)[0]
       const photoDataUri = await photoToDataUri(primaryImage?.url)
       return {
         sku: product.sku,

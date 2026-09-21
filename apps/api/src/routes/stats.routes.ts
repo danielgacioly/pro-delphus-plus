@@ -86,14 +86,14 @@ statsRouter.get(
       }
     }
 
-    const byMonth = Array.from(byMonthMap.values()).sort((a, b) => a.year - b.year || a.month - b.month)
-    const byYear = Array.from(byYearMap.values()).sort((a, b) => a.year - b.year)
+    const byMonth = Array.from(byMonthMap.values()).toSorted((a, b) => a.year - b.year || a.month - b.month)
+    const byYear = Array.from(byYearMap.values()).toSorted((a, b) => a.year - b.year)
     const topProducts = Array.from(productMap.values())
-      .sort((a, b) => b.quantity - a.quantity)
+      .toSorted((a, b) => b.quantity - a.quantity)
       .slice(0, 10)
     const sectorsSold = Array.from(sectorMap.entries())
       .map(([sector, salesCount]) => ({ sector, salesCount }))
-      .sort((a, b) => b.salesCount - a.salesCount)
+      .toSorted((a, b) => b.salesCount - a.salesCount)
 
     res.json({
       totalOrders: orders.length,
@@ -220,7 +220,7 @@ async function computeEfficiency() {
     byMonthMap.set(monthKey, monthEntry)
   }
 
-  const sorted = [...conversionDays].sort((a, b) => a - b)
+  const sorted = [...conversionDays].toSorted((a, b) => a - b)
   const medianDaysToConvert =
     sorted.length === 0
       ? null
@@ -232,14 +232,14 @@ async function computeEfficiency() {
     overall: { ...funnelOut(overall), medianDaysToConvert },
     bySalesperson: Array.from(bySeller.values())
       .map((s) => ({ id: s.id, name: s.name, ...funnelOut(s) }))
-      .sort((a, b) => b.converted - a.converted || b.quotes - a.quotes),
+      .toSorted((a, b) => b.converted - a.converted || b.quotes - a.quotes),
     bySector: Array.from(bySector.entries())
       .map(([sector, f]) => ({ sector, ...funnelOut(f) }))
-      .sort((a, b) => b.quotes - a.quotes),
+      .toSorted((a, b) => b.quotes - a.quotes),
     topClients: Array.from(byClient.values())
       .map((c) => ({ clientId: c.clientId, name: c.name, ...funnelOut(c) }))
-      .sort((a, b) => b.orderedUSD + b.orderedBRL - (a.orderedUSD + a.orderedBRL) || b.quotes - a.quotes)
+      .toSorted((a, b) => b.orderedUSD + b.orderedBRL - (a.orderedUSD + a.orderedBRL) || b.quotes - a.quotes)
       .slice(0, 10),
-    byMonth: Array.from(byMonthMap.values()).sort((a, b) => a.year - b.year || a.month - b.month),
+    byMonth: Array.from(byMonthMap.values()).toSorted((a, b) => a.year - b.year || a.month - b.month),
   }
 }

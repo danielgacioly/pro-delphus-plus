@@ -57,10 +57,10 @@ export function toProductDTO(
     active: product.active,
     updatedAt: product.updatedAt.toISOString(),
     media: product.media
-      .sort((a, b) => a.order - b.order)
+      .toSorted((a, b) => a.order - b.order)
       .map((m) => ({ id: m.id, url: m.url, type: m.type, order: m.order, isPrimary: m.isPrimary })),
     brochures: product.brochures
-      .sort((a, b) => a.order - b.order)
+      .toSorted((a, b) => a.order - b.order)
       .map((b) => ({ id: b.id, url: b.url, name: b.name, order: b.order })),
     customizations: product.customizations.map((c) => ({
       id: c.id,

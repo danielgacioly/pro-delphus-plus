@@ -230,7 +230,7 @@ export async function verificarPendencias() {
           nuncaOrcado: last === null,
         }
       })
-      .sort((a, b) => (b.diasSemOrcamento ?? Infinity) - (a.diasSemOrcamento ?? Infinity))
+      .toSorted((a, b) => (b.diasSemOrcamento ?? Infinity) - (a.diasSemOrcamento ?? Infinity))
   }
 
   return { pedidosComPendencia, clientesEmAtendimento }
@@ -510,7 +510,7 @@ function describeChanges(fields: Record<string, unknown>) {
 const PREPAYMENT_LABEL: Record<string, string> = { PAYPAL: 'PayPal', WIRE_TRANSFER: 'Transferência bancária', PIX: 'Pix' }
 
 function formatDate(value: Date | undefined) {
-  return value ? value.toISOString().slice(0, 10).split('-').reverse().join('/') : '(em branco)'
+  return value ? value.toISOString().slice(0, 10).split('-').toReversed().join('/') : '(em branco)'
 }
 
 function describeItemWeights(items: QuoteItemRef[], weights: (number | null)[] | undefined) {

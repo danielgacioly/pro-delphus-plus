@@ -58,7 +58,7 @@ function groupBySector(products: PriceListPdfProduct[]) {
       bySector.set(sector, group)
     }
   }
-  return Array.from(bySector.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  return Array.from(bySector.entries()).toSorted((a, b) => a[0].localeCompare(b[0]))
 }
 
 function renderHtml(data: PriceListPdfData) {
