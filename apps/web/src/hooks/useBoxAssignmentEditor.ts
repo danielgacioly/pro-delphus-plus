@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import {
+  buildBoxAssignments,
+  clampLinesToBoxes,
+  effectiveBoxCount,
+  parseBoxCount,
+  splitLine,
+  type BoxLine,
+} from '../lib/boxAssignment'
 
-export interface BoxLine {
-  id: string
-  label: string
-  quantity: number
-  box: number
-}
+export type { BoxLine }
 
 interface ItemLike {
   productName: string
@@ -75,8 +78,13 @@ export function useBoxAssignmentEditor() {
 
   function updatePackageCount(value: string) {
     setPackageCount(value)
-    const count = Math.max(1, Number(value) || 1)
-    setBoxLines((prev) => prev.map((l) => (l.box > count ? { ...l, box: count } : l)))
+    // Só redistribui quando o texto é mesmo um número de caixas. O campo fica
+    // vazio por um instante sempre que alguém apaga para digitar outro número,
+    // e tratar esse vazio como "1 caixa" jogava a divisão inteira na caixa 1 —
+    // sem volta, porque digitar o número novo não desfaz.
+    const count = parseBoxCount(value)
+    if (count === null) return
+    setBoxLines((prev) => clampLinesToBoxes(prev, count))
   }
 
   function updateBoxLine(id: string, patch: Partial<BoxLine>) {
@@ -84,31 +92,10 @@ export function useBoxAssignmentEditor() {
   }
 
   function splitBoxLine(id: string) {
-    const index = boxLines.findIndex((l) => l.id === id)
-    if (index === -1) return
-    const line = boxLines[index]
-    // Quantidade 1 não tem o que dividir — o botão já fica desabilitado nesse caso.
-    if (line.quantity <= 1) return
-
-    const half = Math.max(1, Math.floor(line.quantity / 2))
-    const rest = line.quantity - half
-    // Dividir só faz sentido se as duas partes forem para caixas diferentes —
-    // senão é só duas linhas na mesma caixa, sem separar fisicamente nada. Se
-    // a próxima caixa ainda não existir, ela é criada automaticamente.
-    const currentCount = Math.max(1, Number(packageCount) || 1)
-    const nextBox = line.box + 1
-    if (nextBox > currentCount) {
-      setPackageCount(String(nextBox))
-    }
-    const newLine: BoxLine = { id: `${id}-split-${Date.now()}`, label: line.label, quantity: half, box: nextBox }
-    setBoxLines((prev) => {
-      const i = prev.findIndex((l) => l.id === id)
-      if (i === -1) return prev
-      const next = [...prev]
-      next[i] = { ...next[i], quantity: rest }
-      next.splice(i + 1, 0, newLine)
-      return next
-    })
+    const result = splitLine(boxLines, id, boxCount)
+    if (!result) return
+    setBoxLines(result.lines)
+    if (result.boxCount !== boxCount) setPackageCount(String(result.boxCount))
   }
 
   function addCustomBoxLine() {
@@ -119,21 +106,13 @@ export function useBoxAssignmentEditor() {
     setBoxLines((prev) => prev.filter((l) => l.id !== id))
   }
 
-  const boxCount = Math.max(1, Number(packageCount) || 1)
+  const boxCount = effectiveBoxCount(boxLines, packageCount)
 
   function buildPayload(): BoxAssignmentPayload {
-    const count = boxCount
-    const boxAssignments = boxLines.length
-      ? Array.from({ length: count }, (_, boxIndex) =>
-          boxLines
-            .filter((l) => l.box === boxIndex + 1 && l.label.trim() && l.quantity > 0)
-            .map((l) => ({ label: l.label.trim(), quantity: l.quantity })),
-        )
-      : undefined
     return {
       itemWeightsKg: itemWeights.some((w) => w) ? itemWeights.map((w) => (w ? Number(w) : null)) : undefined,
-      packageCount: count,
-      boxAssignments,
+      packageCount: boxCount,
+      boxAssignments: buildBoxAssignments(boxLines, boxCount),
     }
   }
 

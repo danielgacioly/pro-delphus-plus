@@ -61,8 +61,8 @@ sectorsRouter.patch(
       if (existing) throw new HttpError(409, 'Já existe um setor com este nome')
     }
 
-    // Sector.name isn't a foreign key on Product (kept as free text), so a
-    // renomear exige propagar o novo nome para todo produto que carrega o
+    // Sector.name não é chave estrangeira em Product (continua texto livre),
+    // então renomear exige propagar o novo nome para todo produto que carrega o
     // antigo — trocando apenas aquela entrada no array de setores de cada um.
     await prisma.$transaction([
       prisma.$executeRaw`UPDATE products SET sectors = array_replace(sectors, ${sector.name}, ${data.name}) WHERE ${sector.name} = ANY(sectors)`,
