@@ -102,8 +102,8 @@ Painel de análise comercial, calculado sobre todos os pedidos e orçamentos:
 
 ### Contas e permissões
 
-- Dois papéis: **Administrador** (acesso total — edição do catálogo, setores, contas e métricas incluídos) e **Usuário**/vendedor (clientes, orçamentos, pedidos, tabela de preços e o quadro pessoal).
-- Cadastrar um produto novo é de qualquer usuário: quem vende é quem percebe que falta um item no catálogo. Editar e excluir produto, porém, continuam sendo de administrador.
+- Dois papéis: **Administrador** (acesso total, incluindo setores, contas e métricas) e **Usuário**/vendedor (catálogo de produtos, clientes, orçamentos, pedidos, tabela de preços e o quadro pessoal).
+- O catálogo é de todo mundo: cadastrar, editar, excluir produto, mídia, brochura e customização não exigem ser administrador — quem vende é quem percebe o que falta ou está errado no catálogo. O que fica restrito a administrador é a área de **Administração**: contas, setores e métricas.
 - Cadastro é auto-serviço (`/cadastro`), mas toda conta nova nasce **pendente** — só entra depois que um admin aprova em Administração → Contas. Rejeitar bloqueia o acesso sem apagar o cadastro.
 - Sem recuperação de senha por e-mail: um admin redefine a senha de qualquer conta manualmente.
 - O sistema nunca fica sem nenhum admin ativo — remover o cargo, desativar ou excluir o último administrador é bloqueado pela própria API.

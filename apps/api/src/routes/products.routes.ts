@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { requireAuth, requireRole } from '../middleware/auth.js'
+import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toProductDTO } from '../lib/dto.js'
 import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
@@ -9,6 +9,11 @@ import { generatePriceListPdf } from '../lib/priceListPdf.js'
 
 export const productsRouter = Router()
 
+// Todo o catálogo é de qualquer usuário autenticado — cadastrar, editar,
+// excluir, mídia, brochura e customização. Quem vende é quem percebe o que
+// falta ou está errado no catálogo, e depender de um admin para isso parava a
+// venda. O que continua exclusivo de administrador são as áreas de
+// Administração (contas, setores e métricas), em seus próprios arquivos.
 productsRouter.use(requireAuth)
 
 const include = { media: true, brochures: true, customizations: true } as const
@@ -133,9 +138,6 @@ const createProductSchema = z.object({
   priceEUR: z.coerce.number().positive().optional(),
 })
 
-// Cadastrar produto é de qualquer usuário: quem vende é quem descobre que
-// falta um item no catálogo, e depender de um admin para isso parava a venda.
-// Editar e excluir continuam de admin — ver PATCH e DELETE abaixo.
 productsRouter.post(
   '/',
   asyncHandler(async (req, res) => {
@@ -169,7 +171,6 @@ const updateProductSchema = z.object({
 
 productsRouter.patch(
   '/:id',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const data = updateProductSchema.parse(req.body)
 
@@ -184,7 +185,6 @@ productsRouter.patch(
 
 productsRouter.delete(
   '/:id',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const usedInQuotes = await prisma.quoteItem.findFirst({ where: { productId: req.params.id } })
     if (usedInQuotes) {
@@ -208,9 +208,6 @@ productsRouter.delete(
   }),
 )
 
-// Aberto junto com o cadastro: o formulário de novo produto envia as fotos
-// logo depois de criar o produto, em requisições separadas. Fechado aqui, o
-// cadastro de um usuário comum criaria o produto e perderia as imagens.
 productsRouter.post(
   '/:id/media',
   upload.single('file'),
@@ -236,7 +233,6 @@ productsRouter.post(
 
 productsRouter.post(
   '/:id/media/:mediaId/primary',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const media = await prisma.productMedia.findUnique({ where: { id: req.params.mediaId } })
     if (!media || media.productId !== req.params.id) throw new HttpError(404, 'Arquivo não encontrado')
@@ -253,7 +249,6 @@ productsRouter.post(
 
 productsRouter.delete(
   '/:id/media/:mediaId',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const media = await prisma.productMedia.findUnique({ where: { id: req.params.mediaId } })
     if (!media) throw new HttpError(404, 'Arquivo não encontrado')
@@ -275,7 +270,6 @@ productsRouter.delete(
   }),
 )
 
-// Aberto pelo mesmo motivo de POST /:id/media.
 productsRouter.post(
   '/:id/brochures',
   upload.single('file'),
@@ -299,7 +293,6 @@ productsRouter.post(
 
 productsRouter.delete(
   '/:id/brochures/:brochureId',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const brochure = await prisma.productBrochure.findUnique({ where: { id: req.params.brochureId } })
     if (!brochure) throw new HttpError(404, 'Arquivo não encontrado')
@@ -318,7 +311,6 @@ const createCustomizationSchema = z.object({
 
 productsRouter.post(
   '/:id/customizations',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const data = createCustomizationSchema.parse(req.body)
     const customization = await prisma.productCustomization.create({
@@ -330,7 +322,6 @@ productsRouter.post(
 
 productsRouter.delete(
   '/:id/customizations/:customizationId',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     await prisma.productCustomization.delete({ where: { id: req.params.customizationId } })
     res.status(204).send()

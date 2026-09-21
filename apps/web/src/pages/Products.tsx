@@ -73,7 +73,6 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 
 export function Products() {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'ADMIN'
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const highlightId = searchParams.get('highlight')
@@ -370,30 +369,28 @@ export function Products() {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {isAdmin && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title={isEditing ? 'Cancelar edição' : 'Editar produto'}
-                        aria-label={isEditing ? 'Cancelar edição' : `Editar ${product.name}`}
-                        onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}
-                        className={cn('px-2 text-neutral-600 hover:text-ink-900', isEditing && 'bg-black/[0.06] text-ink-900')}
-                      >
-                        <IconPencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title="Excluir produto"
-                        aria-label={`Excluir ${product.name}`}
-                        onClick={() => setDeletingProduct(product)}
-                        className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
-                      >
-                        <IconTrash className="h-3.5 w-3.5" />
-                      </Button>
-                    </>
-                  )}
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title={isEditing ? 'Cancelar edição' : 'Editar produto'}
+                      aria-label={isEditing ? 'Cancelar edição' : `Editar ${product.name}`}
+                      onClick={() => (isEditing ? setEditingId(null) : startEdit(product))}
+                      className={cn('px-2 text-neutral-600 hover:text-ink-900', isEditing && 'bg-black/[0.06] text-ink-900')}
+                    >
+                      <IconPencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Excluir produto"
+                      aria-label={`Excluir ${product.name}`}
+                      onClick={() => setDeletingProduct(product)}
+                      className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
+                    >
+                      <IconTrash className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
                   <button
                     type="button"
                     onClick={() => {
@@ -499,7 +496,7 @@ export function Products() {
                                   Principal
                                 </span>
                               )}
-                              {isAdmin && m.type === 'IMAGE' && !m.isPrimary && (
+                              {m.type === 'IMAGE' && !m.isPrimary && (
                                 <button
                                   onClick={() => setPrimaryMedia.mutate({ productId: product.id, mediaId: m.id })}
                                   title="Tornar principal"
@@ -508,35 +505,28 @@ export function Products() {
                                   Principal
                                 </button>
                               )}
-                              {isAdmin && (
-                                <button
-                                  onClick={() => removeMedia.mutate({ productId: product.id, mediaId: m.id })}
-                                  aria-label="Remover mídia"
-                                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink-900 text-[11px] text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-                                >
-                                  ×
-                                </button>
-                              )}
+                              <button
+                                onClick={() => removeMedia.mutate({ productId: product.id, mediaId: m.id })}
+                                aria-label="Remover mídia"
+                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink-900 text-[11px] text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+                              >
+                                ×
+                              </button>
                             </div>
                           ))}
                         </div>
                       )}
-                      {product.media.length === 0 && !isAdmin && (
-                        <p className="text-[13px] text-neutral-500">Nenhuma mídia cadastrada.</p>
-                      )}
-                      {isAdmin && (
-                        <DropZone
-                          accept="image/*"
-                          multiple
-                          className="py-3"
-                          onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
-                        >
-                          <p className="text-[12.5px] text-neutral-600">
-                            Arraste imagens ou{' '}
-                            <span className="font-medium text-brand-600">clique para selecionar</span>
-                          </p>
-                        </DropZone>
-                      )}
+                      <DropZone
+                        accept="image/*"
+                        multiple
+                        className="py-3"
+                        onFiles={(files) => files.forEach((file) => uploadMedia.mutate({ id: product.id, file }))}
+                      >
+                        <p className="text-[12.5px] text-neutral-600">
+                          Arraste imagens ou{' '}
+                          <span className="font-medium text-brand-600">clique para selecionar</span>
+                        </p>
+                      </DropZone>
                     </Panel>
 
                     <Panel title="Brochuras">
@@ -552,33 +542,26 @@ export function Products() {
                               >
                                 {b.name}
                               </a>
-                              {isAdmin && (
-                                <button
-                                  onClick={() => removeBrochure.mutate({ productId: product.id, brochureId: b.id })}
-                                  className="shrink-0 text-[12px] text-neutral-500 transition-colors hover:text-brand-600"
-                                >
-                                  remover
-                                </button>
-                              )}
+                              <button
+                                onClick={() => removeBrochure.mutate({ productId: product.id, brochureId: b.id })}
+                                className="shrink-0 text-[12px] text-neutral-500 transition-colors hover:text-brand-600"
+                              >
+                                remover
+                              </button>
                             </li>
                           ))}
                         </ul>
                       )}
-                      {product.brochures.length === 0 && !isAdmin && (
-                        <p className="text-[13px] text-neutral-500">Nenhuma brochura enviada.</p>
-                      )}
-                      {isAdmin && (
-                        <DropZone
-                          accept=".pdf,application/pdf"
-                          multiple
-                          className="py-3"
-                          onFiles={(files) => files.forEach((file) => uploadBrochure.mutate({ id: product.id, file }))}
-                        >
-                          <p className="text-[12.5px] text-neutral-600">
-                            Arraste PDFs ou <span className="font-medium text-brand-600">clique para selecionar</span>
-                          </p>
-                        </DropZone>
-                      )}
+                      <DropZone
+                        accept=".pdf,application/pdf"
+                        multiple
+                        className="py-3"
+                        onFiles={(files) => files.forEach((file) => uploadBrochure.mutate({ id: product.id, file }))}
+                      >
+                        <p className="text-[12.5px] text-neutral-600">
+                          Arraste PDFs ou <span className="font-medium text-brand-600">clique para selecionar</span>
+                        </p>
+                      </DropZone>
                     </Panel>
                   </div>
 
@@ -591,50 +574,43 @@ export function Products() {
                               <strong className="font-semibold text-ink-900">{c.name}:</strong>{' '}
                               {Array.isArray(c.options) ? c.options.join(', ') : ''}
                             </span>
-                            {isAdmin && (
-                              <button
-                                onClick={() =>
-                                  removeCustomization.mutate({ productId: product.id, customizationId: c.id })
-                                }
-                                className="shrink-0 text-[12px] text-neutral-500 transition-colors hover:text-brand-600"
-                              >
-                                remover
-                              </button>
-                            )}
+                            <button
+                              onClick={() =>
+                                removeCustomization.mutate({ productId: product.id, customizationId: c.id })
+                              }
+                              className="shrink-0 text-[12px] text-neutral-500 transition-colors hover:text-brand-600"
+                            >
+                              remover
+                            </button>
                           </li>
                         ))}
                       </ul>
                     )}
-                    {product.customizations.length === 0 && !isAdmin && (
-                      <p className="text-[13px] text-neutral-500">Nenhuma customização cadastrada.</p>
-                    )}
-                    {isAdmin && (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault()
-                          addCustomization.mutate(product.id)
-                        }}
-                        className="flex flex-wrap items-center gap-2"
-                      >
-                        <Input
-                          placeholder="Nome (ex: Cor)"
-                          required
-                          value={customizationDraft.name}
-                          onChange={(e) => setCustomizationDraft((s) => ({ ...s, name: e.target.value }))}
-                          className="h-9 w-44 text-[13px]"
-                        />
-                        <Input
-                          placeholder="Opções separadas por vírgula"
-                          required
-                          value={customizationDraft.options}
-                          onChange={(e) => setCustomizationDraft((s) => ({ ...s, options: e.target.value }))}
-                          className="h-9 min-w-44 flex-1 text-[13px]"
-                        />
-                        <Button type="submit" variant="primary" size="sm">
-                          Adicionar
-                        </Button>
-                      </form>
-                    )}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        addCustomization.mutate(product.id)
+                      }}
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      <Input
+                        placeholder="Nome (ex: Cor)"
+                        required
+                        value={customizationDraft.name}
+                        onChange={(e) => setCustomizationDraft((s) => ({ ...s, name: e.target.value }))}
+                        className="h-9 w-44 text-[13px]"
+                      />
+                      <Input
+                        placeholder="Opções separadas por vírgula"
+                        required
+                        value={customizationDraft.options}
+                        onChange={(e) => setCustomizationDraft((s) => ({ ...s, options: e.target.value }))}
+                        className="h-9 min-w-44 flex-1 text-[13px]"
+                      />
+                      <Button type="submit" variant="primary" size="sm">
+                        Adicionar
+                      </Button>
+                    </form>
                   </Panel>
                 </div>
               )}
