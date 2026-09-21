@@ -660,6 +660,14 @@ ordersRouter.delete(
     const existing = await prisma.order.findUnique({ where: { id: req.params.id } })
     if (!existing) throw new HttpError(404, 'Pedido não encontrado')
 
+    // O lembrete que o sistema criou sozinho ("anexar AWB e Nota Fiscal")
+    // aponta para este pedido. Apagar o pedido zera esse vínculo (SetNull no
+    // schema) e a tarefa ficava para sempre em Pendente, falando de um pedido
+    // que não existe mais e sem como ser resolvida — nem à mão, nem pelo
+    // próprio sistema. Mover para Concluído antes de apagar resolve, sem
+    // destruir nada que a pessoa tenha escrito.
+    await moveOrderTasksToDone(existing.id)
+
     for (const url of [
       existing.invoicePdfUrl,
       existing.packingListPdfUrl,
