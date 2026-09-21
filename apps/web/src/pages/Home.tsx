@@ -25,15 +25,11 @@ interface Shortcut {
   icon: ComponentType<SVGProps<SVGSVGElement>>
 }
 
-interface CreateAction extends Shortcut {
-  adminOnly?: boolean
-}
-
-const createActions: CreateAction[] = [
+const createActions: Shortcut[] = [
   { to: '/orcamentos/novo', title: 'Novo orçamento', description: 'Monte em PDF ou Excel a partir do catálogo.', icon: IconQuote },
   { to: '/pedidos/novo', title: 'Novo pedido', description: 'Gere invoice e documentos de exportação.', icon: IconTruck },
   { to: '/clientes?novo=1', title: 'Novo cliente', description: 'Cadastre contato, endereços e dados fiscais.', icon: IconContacts },
-  { to: '/produtos?novo=1', title: 'Novo produto', description: 'Adicione ao catálogo e à tabela de preços.', icon: IconBox, adminOnly: true },
+  { to: '/produtos?novo=1', title: 'Novo produto', description: 'Adicione ao catálogo e à tabela de preços.', icon: IconBox },
 ]
 
 const secondaryShortcuts: Shortcut[] = [
@@ -112,7 +108,7 @@ function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-function CreateCard({ action }: { action: CreateAction }) {
+function CreateCard({ action }: { action: Shortcut }) {
   const { to, title, description, icon: Icon } = action
   return (
     <Link to={to} className="group flex min-h-[88px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md">
@@ -290,7 +286,6 @@ function ActivityList({ title, to, empty, children }: { title: string; to: strin
 export function Home() {
   const { user } = useAuth()
   const firstName = user?.name?.trim().split(' ')[0] ?? ''
-  const isAdmin = user?.role === 'ADMIN'
   const [now, setNow] = useState(() => new Date())
 
   const { data: quotes, isLoading: loadingQuotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
@@ -429,7 +424,7 @@ export function Home() {
 
       <Section title="Principal" className="mt-8">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {createActions.filter((action) => !action.adminOnly || isAdmin).map((action) => (
+          {createActions.map((action) => (
             <CreateCard key={action.to} action={action} />
           ))}
         </div>

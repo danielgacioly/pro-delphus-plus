@@ -133,9 +133,11 @@ const createProductSchema = z.object({
   priceEUR: z.coerce.number().positive().optional(),
 })
 
+// Cadastrar produto é de qualquer usuário: quem vende é quem descobre que
+// falta um item no catálogo, e depender de um admin para isso parava a venda.
+// Editar e excluir continuam de admin — ver PATCH e DELETE abaixo.
 productsRouter.post(
   '/',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const data = createProductSchema.parse(req.body)
 
@@ -206,9 +208,11 @@ productsRouter.delete(
   }),
 )
 
+// Aberto junto com o cadastro: o formulário de novo produto envia as fotos
+// logo depois de criar o produto, em requisições separadas. Fechado aqui, o
+// cadastro de um usuário comum criaria o produto e perderia as imagens.
 productsRouter.post(
   '/:id/media',
-  requireRole('ADMIN'),
   upload.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) throw new HttpError(400, 'Nenhum arquivo enviado')
@@ -271,9 +275,9 @@ productsRouter.delete(
   }),
 )
 
+// Aberto pelo mesmo motivo de POST /:id/media.
 productsRouter.post(
   '/:id/brochures',
-  requireRole('ADMIN'),
   upload.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) throw new HttpError(400, 'Nenhum arquivo enviado')

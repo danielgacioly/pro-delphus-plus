@@ -285,12 +285,10 @@ export function Products() {
           placeholder="Buscar produtos"
           className="ml-auto w-full sm:w-64"
         />
-        {isAdmin && (
-          <Button variant="primary" size="md" onClick={() => setCreating(true)}>
-            <IconPlus className="h-4 w-4" />
-            Novo produto
-          </Button>
-        )}
+        <Button variant="primary" size="md" onClick={() => setCreating(true)}>
+          <IconPlus className="h-4 w-4" />
+          Novo produto
+        </Button>
       </Toolbar>
 
       {isLoading && (
