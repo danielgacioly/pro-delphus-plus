@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
+  catalogPriceFor,
   clientPrefixLabel,
   formatAmount,
   formatOrderNumber,
@@ -34,19 +35,12 @@ import { IconInfo, IconPlus } from '../components/icons'
 
 const currencySymbol: Record<Currency, string> = { BRL: 'R$', USD: '$', EUR: '€' }
 
-// Mesma regra de apps/api/src/routes/quotes.routes.ts (resolveQuoteData/priceOf) —
-// duplicada aqui só para consulta no popup, o preço que de fato entra no
-// orçamento continua sendo calculado no servidor.
-function catalogPriceFor(product: ProductDTO, currency: Currency, priceTier: PriceTier): number | null {
-  const raw =
-    currency === 'BRL'
-      ? product.priceBRL
-      : currency === 'EUR'
-        ? product.priceEUR
-        : priceTier === 'DISTRIBUTOR'
-          ? product.priceUSDDistributor
-          : product.priceUSD
-  return raw === null ? null : Number(raw)
+// O preço que de fato entra no orçamento continua sendo calculado no
+// servidor; aqui é só a consulta do popup de catálogo. A regra de qual coluna
+// vale é a mesma dos dois lados — ver pricing.ts no pacote compartilhado.
+function quotedCatalogPrice(product: ProductDTO, currency: Currency, priceTier: PriceTier): number | null {
+  const raw = catalogPriceFor(product, currency, priceTier)
+  return raw === null || raw === undefined ? null : Number(raw)
 }
 
 interface DraftItem {
@@ -183,7 +177,7 @@ export function NewQuote() {
     queryFn: () => fetchProduct(infoProductId),
     enabled: infoIndex !== null && !!infoProductId,
   })
-  const infoCatalogPrice = infoProduct ? catalogPriceFor(infoProduct, currency, effectivePriceTier) : null
+  const infoCatalogPrice = infoProduct ? quotedCatalogPrice(infoProduct, currency, effectivePriceTier) : null
   // Catálogo tem descrição em PT pra maioria dos produtos — orçamento em
   // português deve oferecer essa versão, não a em inglês (mesma regra do
   // backend em resolveQuoteData).

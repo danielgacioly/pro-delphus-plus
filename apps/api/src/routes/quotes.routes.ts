@@ -14,15 +14,17 @@ import { defaultQuoteNotes, formatMoney } from '../lib/quoteI18n.js'
 import { reservationBackoff } from '../lib/numbering.js'
 import {
   catalogPriceFor,
-  exceedsAmountLimit,
-  hasUsablePrice,
-  isDiscountTooLarge,
   priceTierLabel,
-  quoteLineAmounts,
-  quoteTotals,
   resolvePriceTier,
   resolveQuoteLocale,
   type CatalogPrices,
+} from '@prodelphusplus/shared'
+import {
+  exceedsAmountLimit,
+  hasUsablePrice,
+  isDiscountTooLarge,
+  quoteLineAmounts,
+  quoteTotals,
 } from '../domain/pricing.js'
 import { env } from '../lib/env.js'
 import { deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
