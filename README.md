@@ -1,8 +1,20 @@
 # Pro Delphus+
 
-Sistema interno da Pro Delphus para gestão de tabela de preços, produtos e geração automática de orçamentos em PDF.
+Sistema interno de gestão comercial da Pro Delphus: catálogo de produtos com
+tabela de preços multimoeda, cadastro de clientes, orçamentos e pedidos com
+geração automática de PDF, planilha e documentos de exportação, métricas,
+quadro de tarefas pessoal e o assistente NEO.
 
-**Stack**: React + Vite + TypeScript + Tailwind CSS (frontend) · Express + TypeScript + Prisma (backend) · PostgreSQL.
+**Stack**: React + Vite + TypeScript + Tailwind CSS (frontend) · Express +
+TypeScript + Prisma (backend) · PostgreSQL.
+
+| | |
+| --- | --- |
+| Como o sistema funciona | [Funcionalidades](#funcionalidades) |
+| Rodar na sua máquina | [Pré-requisitos](#pré-requisitos) · [Passo a passo](#passo-a-passo) |
+| Colocar no ar | [Deploy em produção](#deploy-em-produção) · [Backup e restauração](#backup-e-restauração) |
+| Mexer no código | [Estrutura do projeto](#estrutura-do-projeto) · [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Quando algo quebra | [Solução de problemas](#solução-de-problemas) |
 
 ## Funcionalidades
 
@@ -171,6 +183,13 @@ Isso cria a primeira conta admin com os dados de `apps/api/.env`. **`ADMIN_SEED_
 
 > Não existe recuperação de senha por e-mail. Quem esquece a senha pede a um admin, que define uma nova em **Administração → Contas**.
 
+Para um ambiente novo que também precise do catálogo populado:
+
+```bash
+npm run prisma:seed:sectors --workspace=apps/api   # setores predefinidos
+npm run prisma:seed:catalog --workspace=apps/api   # produtos e preços da tabela oficial
+```
+
 ### 6. Rodar o backend e o frontend
 
 Em dois terminais separados:
@@ -200,6 +219,18 @@ npm run db:up      # sobe o Postgres (se não estiver rodando)
 npm run dev:api    # em um terminal
 npm run dev:web    # em outro terminal
 ```
+
+Antes de commitar:
+
+```bash
+npm run lint       # oxlint no monorepo inteiro
+npm run typecheck  # tsc sem emitir
+npm test           # testes de unidade das regras de negócio
+npm run build      # build dos três workspaces
+```
+
+O `npm run test:integration` sobe um teste de ponta a ponta contra a API
+rodando e um Postgres de verdade; a CI roda os cinco a cada push.
 
 ## Deploy em produção
 
@@ -316,19 +347,31 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup /usr/
 ```
 prodelphusplus/
 ├── apps/
-│   ├── web/              # Frontend — React + Vite + Tailwind
-│   └── api/               # Backend — Express + Prisma
-│       ├── prisma/         # schema.prisma, migrations, seed
+│   ├── web/                 # Frontend — React + Vite + Tailwind
+│   │   └── src/
+│   │       ├── pages/         # uma por rota
+│   │       ├── components/    # componentes reaproveitados; ui/ é a biblioteca base
+│   │       ├── context/       # sessão e avisos
+│   │       ├── hooks/         # estado reaproveitado entre telas
+│   │       └── lib/           # cliente HTTP e regras puras (período, caixas)
+│   └── api/                 # Backend — Express + Prisma
+│       ├── prisma/            # schema.prisma, migrations, seeds
 │       ├── src/
-│       │   ├── routes/      # rotas da API (auth, users, price-table, products, quotes...)
-│       │   ├── middleware/  # autenticação, tratamento de erros
-│       │   ├── lib/         # prisma client, jwt, pdf, dto
-│       │   └── storage/     # upload/armazenamento de arquivos
-│       └── uploads/         # arquivos enviados (mídia de produtos, PDFs de orçamento)
+│       │   ├── routes/          # uma por recurso; orquestram banco + domínio
+│       │   ├── domain/          # regras de negócio puras, sem banco e sem HTTP
+│       │   ├── middleware/      # autenticação, tratamento de erros
+│       │   ├── lib/             # prisma, jwt, geração de PDF/planilha, DTOs
+│       │   └── storage/         # upload e armazenamento de arquivos
+│       └── uploads/           # arquivos enviados e documentos gerados
 ├── packages/
-│   └── shared/            # tipos TypeScript compartilhados entre web e api
-└── docker-compose.yml     # Postgres para desenvolvimento
+│   └── shared/              # contrato entre web e api: enums, DTOs e regras das duas pontas
+└── docker-compose.yml       # Postgres para desenvolvimento
 ```
+
+Regra de negócio não mora em arquivo de rota: o que decide preço, divisão em
+caixas ou documentação de pedido fica em `apps/api/src/domain/`, onde dá para
+testar sem subir banco. O que a API e a tela precisam calcular igual (o total
+do Invoice, por exemplo) mora em `packages/shared`. Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Solução de problemas
 
