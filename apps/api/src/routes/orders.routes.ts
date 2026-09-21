@@ -15,7 +15,7 @@ import { fetchExchangeRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
 import { reservationBackoff } from '../lib/numbering.js'
-import { formatOrderNumber, type BoxAssignments, type PrepaymentMethod } from '@prodelphusplus/shared'
+import { formatOrderNumber, invoiceTotal, type BoxAssignments, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { boxAssignmentsFit, buildBoxPages, formatPackageCountLabel } from '../domain/packaging.js'
 import { missingPostOrderDocs, prepaymentRejection } from '../domain/orderDocuments.js'
 import { ensureColumns, findDoneColumnId } from './tasks.routes.js'
@@ -328,7 +328,13 @@ async function buildAndWriteDocuments(
   }))
 
   const subtotal = docItems.reduce((sum, i) => sum + i.lineTotal, 0)
-  const total = subtotal + (freight ?? 0) - discount + (order.paypalFee ?? 0)
+  const total = invoiceTotal({
+    subtotal,
+    freight,
+    discount,
+    prepaymentBy: order.prepaymentBy,
+    paypalFee: order.paypalFee,
+  })
 
   // If no purchase order was given, the invoice falls back to the source
   // quote's number (not the order's own number).
