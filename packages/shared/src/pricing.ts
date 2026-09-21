@@ -50,3 +50,16 @@ export function catalogPriceFor(product: CatalogPrices, currency: Currency, tier
 export function priceTierLabel(currency: Currency, tier: PriceTier): string {
   return tier === 'DISTRIBUTOR' ? `${currency} (distribuidor)` : currency
 }
+
+/**
+ * Se o item foi negociado para baixo, que é o que o documento mostra como
+ * preço especial (o de tabela riscado ao lado do cobrado).
+ *
+ * Preço customizado MAIOR que o de tabela não é "especial": é só o preço
+ * daquele item, sem riscado e sem coluna extra. A coluna de preço especial só
+ * existe no documento quando pelo menos um item está nessa condição — assim
+ * orçamento sem negociação sai idêntico ao de antes, sem coluna vazia.
+ */
+export function hasSpecialPrice(item: { listPrice: number | null; unitPrice: number }): boolean {
+  return item.listPrice !== null && item.unitPrice < item.listPrice
+}

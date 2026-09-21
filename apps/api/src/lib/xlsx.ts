@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ExcelJS from 'exceljs'
-import { clientPrefixLabel } from '@prodelphusplus/shared'
+import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
 import { LABELS, type QuoteLanguage } from './quoteI18n.js'
 import { COMPANY } from './pdf.js'
 
@@ -18,15 +18,6 @@ export interface QuoteXlsxItem {
   /** Preço cobrado — igual ao de catálogo, salvo quando houve preço especial. */
   unitPrice: number
   photoDataUri: string | null
-}
-
-/**
- * Mesmo critério do PDF: só conta como especial quando o preço cobrado é
- * MENOR que o de tabela (desconto negociado). Um preço customizado maior não
- * é "especial" — é só o preço daquele item, sem riscado e sem coluna extra.
- */
-function hasSpecialPrice(item: QuoteXlsxItem) {
-  return item.listPrice !== null && item.unitPrice < item.listPrice
 }
 
 export interface QuoteXlsxData {

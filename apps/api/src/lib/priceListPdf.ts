@@ -1,5 +1,6 @@
 import { formatAmount } from '@prodelphusplus/shared'
 import { COMPANY } from './pdf.js'
+import { escapeHtml } from './html.js'
 import { renderPdf } from './browser.js'
 
 export interface PriceListPdfProduct {
@@ -34,14 +35,6 @@ export interface PriceListPdfData {
 const kindLabel: Record<PriceListPdfProduct['kind'], string> = {
   COMPLETE_MODEL: 'Modelo completo',
   COMPONENT: 'Componentes / Peças',
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 function formatPrice(value: string | null, currency: string) {

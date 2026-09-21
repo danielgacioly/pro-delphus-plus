@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { formatOrderNumber } from '@prodelphusplus/shared'
 import type { PackingListBoxPage } from '../domain/packaging.js'
 import { COMPANY } from './pdf.js'
+import { escapeHtml, nl2br } from './html.js'
 import { renderPdf as renderPdfWithBrowser } from './browser.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -72,18 +73,6 @@ export interface PackingListBoxData {
   isNational: boolean
   /** "PAC", "SEDEX", "Transportadora XPTO"... impresso como "VIA ___" no topo, só quando preenchido. */
   shippingMethod: string | null
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function nl2br(value: string) {
-  return escapeHtml(value).replace(/\n/g, '<br />')
 }
 
 // Símbolo de cada moeda do catálogo — sem isto, todo valor saía com "$" na

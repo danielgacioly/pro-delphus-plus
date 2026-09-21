@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { catalogPriceFor, priceTierLabel, resolvePriceTier, resolveQuoteLocale } from './pricing.js'
+import {
+  catalogPriceFor,
+  hasSpecialPrice,
+  priceTierLabel,
+  resolvePriceTier,
+  resolveQuoteLocale,
+} from './pricing.js'
 
 const catalog = {
   priceBRL: 15_000,
@@ -56,5 +62,23 @@ describe('priceTierLabel', () => {
   it('nomeia a tabela de distribuidor junto da moeda', () => {
     assert.equal(priceTierLabel('USD', 'DISTRIBUTOR'), 'USD (distribuidor)')
     assert.equal(priceTierLabel('EUR', 'FINAL'), 'EUR')
+  })
+})
+
+describe('hasSpecialPrice', () => {
+  it('reconhece desconto negociado, que o documento mostra riscado', () => {
+    assert.equal(hasSpecialPrice({ listPrice: 3000, unitPrice: 2500 }), true)
+  })
+
+  it('preço customizado maior não é especial, é só o preço do item', () => {
+    assert.equal(hasSpecialPrice({ listPrice: 3000, unitPrice: 3500 }), false)
+  })
+
+  it('preço igual ao de tabela não é especial', () => {
+    assert.equal(hasSpecialPrice({ listPrice: 3000, unitPrice: 3000 }), false)
+  })
+
+  it('item sem preço de tabela não tem com o que comparar', () => {
+    assert.equal(hasSpecialPrice({ listPrice: null, unitPrice: 800 }), false)
   })
 })

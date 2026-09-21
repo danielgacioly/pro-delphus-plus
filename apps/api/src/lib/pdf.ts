@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { clientPrefixLabel } from '@prodelphusplus/shared'
+import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
 import { renderPdf } from './browser.js'
 import { LABELS, formatMoney, type QuoteLanguage } from './quoteI18n.js'
+import { escapeHtml } from './html.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const logoPng = fs.readFileSync(path.join(__dirname, '../assets/logo-company.png'))
@@ -28,19 +29,6 @@ export interface QuotePdfItem {
   unitPrice: number
   lineTotal: number
   photoDataUri: string | null
-}
-
-/**
- * Um item tem preço especial só quando o cobrado é MENOR que o de tabela — é a
- * situação de desconto negociado, que vale a pena destacar riscando o preço de
- * catálogo. Um preço customizado MAIOR não é "especial", é só o preço daquele
- * item: some direto na coluna normal, sem riscado e sem entrar na coluna de
- * preço especial. A coluna só existe no documento se pelo menos um item
- * estiver na condição de desconto — orçamento sem negociação sai idêntico ao
- * de antes, sem coluna vazia sobrando.
- */
-function hasSpecialPrice(item: QuotePdfItem) {
-  return item.listPrice !== null && item.unitPrice < item.listPrice
 }
 
 export interface QuotePdfSignature {
@@ -92,14 +80,6 @@ export interface QuotePdfData {
   total: number
   currency: string
   signature: QuotePdfSignature
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 function renderItemDescription(item: QuotePdfItem) {
