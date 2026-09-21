@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import puppeteer from 'puppeteer'
 import { clientPrefixLabel } from '@prodelphusplus/shared'
+import { renderPdf } from './browser.js'
 import { LABELS, formatMoney, type QuoteLanguage } from './quoteI18n.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -260,26 +260,6 @@ function renderHtml(data: QuotePdfData) {
 </html>`
 }
 
-let browserPromise: ReturnType<typeof puppeteer.launch> | null = null
-
-async function getBrowser() {
-  // O Chromium do Debian (instalado via apt no Dockerfile) tenta subir o
-  // crash_reporter/crashpad_handler ao iniciar e falha em alguns hosts com
-  // "chrome_crashpad_handler: --database is required", derrubando o launch
-  // inteiro antes mesmo de renderizar qualquer página. Desabilitar o crash
-  // reporter evita que esse subprocesso seja disparado.
-  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-crash-reporter'] })
-  return browserPromise
-}
-
 export async function generateQuotePdf(data: QuotePdfData): Promise<Buffer> {
-  const browser = await getBrowser()
-  const page = await browser.newPage()
-  try {
-    await page.setContent(renderHtml(data), { waitUntil: 'load' })
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', bottom: '0' } })
-    return Buffer.from(pdf)
-  } finally {
-    await page.close()
-  }
+  return renderPdf(renderHtml(data), { format: 'A4', printBackground: true, margin: { top: '0', bottom: '0' } })
 }

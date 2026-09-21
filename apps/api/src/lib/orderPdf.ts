@@ -1,9 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import puppeteer from 'puppeteer'
 import { formatOrderNumber } from '@prodelphusplus/shared'
 import { COMPANY } from './pdf.js'
+import { renderPdf as renderPdfWithBrowser } from './browser.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const logoPng = fs.readFileSync(path.join(__dirname, '../assets/logo-company.png'))
@@ -575,26 +575,8 @@ ${pages}
 </html>`
 }
 
-let browserPromise: ReturnType<typeof puppeteer.launch> | null = null
-
-async function getBrowser() {
-  // Mesma correção de pdf.ts — evita o crashpad_handler do Chromium do
-  // Debian derrubando o launch com "chrome_crashpad_handler: --database is
-  // required" em alguns hosts.
-  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-crash-reporter'] })
-  return browserPromise
-}
-
 async function renderPdf(html: string): Promise<Buffer> {
-  const browser = await getBrowser()
-  const page = await browser.newPage()
-  try {
-    await page.setContent(html, { waitUntil: 'load' })
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', bottom: '0' } })
-    return Buffer.from(pdf)
-  } finally {
-    await page.close()
-  }
+  return renderPdfWithBrowser(html, { format: 'A4', printBackground: true, margin: { top: '0', bottom: '0' } })
 }
 
 export async function generateInvoicePdf(data: OrderDocData): Promise<Buffer> {

@@ -1,6 +1,6 @@
-import puppeteer from 'puppeteer'
 import { formatAmount } from '@prodelphusplus/shared'
 import { COMPANY } from './pdf.js'
+import { renderPdf } from './browser.js'
 
 export interface PriceListPdfProduct {
   sku: string
@@ -167,21 +167,6 @@ function renderHtml(data: PriceListPdfData) {
 </html>`
 }
 
-let browserPromise: ReturnType<typeof puppeteer.launch> | null = null
-
-async function getBrowser() {
-  browserPromise ??= puppeteer.launch({ headless: true, args: ['--no-sandbox'] })
-  return browserPromise
-}
-
 export async function generatePriceListPdf(data: PriceListPdfData): Promise<Buffer> {
-  const browser = await getBrowser()
-  const page = await browser.newPage()
-  try {
-    await page.setContent(renderHtml(data), { waitUntil: 'load' })
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20px', bottom: '20px' } })
-    return Buffer.from(pdf)
-  } finally {
-    await page.close()
-  }
+  return renderPdf(renderHtml(data), { format: 'A4', printBackground: true, margin: { top: '20px', bottom: '20px' } })
 }
