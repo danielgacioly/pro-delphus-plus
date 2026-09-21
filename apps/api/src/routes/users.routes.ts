@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import bcrypt from 'bcryptjs'
+import { hash } from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
@@ -38,7 +38,7 @@ usersRouter.post(
     }
 
     const { password, ...rest } = data
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await hash(password, 10)
     const user = await prisma.user.create({
       data: { ...rest, passwordHash, status: 'APPROVED' },
     })
@@ -145,7 +145,7 @@ usersRouter.post(
   '/:id/reset-password',
   asyncHandler(async (req, res) => {
     const { password } = resetPasswordSchema.parse(req.body)
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await hash(password, 10)
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: { passwordHash },

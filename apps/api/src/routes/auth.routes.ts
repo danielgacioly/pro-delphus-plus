@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express'
-import bcrypt from 'bcryptjs'
+import { compare, hash } from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { COOKIE_SECURE } from '../lib/env.js'
@@ -53,7 +53,7 @@ authRouter.post(
       throw new HttpError(401, 'Credenciais inválidas')
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash)
+    const valid = await compare(password, user.passwordHash)
     if (!valid) {
       throw new HttpError(401, 'Credenciais inválidas')
     }
@@ -94,7 +94,7 @@ authRouter.post(
       throw new HttpError(409, 'Já existe uma conta com este e-mail')
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10)
+    const passwordHash = await hash(data.password, 10)
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -239,12 +239,12 @@ authRouter.post(
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body)
 
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } })
-    const valid = await bcrypt.compare(currentPassword, user.passwordHash)
+    const valid = await compare(currentPassword, user.passwordHash)
     if (!valid) {
       throw new HttpError(400, 'Senha atual incorreta')
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 10)
+    const passwordHash = await hash(newPassword, 10)
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash } })
     res.status(204).send()
   }),

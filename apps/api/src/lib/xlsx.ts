@@ -62,6 +62,11 @@ function dataUriToImage(dataUri: string): { base64: string; extension: 'png' | '
   return { base64, extension }
 }
 
+/** Índice de coluna (1) para a letra que o Excel usa nas fórmulas ("A"). */
+function colLetter(index: number): string {
+  return String.fromCharCode(64 + index)
+}
+
 export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   const t = LABELS[data.language]
 
@@ -76,7 +81,6 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
   const SPECIAL_COL = 6
   const totalCol = showSpecial ? 7 : 6
   const labelCol = totalCol - 1
-  const colLetter = (index: number) => String.fromCharCode(64 + index)
   const TOTAL = colLetter(totalCol)
   const LABEL = colLetter(labelCol)
   const LAST = TOTAL

@@ -12,6 +12,18 @@ import { generateQuotePdf } from '../lib/pdf.js'
 import { generateQuoteXlsx } from '../lib/xlsx.js'
 import { defaultQuoteNotes, formatMoney } from '../lib/quoteI18n.js'
 import { reservationBackoff } from '../lib/numbering.js'
+import {
+  catalogPriceFor,
+  exceedsAmountLimit,
+  hasUsablePrice,
+  isDiscountTooLarge,
+  priceTierLabel,
+  quoteLineAmounts,
+  quoteTotals,
+  resolvePriceTier,
+  resolveQuoteLocale,
+  type CatalogPrices,
+} from '../domain/pricing.js'
 import { env } from '../lib/env.js'
 import { deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 
@@ -142,21 +154,9 @@ export type CreateQuoteInput = z.infer<typeof createQuoteSchema>
  * se é um create ou update no banco.
  */
 export async function resolveQuoteData(data: CreateQuoteInput, requesterId: string) {
-  // Nacional é sempre BRL/português — não é mais o idioma que decide a
-  // moeda, é o tipo (Nacional/Internacional) escolhido explicitamente no
-  // formulário. Ver NewQuote.tsx.
-  const isNational = data.exportScope === 'NATIONAL'
-  const language = isNational ? 'PT' : data.language
-  const currency = isNational ? 'BRL' : (data.currency ?? 'USD')
-  // Distributor pricing only exists in USD, so BRL/EUR quotes always use the final price
-  const priceTier = currency === 'USD' ? data.priceTier : 'FINAL'
-
-  const priceOf = (product: { priceBRL: unknown; priceUSD: unknown; priceUSDDistributor: unknown; priceEUR: unknown }) => {
-    if (currency === 'BRL') return product.priceBRL
-    if (currency === 'EUR') return product.priceEUR
-    return priceTier === 'DISTRIBUTOR' ? product.priceUSDDistributor : product.priceUSD
-  }
-  const tierLabel = priceTier === 'DISTRIBUTOR' ? `${currency} (distribuidor)` : currency
+  const { language, currency } = resolveQuoteLocale(data)
+  const priceTier = resolvePriceTier(currency, data.priceTier)
+  const priceOf = (product: CatalogPrices) => catalogPriceFor(product, currency, priceTier)
 
   // País do cliente vinculado decide Sr./Sra. vs Mr./Ms. no documento — ver
   // clientPrefixLabel em @prodelphusplus/shared. Sem cliente vinculado
@@ -178,12 +178,11 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
 
   const missing = data.items.filter((item) => {
     const product = productById.get(item.productId)
-    // A manually entered price covers items with no catalog price for
-    // this tier — same escape hatch the description override already has.
-    return !product || (!priceOf(product) && item.unitPrice === undefined)
+    return !product || !hasUsablePrice(priceOf(product), item.unitPrice)
   })
   if (missing.length > 0) {
     const labels = missing.map((item) => productById.get(item.productId)?.sku || item.productId)
+    const tierLabel = priceTierLabel(currency, priceTier)
     throw new HttpError(400, `Item(ns) sem preço em ${tierLabel} ou produto cadastrado: ${labels.join(', ')}`)
   }
 
@@ -193,10 +192,11 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
       // O preço de tabela é guardado ao lado do cobrado. Quando os dois
       // diferem, o documento passa a mostrar a coluna de preço especial — daí
       // não bastar sobrescrever `unitPrice` e perder a referência.
-      const catalogPrice = priceOf(product)
-      const listPrice = catalogPrice === null || catalogPrice === undefined ? null : Number(catalogPrice)
-      const unitPrice = item.unitPrice ?? listPrice!
-      const lineTotal = unitPrice * item.quantity
+      const { listPrice, unitPrice, lineTotal } = quoteLineAmounts({
+        catalogPrice: priceOf(product),
+        typedUnitPrice: item.unitPrice,
+        quantity: item.quantity,
+      })
       // Title (product name/code) is rendered in bold; the descriptive text follows it.
       // Both accept a per-item override: o nome digitado no orçamento é
       // guardado no item (`titleOverride`) para que o documento não mude se o
@@ -227,23 +227,19 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
     }),
   )
 
-  const subtotal = lineItems.reduce((sum, i) => sum + i.lineTotal, 0)
-  const freight = data.freight ?? 0
-  // Desconto maior que o que há para descontar deixava o orçamento com total
-  // negativo, sem aviso nenhum — e o número seguia para o Invoice e para as
-  // métricas (receita cotada ficava negativa). É quase sempre um dígito a mais
-  // digitado por engano.
-  if (data.discount > subtotal + freight) {
+  const { subtotal, total } = quoteTotals({
+    lineTotals: lineItems.map((i) => i.lineTotal),
+    freight: data.freight,
+    discount: data.discount,
+  })
+  if (isDiscountTooLarge(data.discount, subtotal, data.freight)) {
+    const quoteValue = subtotal + (data.freight ?? 0)
     throw new HttpError(
       400,
-      `Desconto (${formatMoney(data.discount, currency, language)}) maior que o valor do orçamento (${formatMoney(subtotal + freight, currency, language)}).`,
+      `Desconto (${formatMoney(data.discount, currency, language)}) maior que o valor do orçamento (${formatMoney(quoteValue, currency, language)}).`,
     )
   }
-  const total = subtotal + freight - data.discount
-  // Decimal(12,2) no banco: acima disso o INSERT falha lá embaixo com erro de
-  // overflow, que chegava ao usuário como "500 Erro interno".
-  const MAX_DECIMAL_12_2 = 9_999_999_999.99
-  if (subtotal > MAX_DECIMAL_12_2 || total > MAX_DECIMAL_12_2) {
+  if (exceedsAmountLimit(subtotal, total)) {
     throw new HttpError(400, 'Valor total do orçamento excede o limite suportado pelo sistema.')
   }
   const notes = data.notes ?? defaultQuoteNotes(language, currency, data.exportScope)

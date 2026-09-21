@@ -9,13 +9,15 @@ import { Prisma } from '../../generated/prisma/client.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toOrderDTO } from '../lib/dto.js'
-import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf, type PackingListBoxPage } from '../lib/orderPdf.js'
+import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf } from '../lib/orderPdf.js'
 import { generateExportDocXlsx } from '../lib/orderXlsx.js'
 import { fetchExchangeRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
 import { reservationBackoff } from '../lib/numbering.js'
-import { formatOrderNumber, type BoxAssignments } from '@prodelphusplus/shared'
+import { formatOrderNumber, type BoxAssignments, type PrepaymentMethod } from '@prodelphusplus/shared'
+import { boxAssignmentsFit, buildBoxPages, formatPackageCountLabel } from '../domain/packaging.js'
+import { missingPostOrderDocs, prepaymentRejection } from '../domain/orderDocuments.js'
 import { ensureColumns, findDoneColumnId } from './tasks.routes.js'
 
 export const ordersRouter = Router()
@@ -148,53 +150,20 @@ ordersRouter.get(
   }),
 )
 
-/**
- * Pix só existe em venda nacional; PayPal (com taxa) só em exportação. A UI já
- * mostra só a opção válida, mas a regra também precisa valer na API: um pedido
- * duplicado ou editado por outro caminho não pode acabar com uma forma de
- * pagamento que não existe naquele tipo de venda.
- */
-function assertPrepaymentAllowed(prepaymentBy: 'PAYPAL' | 'WIRE_TRANSFER' | 'PIX', isNational: boolean) {
-  if (isNational && prepaymentBy === 'PAYPAL') {
-    throw new HttpError(400, 'PayPal não se aplica a pedido nacional. Use Pix ou transferência bancária.')
-  }
-  if (!isNational && prepaymentBy === 'PIX') {
-    throw new HttpError(400, 'Pix não se aplica a pedido internacional. Use PayPal ou transferência bancária.')
-  }
+/** Aplica a regra de `domain/orderDocuments.ts` na borda HTTP. */
+function assertPrepaymentAllowed(prepaymentBy: PrepaymentMethod, isNational: boolean) {
+  const rejection = prepaymentRejection(prepaymentBy, isNational)
+  if (rejection) throw new HttpError(400, rejection)
 }
 
-/**
- * Cada caixa declarada precisa existir de fato: com mais listas de itens do que
- * caixas, buildBoxPages descartava as sobrando em silêncio e o Packing List
- * saía com menos itens do que o Invoice cobra.
- */
+/** Aplica a regra de `domain/packaging.ts` na borda HTTP. */
 function assertBoxAssignmentsFit(boxAssignments: BoxAssignments | null | undefined, packageCount: number) {
-  if (boxAssignments && boxAssignments.length > packageCount) {
+  if (!boxAssignmentsFit(boxAssignments, packageCount)) {
     throw new HttpError(
       400,
-      `A divisão informada tem ${boxAssignments.length} caixas, mas o pedido declara ${packageCount}. Ajuste o número de caixas.`,
+      `A divisão informada tem ${boxAssignments!.length} caixas, mas o pedido declara ${packageCount}. Ajuste o número de caixas.`,
     )
   }
-}
-
-/**
- * O que falta documentar num pedido, pelas regras do passo 5 do processo
- * comercial (ver NEO_SALES_PROCESS em neoKnowledge.ts): internacional pede
- * AWB + Nota Fiscal; nacional só Nota Fiscal (boleto/Pix é a forma de
- * pagamento escolhida, não um documento a conferir aqui). Pedido já
- * concluído não tem pendência — a pessoa já decidiu que está tudo certo.
- * Compartilhada com o NEO (`verificar_pendencias` em neoTools.ts) — as duas
- * pontas usam exatamente a mesma regra, uma só existe no código.
- */
-export function missingPostOrderDocs(
-  order: { status: 'PENDING' | 'COMPLETED'; awbNumber: string | null; nfNumber: string | null },
-  exportScope: 'NATIONAL' | 'INTERNATIONAL',
-): string[] {
-  if (order.status === 'COMPLETED') return []
-  const missing: string[] = []
-  if (exportScope === 'INTERNATIONAL' && !order.awbNumber) missing.push('AWB')
-  if (!order.nfNumber) missing.push('Nota Fiscal')
-  return missing
 }
 
 // Lembrete é um bônus sobre um pedido que já foi criado com sucesso — se
@@ -294,34 +263,6 @@ export const orderFieldsSchema = z.object({
     .optional(),
 })
 export type OrderFieldsInput = z.infer<typeof orderFieldsSchema>
-
-// "01 Carton" / "02 Cartons" — the Invoice/Packing List "Number of Packages"
-// field is always derived from packageCount rather than free-typed, so it
-// can never drift out of sync with how many Packing List Box pages exist.
-function formatPackageCountLabel(count: number) {
-  return `${String(count).padStart(2, '0')} ${count === 1 ? 'Carton' : 'Cartons'}`
-}
-
-function buildBoxPages(
-  packageCount: number,
-  boxAssignments: BoxAssignments | null,
-  docItems: { title: string; quantity: number }[],
-): PackingListBoxPage[] {
-  if (!boxAssignments || boxAssignments.length === 0) {
-    // No explicit box assignment — everything ships in box 1; any additional
-    // declared boxes are left empty rather than guessing a split.
-    return Array.from({ length: packageCount }, (_, i) => ({
-      boxNumber: i + 1,
-      totalBoxes: packageCount,
-      items: i === 0 ? docItems.map((it) => ({ title: it.title, quantity: it.quantity })) : [],
-    }))
-  }
-  return Array.from({ length: packageCount }, (_, i) => ({
-    boxNumber: i + 1,
-    totalBoxes: packageCount,
-    items: (boxAssignments[i] ?? []).map((entry) => ({ title: entry.label, quantity: entry.quantity })),
-  }))
-}
 
 async function buildAndWriteDocuments(
   order: {

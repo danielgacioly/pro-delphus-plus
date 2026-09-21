@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import bcrypt from 'bcryptjs'
+import { hash } from 'bcryptjs'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../generated/prisma/client.js'
 
@@ -23,7 +23,7 @@ async function main() {
     return
   }
 
-  const passwordHash = await bcrypt.hash(password, 10)
+  const passwordHash = await hash(password, 10)
   // `status` default é PENDING e o login recusa PENDING — sem marcar APPROVED
   // aqui, a primeira conta de uma instalação nova nasceria trancada e não
   // haveria admin para aprovar ninguém.

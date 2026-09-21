@@ -1,4 +1,4 @@
-import puppeteer, { type Browser, type PDFOptions } from 'puppeteer'
+import { launch, type Browser, type PDFOptions } from 'puppeteer'
 
 /**
  * Um único Chromium para todos os PDFs do sistema (orçamento, documentos de
@@ -28,7 +28,7 @@ async function getBrowser(): Promise<Browser> {
   // "chrome_crashpad_handler: --database is required", derrubando o launch
   // inteiro antes mesmo de renderizar qualquer página. Desabilitar o crash
   // reporter evita que esse subprocesso seja disparado.
-  const launched = puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-crash-reporter'] })
+  const launched = launch({ headless: true, args: ['--no-sandbox', '--disable-crash-reporter'] })
   browserPromise = launched
 
   let browser: Browser

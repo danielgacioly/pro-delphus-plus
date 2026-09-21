@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { formatOrderNumber } from '@prodelphusplus/shared'
+import type { PackingListBoxPage } from '../domain/packaging.js'
 import { COMPANY } from './pdf.js'
 import { renderPdf as renderPdfWithBrowser } from './browser.js'
 
@@ -59,16 +60,9 @@ export interface OrderDocData {
   isNational: boolean
 }
 
-export interface PackingListBoxItem {
-  title: string
-  quantity: number
-}
-
-export interface PackingListBoxPage {
-  boxNumber: number
-  totalBoxes: number
-  items: PackingListBoxItem[]
-}
+// O formato da página é decidido pela regra de divisão em caixas, não pelo
+// renderizador — ver domain/packaging.ts.
+export type { PackingListBoxItem, PackingListBoxPage } from '../domain/packaging.js'
 
 export interface PackingListBoxData {
   orderNumber: number

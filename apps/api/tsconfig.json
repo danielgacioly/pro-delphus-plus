@@ -20,5 +20,8 @@
     "generated",
     "prisma.config.ts",
     "prisma/seed.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts"
   ]
 }

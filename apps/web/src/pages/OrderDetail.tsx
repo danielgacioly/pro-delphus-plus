@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { formatAmount, formatOrderNumber, type OrderDTO } from '@prodelphusplus/shared'
+import { formatAmount, formatOrderNumber, invoiceTotal, type OrderDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -226,16 +226,15 @@ export function OrderDetail() {
   // Venda nacional não sai do Brasil — sem câmbio, Incoterms nem AWB (via de
   // envio entra no lugar). Ver a mesma regra em apps/api/src/routes/orders.routes.ts.
   const isNational = order.quote.exportScope === 'NATIONAL'
-  // Mesma conta do Invoice gerado (subtotal + frete - desconto + taxa do
-  // PayPal quando é a forma de pagamento) — "Total do orçamento" nunca inclui
-  // a taxa, porque ela é um dado do pedido, não do orçamento em si. Sem este
-  // campo, trocar pra PayPal e salvar parecia não fazer efeito nenhum na tela,
-  // já que o único total visível ficava igual — a taxa só aparecia no PDF.
-  const invoiceTotal =
-    Number(order.quote.subtotal) +
-    Number(order.quote.freight ?? 0) -
-    Number(order.quote.discount) +
-    (order.prepaymentBy === 'PAYPAL' ? Number(order.paypalFee ?? 0) : 0)
+  // A mesma função que a API usa para fechar o Invoice — ver money.ts no
+  // pacote compartilhado. Antes a conta estava escrita à mão nos dois lados.
+  const total = invoiceTotal({
+    subtotal: Number(order.quote.subtotal),
+    freight: order.quote.freight === null ? null : Number(order.quote.freight),
+    discount: Number(order.quote.discount),
+    prepaymentBy: order.prepaymentBy,
+    paypalFee: order.paypalFee === null ? null : Number(order.paypalFee),
+  })
 
   return (
     <Page
@@ -386,7 +385,7 @@ export function OrderDetail() {
             />
             {!isNational && <ReadField label={`Câmbio ${currency}/BRL`} value={order.exchangeRate} />}
             <ReadField label="Total do orçamento" value={`${currency} ${formatAmount(order.quote.total)}`} />
-            <ReadField label="Total do pedido (Invoice)" value={`${currency} ${formatAmount(invoiceTotal)}`} />
+            <ReadField label="Total do pedido (Invoice)" value={`${currency} ${formatAmount(total)}`} />
           </dl>
 
           <div className="mt-5 space-y-4 border-t border-neutral-200/70 pt-4">
