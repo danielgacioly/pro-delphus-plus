@@ -386,8 +386,20 @@ export async function createQuoteRecord(data: CreateQuoteInput, requesterId: str
   }
   if (!quote) throw new HttpError(409, 'Não foi possível reservar um número de orçamento. Tente novamente.')
 
-  const { pdfUrl, xlsxUrl } = await generateQuoteFiles(quoteNumber, data, resolved)
-  return prisma.quote.update({ where: { id: quote.id }, data: { pdfUrl, xlsxUrl }, include })
+  // Mesma razão do pedido (ver createOrderRecord): o orçamento precisa existir
+  // para o número dele virar nome de arquivo, mas um orçamento sem PDF nem
+  // planilha no banco é pior que nenhum — some da tela como se tivesse dado
+  // errado, e o número do dia fica consumido.
+  let files: Awaited<ReturnType<typeof generateQuoteFiles>>
+  try {
+    files = await generateQuoteFiles(quoteNumber, data, resolved)
+  } catch (err) {
+    await prisma.quote.delete({ where: { id: quote.id } }).catch(() => {
+      // Já não dá para desfazer; o erro original é o que importa relatar.
+    })
+    throw err
+  }
+  return prisma.quote.update({ where: { id: quote.id }, data: files, include })
 }
 
 export async function updateQuoteRecord(existingId: string, data: CreateQuoteInput, requesterId: string) {

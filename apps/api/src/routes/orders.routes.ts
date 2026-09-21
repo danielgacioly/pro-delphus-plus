@@ -517,7 +517,19 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
     boxAssignments: data.boxAssignments ?? null,
   }
 
-  const docUrls = await buildAndWriteDocuments(orderForDocs, quote)
+  // O pedido precisa existir antes dos documentos (o número dele é o nome dos
+  // arquivos), mas se a geração falhar ele não pode ficar no banco sem
+  // documento nenhum: quem tentou criar vê um erro, tenta de novo e acaba com
+  // dois pedidos do mesmo orçamento — foi o que aconteceu com #0002 e #0003.
+  let docUrls: Awaited<ReturnType<typeof buildAndWriteDocuments>>
+  try {
+    docUrls = await buildAndWriteDocuments(orderForDocs, quote)
+  } catch (err) {
+    await prisma.order.delete({ where: { id: order.id } }).catch(() => {
+      // Já não dá para desfazer; o erro original é o que importa relatar.
+    })
+    throw err
+  }
 
   const missing = missingPostOrderDocs(
     { status: 'PENDING', awbNumber: data.awbNumber ?? null, nfNumber: data.nfNumber ?? null },

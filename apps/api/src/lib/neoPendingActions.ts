@@ -26,6 +26,13 @@ function isExpired(action: PendingAction) {
 }
 
 export function createPendingAction(kind: PendingActionKind, summary: string, payload: unknown, userId: string): PendingAction {
+  // Proposta que ninguém confirmou nem cancelou só sai do mapa quando alguém
+  // tenta buscá-la de novo — o que pode nunca acontecer. Limpar as vencidas a
+  // cada nova proposta mantém o mapa no tamanho dos últimos 15 minutos, em vez
+  // de crescer pelo tempo que o processo ficar de pé.
+  for (const [id, pending] of store) {
+    if (isExpired(pending)) store.delete(id)
+  }
   const action: PendingAction = { id: randomUUID(), kind, summary, payload, userId, createdAt: Date.now() }
   store.set(action.id, action)
   return action
