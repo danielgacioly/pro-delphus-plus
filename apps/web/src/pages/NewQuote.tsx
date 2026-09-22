@@ -52,7 +52,17 @@ interface DraftItem {
   title: string
   catalogName: string
   description: string
+  // Descrição do catálogo no idioma do orçamento e em português, guardadas
+  // ao selecionar o produto — servem só para re-preencher `description`
+  // quando o idioma muda e o usuário ainda não editou o texto à mão.
+  catalogDescription: string
+  catalogDescriptionPt: string
+  descriptionEdited: boolean
   unitPrice: string
+}
+
+function catalogDescriptionFor(item: DraftItem, language: QuoteLanguage) {
+  return language === 'PT' ? item.catalogDescriptionPt || item.catalogDescription : item.catalogDescription
 }
 
 async function searchProducts(search: string) {
@@ -77,6 +87,9 @@ const emptyItem: DraftItem = {
   title: '',
   catalogName: '',
   description: '',
+  catalogDescription: '',
+  catalogDescriptionPt: '',
+  descriptionEdited: false,
   unitPrice: '',
 }
 
@@ -153,6 +166,11 @@ export function NewQuote() {
           title: item.titleOverride ?? '',
           catalogName: item.catalogName,
           description: item.description,
+          // Orçamento existente: a descrição salva já é a que vale, não
+          // re-preenche sozinha se o idioma mudar durante a edição.
+          catalogDescription: '',
+          catalogDescriptionPt: '',
+          descriptionEdited: true,
           unitPrice: isCustomPrice ? String(unitPrice) : '',
         }
       }),
@@ -244,15 +262,37 @@ export function NewQuote() {
     // Trocar de produto limpa o nome customizado: manter o nome do produto
     // anterior no item novo é justamente o tipo de documento errado que a
     // edição deveria evitar.
+    const catalogDescription = product.description ?? ''
+    const catalogDescriptionPt = product.descriptionPt || product.description || ''
     updateItem(index, {
       productId: product.id,
       query: `${product.name} (${product.sku})`,
       catalogName: product.name,
       title: '',
+      catalogDescription,
+      catalogDescriptionPt,
+      // Já entra preenchida com a descrição padrão do catálogo, no idioma do
+      // orçamento — editável, não um placeholder. Só quando o usuário mexe
+      // nela é que vira de fato uma descrição customizada.
+      description: catalogDescriptionFor({ ...emptyItem, catalogDescription, catalogDescriptionPt }, language),
+      descriptionEdited: false,
     })
     setActiveIndex(null)
     setInfoIndex(null)
   }
+
+  // Reflete a troca de idioma nas descrições ainda não editadas à mão — sem
+  // isso, escolher o produto em EN e depois mudar pra PT deixaria a
+  // descrição errada parada no campo.
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.productId && !item.descriptionEdited
+          ? { ...item, description: catalogDescriptionFor(item, language) }
+          : item,
+      ),
+    )
+  }, [language])
 
   if (isEditing && loadingQuote) {
     return (
@@ -484,7 +524,7 @@ export function NewQuote() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    updateItem(index, { description: infoDescription ?? '' })
+                                    updateItem(index, { description: infoDescription ?? '', descriptionEdited: true })
                                     setInfoIndex(null)
                                   }}
                                   className="flex-1 rounded-lg bg-neutral-500/8 px-2 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:bg-neutral-500/14"
@@ -529,12 +569,12 @@ export function NewQuote() {
                   <div className="mt-2 flex gap-2">
                     <Field
                       label="Descrição customizada"
-                      hint="Opcional — substitui a descrição do catálogo só neste orçamento"
+                      hint="Já vem com a descrição padrão do catálogo — edite à vontade para customizar só neste orçamento"
                       className="flex-1"
                     >
                       <Input
                         value={item.description}
-                        onChange={(e) => updateItem(index, { description: e.target.value })}
+                        onChange={(e) => updateItem(index, { description: e.target.value, descriptionEdited: true })}
                         className="h-9 text-[13px]"
                       />
                     </Field>
