@@ -8,7 +8,7 @@ import { escapeHtml } from './html.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const logoPng = fs.readFileSync(path.join(__dirname, '../assets/logo-company.png'))
-const logoDataUri = `data:image/png;base64,${logoPng.toString('base64')}`
+export const logoDataUri = `data:image/png;base64,${logoPng.toString('base64')}`
 
 export const COMPANY = {
   name: 'Pro Delphus Simuladores Cirúrgicos',

@@ -16,7 +16,10 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../lib/api'
-import { Alert, AnimatedNumber, Card, Page, SegmentedControl, Skeleton, StatTile } from '../components/ui'
+import { Alert, AnimatedNumber, Button, Card, Page, SegmentedControl, Skeleton, StatTile } from '../components/ui'
+import { IconDownload } from '../components/icons'
+import { triggerBlobDownload } from '../lib/download'
+import { useToast } from '../context/ToastContext'
 
 interface MonthStat {
   year: number
@@ -228,11 +231,34 @@ function FunnelTable({
 export function Stats() {
   const { data, isLoading, isError } = useQuery({ queryKey: ['stats'], queryFn: fetchStats })
   const [view, setView] = useState<'sales' | 'efficiency'>('sales')
+  const [downloadingReport, setDownloadingReport] = useState(false)
+  const toast = useToast()
+
+  async function handleDownloadReport() {
+    setDownloadingReport(true)
+    try {
+      const response = await api.get<Blob>('/stats/relatorio-mensal.pdf', { responseType: 'blob' })
+      // Nome do arquivo vem do Content-Disposition que o servidor monta com
+      // mês/ano certos — sem isso o download sairia com nome genérico.
+      const match = /filename="([^"]+)"/.exec(response.headers['content-disposition'] ?? '')
+      triggerBlobDownload(response.data, match?.[1] ?? 'Relatorio-Metricas.pdf')
+    } catch {
+      toast.error('Não foi possível gerar o relatório agora.')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
 
   const page = (children: ReactNode) => (
     <Page
       title="Métricas"
       description="Vendas por período, status dos pedidos e a eficiência do funil de orçamentos."
+      actions={
+        <Button size="md" onClick={handleDownloadReport} disabled={downloadingReport}>
+          <IconDownload className="h-3.5 w-3.5" />
+          {downloadingReport ? 'Gerando…' : 'Relatório mensal (PDF)'}
+        </Button>
+      }
     >
       {/* Trocar de visão é navegação, não ação: encostado no título, como um
           par de abas, em vez de solto no canto da barra. */}

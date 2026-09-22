@@ -1,7 +1,10 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
-import { asyncHandler } from '../middleware/errorHandler.js'
+import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
+import { buildMonthlyReportData, MONTH_NAMES_PT, previousClosedMonth } from '../lib/monthlyReport.js'
+import { buildMonthlyInsights } from '../lib/monthlyReportInsights.js'
+import { generateMonthlyReportPdf } from '../lib/monthlyReportPdf.js'
 
 export const statsRouter = Router()
 
@@ -105,6 +108,29 @@ statsRouter.get(
       sectorsSold,
       efficiency: await computeEfficiency(),
     })
+  }),
+)
+
+statsRouter.get(
+  '/relatorio-mensal.pdf',
+  asyncHandler(async (req, res) => {
+    const { year, month } = previousClosedMonth()
+    const ano = req.query.ano ? Number(req.query.ano) : year
+    const mes = req.query.mes ? Number(req.query.mes) : month
+    if (!Number.isInteger(ano) || !Number.isInteger(mes) || mes < 1 || mes > 12) {
+      throw new HttpError(400, 'Parâmetros ano/mes inválidos.')
+    }
+
+    const data = await buildMonthlyReportData(ano, mes)
+    const insights = buildMonthlyInsights(data)
+    const pdf = await generateMonthlyReportPdf(data, insights)
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="Relatorio-Metricas-${MONTH_NAMES_PT[mes - 1]}-${ano}.pdf"`,
+    )
+    res.send(pdf)
   }),
 )
 
