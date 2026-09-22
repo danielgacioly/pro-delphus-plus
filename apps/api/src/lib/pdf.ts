@@ -65,6 +65,74 @@ const INSTAGRAM_ICON_SVG = contactIcon(
 )
 const COMPANY_INSTAGRAM = '@prodelphus_simuladores'
 
+// Regras da assinatura automática (logo + barra de contato), compartilhadas
+// entre o rodapé do orçamento e o card avulso pra e-mail — mudar o visual
+// num lugar só muda os dois.
+const SIGNATURE_CSS = `
+  .signature { display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid #e5e3da; }
+  .signature .sig-logo { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 20px; }
+  .signature .sig-logo img { width: 104px; height: auto; }
+  .signature .sig-signature { flex: 1; background: #ffffff; display: flex; align-items: center; padding: 10px 24px; }
+  .signature .sig-signature img { max-width: 260px; max-height: 80px; }
+  .signature .sig-bar { flex: 1; background: #1a1a1a; color: #ffffff; padding: 12px 20px 12px 24px; display: flex; flex-direction: column; justify-content: center; gap: 2px; border-left: 8px solid #ef1818; }
+  .signature .sig-name { font-size: 14px; font-weight: 700; }
+  .signature .sig-role { font-size: 10.5px; color: #c9c9c9; margin-bottom: 6px; }
+  .signature .sig-contact { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: #f2f2f2; }
+  .signature .sig-icon { flex-shrink: 0; }
+`
+
+interface SignatureCardInput {
+  name: string
+  jobTitle: string | null
+  phone: string | null
+  whatsapp: string | null
+  email: string
+}
+
+/** O bloco logo + barra de contato — a "assinatura automática" que aparece quando ninguém enviou uma imagem de assinatura de próprio punho. */
+function signatureCardMarkup(signature: SignatureCardInput, defaultJobTitle: string) {
+  return `<div class="signature">
+    <div class="sig-logo"><img src="${logoDataUri}" alt="Pro Delphus" /></div>
+    <div class="sig-bar">
+      <div class="sig-name">${escapeHtml(signature.name)}</div>
+      <div class="sig-role">${escapeHtml(signature.jobTitle ?? defaultJobTitle)}</div>
+      ${signature.phone ? `<div class="sig-contact">${PHONE_ICON_SVG}${escapeHtml(signature.phone)}</div>` : ''}
+      ${signature.whatsapp ? `<div class="sig-contact">${WHATSAPP_ICON_SVG}${escapeHtml(signature.whatsapp)}</div>` : ''}
+      <div class="sig-contact">${MAIL_ICON_SVG}${escapeHtml(signature.email)}</div>
+      <div class="sig-contact">${GLOBE_ICON_SVG}${escapeHtml(COMPANY.website)}</div>
+      <div class="sig-contact">${INSTAGRAM_ICON_SVG}${escapeHtml(COMPANY_INSTAGRAM)}</div>
+    </div>
+  </div>`
+}
+
+/**
+ * Documento HTML mínimo com só o card de assinatura, pra tirar um print
+ * dele e virar PNG — é o que a pessoa baixa em "Minha Conta" pra usar como
+ * assinatura de e-mail. Mesmo card que aparece no orçamento quando ela não
+ * tem assinatura de próprio punho enviada.
+ */
+export function buildSignatureCardHtml(signature: SignatureCardInput, language: QuoteLanguage = 'PT') {
+  const t = LABELS[language]
+  return `<!doctype html>
+<html lang="${language.toLowerCase()}">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  /* Mesmo padding do corpo do orçamento (renderHtml) — é o que faz a barra
+     com "flex: 1" esticar até a MESMA largura que tem lá, não uma largura
+     encolhida ao conteúdo. O print recorta só o .signature, então esse
+     padding em volta não aparece no PNG final. */
+  body { margin: 0; padding: 36px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; }
+  ${SIGNATURE_CSS}
+</style>
+</head>
+<body>
+  ${signatureCardMarkup(signature, t.defaultJobTitle)}
+</body>
+</html>`
+}
+
 export interface QuotePdfData {
   quoteNumber: string
   language: QuoteLanguage
@@ -158,16 +226,8 @@ function renderHtml(data: QuotePdfData) {
   .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 12px; font-weight: 700; color: #ef1818; border-bottom: 1px solid #e5e3da; }
   .totals-row span:first-child { color: #1a1a1a; }
   .totals-row.grand { font-size: 15px; border-bottom: none; }
-  .signature { margin-top: 40px; display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid #e5e3da; }
-  .signature .sig-logo { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 20px; }
-  .signature .sig-logo img { width: 104px; height: auto; }
-  .signature .sig-signature { flex: 1; background: #ffffff; display: flex; align-items: center; padding: 10px 24px; }
-  .signature .sig-signature img { max-width: 260px; max-height: 80px; }
-  .signature .sig-bar { flex: 1; background: #1a1a1a; color: #ffffff; padding: 12px 20px 12px 24px; display: flex; flex-direction: column; justify-content: center; gap: 2px; border-left: 8px solid #ef1818; }
-  .signature .sig-name { font-size: 14px; font-weight: 700; }
-  .signature .sig-role { font-size: 10.5px; color: #c9c9c9; margin-bottom: 6px; }
-  .signature .sig-contact { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: #f2f2f2; }
-  .signature .sig-icon { flex-shrink: 0; }
+  .signature { margin-top: 40px; }
+  ${SIGNATURE_CSS}
 </style>
 </head>
 <body>
@@ -220,22 +280,11 @@ function renderHtml(data: QuotePdfData) {
     </div>
   </div>
 
-  <div class="signature">
-    ${
-      data.signature.signatureImageDataUri
-        ? `<div class="sig-signature"><img src="${data.signature.signatureImageDataUri}" alt="" /></div>`
-        : `<div class="sig-logo"><img src="${logoDataUri}" alt="Pro Delphus" /></div>
-    <div class="sig-bar">
-      <div class="sig-name">${escapeHtml(data.signature.name)}</div>
-      <div class="sig-role">${escapeHtml(data.signature.jobTitle ?? t.defaultJobTitle)}</div>
-      ${data.signature.phone ? `<div class="sig-contact">${PHONE_ICON_SVG}${escapeHtml(data.signature.phone)}</div>` : ''}
-      ${data.signature.whatsapp ? `<div class="sig-contact">${WHATSAPP_ICON_SVG}${escapeHtml(data.signature.whatsapp)}</div>` : ''}
-      <div class="sig-contact">${MAIL_ICON_SVG}${escapeHtml(data.signature.email)}</div>
-      <div class="sig-contact">${GLOBE_ICON_SVG}${escapeHtml(COMPANY.website)}</div>
-      <div class="sig-contact">${INSTAGRAM_ICON_SVG}${escapeHtml(COMPANY_INSTAGRAM)}</div>
-    </div>`
-    }
-  </div>
+  ${
+    data.signature.signatureImageDataUri
+      ? `<div class="signature"><div class="sig-signature"><img src="${data.signature.signatureImageDataUri}" alt="" /></div></div>`
+      : signatureCardMarkup(data.signature, t.defaultJobTitle)
+  }
 </body>
 </html>`
 }

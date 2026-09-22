@@ -55,16 +55,45 @@ async function renderWith(browser: Browser, html: string, options: PDFOptions): 
   }
 }
 
-/** HTML → PDF. Se o navegador tiver morrido, sobe outro e tenta de novo. */
-export async function renderPdf(html: string, options: PDFOptions): Promise<Buffer> {
+async function screenshotWith(browser: Browser, html: string, selector: string): Promise<Buffer> {
+  const page = await browser.newPage()
+  try {
+    // Mesmo viewport que o PDF do orçamento usa (implícito: nenhum PDF chama
+    // setViewport, então fica no padrão do Puppeteer, 800x600) — é o que faz
+    // um elemento com `flex: 1` esticar até a MESMA largura nos dois lugares.
+    // deviceScaleFactor alto é resolução nativa (mais pixels renderizados de
+    // verdade), não upscale — aumenta o tamanho final sem borrar.
+    await page.setViewport({ width: 800, height: 600, deviceScaleFactor: 5 })
+    await page.setContent(html, { waitUntil: 'load' })
+    const element = await page.$(selector)
+    if (!element) throw new Error(`Elemento "${selector}" não encontrado no HTML pra tirar o print`)
+    return Buffer.from(await element.screenshot({ type: 'png', omitBackground: true }))
+  } finally {
+    await page.close()
+  }
+}
+
+// Se o navegador tiver morrido, sobe outro e tenta de novo — a mesma
+// recuperação vale pra qualquer coisa que precise dele (PDF ou print).
+async function withRecovery<T>(action: (browser: Browser) => Promise<T>): Promise<T> {
   const browser = await getBrowser()
   try {
-    return await renderWith(browser, html, options)
+    return await action(browser)
   } catch (err) {
     // Navegador vivo: o erro é da renderização em si, e repetir não ajuda.
     if (browser.connected) throw err
-    return renderWith(await getBrowser(), html, options)
+    return action(await getBrowser())
   }
+}
+
+/** HTML → PDF. */
+export async function renderPdf(html: string, options: PDFOptions): Promise<Buffer> {
+  return withRecovery((browser) => renderWith(browser, html, options))
+}
+
+/** HTML → PNG de um elemento específico, recortado no próprio tamanho dele. */
+export async function renderScreenshot(html: string, selector: string): Promise<Buffer> {
+  return withRecovery((browser) => screenshotWith(browser, html, selector))
 }
 
 async function closeBrowser() {

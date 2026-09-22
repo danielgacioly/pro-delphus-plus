@@ -4,7 +4,9 @@ import { MIN_PASSWORD_LENGTH, type UserDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage as errorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { DropZone } from '../components/DropZone'
-import { Button, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
+import { Button, buttonClasses, Card, Field, Input, Page, SegmentedControl } from '../components/ui'
+import { IconDownload } from '../components/icons'
+import { triggerBlobDownload } from '../lib/download'
 
 function SettingsCard({
   title,
@@ -55,6 +57,7 @@ export function Account() {
   const [savingPassword, setSavingPassword] = useState(false)
 
   const [signatureError, setSignatureError] = useState<string | null>(null)
+  const [signatureCardError, setSignatureCardError] = useState<string | null>(null)
 
   async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -108,6 +111,18 @@ export function Account() {
       return data.user
     },
     onSuccess: (user) => setUser(user),
+  })
+
+  const downloadSignatureCard = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.get<Blob>('/auth/me/signature-card.png', { responseType: 'blob' })
+      return data
+    },
+    onSuccess: (blob) => {
+      setSignatureCardError(null)
+      triggerBlobDownload(blob, 'assinatura-pro-delphus.png')
+    },
+    onError: (err) => setSignatureCardError(errorMessage(err, 'Não foi possível gerar a assinatura.')),
   })
 
   async function handlePasswordSubmit(e: React.FormEvent) {
@@ -210,6 +225,14 @@ export function Account() {
                 alt="Sua assinatura"
                 className="h-16 max-w-[220px] rounded-xl border border-neutral-200/70 bg-neutral-50 object-contain p-2"
               />
+              <a
+                href={user.signatureUrl}
+                download
+                className={buttonClasses({ size: 'sm', variant: 'ghost' })}
+              >
+                <IconDownload className="h-3.5 w-3.5" />
+                Baixar
+              </a>
               <Button
                 size="sm"
                 variant="ghost"
@@ -237,6 +260,21 @@ export function Account() {
             </p>
           </DropZone>
           {uploadSignature.isPending && <p className="mt-2 text-[12px] text-neutral-500">Enviando…</p>}
+        </SettingsCard>
+
+        <SettingsCard
+          title="Assinatura de e-mail"
+          description="O mesmo cartão (logo + seus dados) que aparece nos orçamentos quando você não tem uma assinatura de próprio punho enviada — pronto pra colar como assinatura no seu e-mail."
+        >
+          {signatureCardError && <Notice tone="error">{signatureCardError}</Notice>}
+          <Button
+            size="sm"
+            onClick={() => downloadSignatureCard.mutate()}
+            disabled={downloadSignatureCard.isPending}
+          >
+            <IconDownload className="h-3.5 w-3.5" />
+            {downloadSignatureCard.isPending ? 'Gerando…' : 'Baixar assinatura de e-mail'}
+          </Button>
         </SettingsCard>
 
         <SettingsCard title="Trocar senha">

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatAmount, formatOrderNumber, invoiceTotal, type OrderDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
+import { triggerBlobDownload } from '../lib/download'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { DropZone } from '../components/DropZone'
@@ -39,17 +40,6 @@ function ReadField({ label, value }: { label: string; value: string | null | und
       </dd>
     </div>
   )
-}
-
-function triggerBlobDownload(blob: Blob, filename: string) {
-  const objectUrl = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = objectUrl
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(objectUrl)
 }
 
 function DocLink({ href, children, tone = 'brand' }: { href: string; children: ReactNode; tone?: 'brand' | 'ink' }) {
