@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import multer from 'multer'
 import {
   ApiError,
   GoogleGenAI,
@@ -41,6 +42,18 @@ neoRouter.use(requireAuth)
 // O lite responde em 2-5s, mas às vezes passa de 25s; o teto evita que uma
 // chamada travada deixe a pessoa olhando os três pontinhos pra sempre.
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY, httpOptions: { timeout: 45_000 } })
+
+// Em memória, não em disco: é áudio de ditado, não um documento do sistema —
+// vira texto e é descartado, nunca precisa sobreviver a um restart.
+const audioUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } })
+
+const AUDIO_EXTENSION: Record<string, string> = {
+  'audio/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'audio/mp4': 'mp4',
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+}
 const MAX_TOOL_ITERATIONS = 6
 // Picos de 429 (limite por minuto) e 5xx do Gemini costumam passar em segundos;
 // sem retry, cada soluço desses virava erro na cara do usuário.
@@ -502,6 +515,43 @@ neoRouter.post(
       config: { systemInstruction: buildNeoSystemInstruction() },
     })
     res.json({ reply: redactInternalIds(finalResponse.text ?? ''), pendingAction })
+  }),
+)
+
+neoRouter.post(
+  '/voz',
+  audioUpload.single('audio'),
+  asyncHandler(async (req, res) => {
+    if (!env.GROQ_API_KEY) throw new HttpError(503, 'Ditado por voz não está configurado neste servidor.')
+    if (!req.file) throw new HttpError(400, 'Nenhum áudio enviado.')
+
+    const extension = AUDIO_EXTENSION[req.file.mimetype] ?? 'webm'
+    const form = new FormData()
+    // Uint8Array(buffer) copia pra um ArrayBuffer normal — o Buffer do multer
+    // é ArrayBufferLike (podendo ser SharedArrayBuffer), e o Blob global exige
+    // o tipo mais estrito.
+    form.append('file', new Blob([new Uint8Array(req.file.buffer)], { type: req.file.mimetype }), `ditado.${extension}`)
+    form.append('model', 'whisper-large-v3-turbo')
+    form.append('language', 'pt')
+    form.append('response_format', 'json')
+
+    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` },
+      body: form,
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      console.error('[neo] falha ao transcrever com Groq:', response.status, detail)
+      if (response.status === 429) {
+        throw new HttpError(503, 'O reconhecimento de voz atingiu o limite de uso por agora. Tenta de novo em instantes.')
+      }
+      throw new HttpError(502, 'Não deu para transcrever o áudio agora. Tenta de novo.')
+    }
+
+    const data = (await response.json()) as { text?: string }
+    res.json({ text: (data.text ?? '').trim() })
   }),
 )
 

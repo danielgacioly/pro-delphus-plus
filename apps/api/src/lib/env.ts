@@ -78,6 +78,12 @@ const envSchema = z.object({
   // o que acaba em poucas conversas (cada pergunta com ferramenta gasta 2-5).
   // O flash-lite tem cota grátis bem maior e faz function calling bem.
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
+
+  // Groq (Whisper) transcreve o ditado por voz do NEO — free tier próprio,
+  // sem gastar a cota do Gemini. Gere uma chave grátis em https://console.groq.com.
+  // Opcional: sem ela, o botão de microfone continua aparecendo, mas a
+  // transcrição falha com um aviso claro em vez de derrubar o resto do NEO.
+  GROQ_API_KEY: z.string().min(1).optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)

@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
 import { Alert, Badge, Button, Textarea, buttonClasses } from '../components/ui'
-import { NeoAvatar, NeoMascot } from '../components/NeoMascot'
+import { NeoAvatar, NeoListening, NeoMascot } from '../components/NeoMascot'
 import { NeoAsciiBackground } from '../components/NeoAsciiBackground'
 import { IconArrowUp, IconCheckCircle, IconMic } from '../components/icons'
-import { useSpeechToText } from '../hooks/useSpeechToText'
+import { useVoiceDictation } from '../hooks/useVoiceDictation'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -110,7 +110,7 @@ export function Neo() {
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const speech = useSpeechToText({ onTranscript: setInput, onError: setError })
+  const speech = useVoiceDictation({ onTranscript: setInput, onError: setError })
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -231,7 +231,17 @@ export function Neo() {
       </header>
 
       <div className="relative z-10 mx-auto flex w-full min-h-0 max-w-3xl flex-1 flex-col px-6 sm:px-8">
-        <div className="my-5 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-black/[0.06] bg-white p-5">
+        <div className="relative my-5 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-black/[0.06] bg-white p-5">
+          {(speech.recording || speech.transcribing) && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-white">
+              <NeoListening
+                active={speech.recording || speech.transcribing}
+                className="h-48 w-48 -translate-x-6 animate-scale-in sm:h-56 sm:w-56"
+              />
+              <h2 className="text-heading mt-1 text-ink-900">{speech.recording ? 'Ouvindo…' : 'Transcrevendo…'}</h2>
+            </div>
+          )}
+
           {messages.length === 0 && !pending && (
             <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
               <NeoMascot className="h-40 w-40 sm:h-48 sm:w-48" />
@@ -329,22 +339,27 @@ export function Neo() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="Pergunte alguma coisa ao NEO…"
-              className="max-h-32 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-1.5 text-[14px] leading-relaxed shadow-none [scrollbar-width:none] hover:border-0 focus:border-0 focus:ring-0"
+              readOnly={speech.recording}
+              aria-busy={speech.recording || undefined}
+              placeholder={speech.recording ? 'Ouvindo…' : 'Pergunte alguma coisa ao NEO…'}
+              className={cn(
+                'max-h-32 flex-1 resize-none overflow-y-auto border-0 px-2.5 py-1.5 text-[14px] leading-relaxed shadow-none [scrollbar-width:none] hover:border-0 focus:border-0 focus:ring-0',
+                speech.recording ? 'skeleton' : 'bg-transparent',
+              )}
             />
             {speech.supported && (
               <button
                 type="button"
                 onClick={() => speech.toggle(input)}
-                disabled={loading}
-                aria-label={speech.listening ? 'Parar ditado por voz' : 'Ditar mensagem por voz'}
-                aria-pressed={speech.listening}
-                title={speech.listening ? 'Parar' : 'Ditar por voz'}
+                disabled={loading || speech.transcribing}
+                aria-label={speech.recording ? 'Parar ditado por voz' : 'Ditar mensagem por voz'}
+                aria-pressed={speech.recording}
+                title={speech.recording ? 'Parar' : 'Ditar por voz'}
                 className={cn(
                   'mb-px flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
                   'transition-[background-color,color,opacity] duration-100 ease-out',
                   'disabled:pointer-events-none disabled:opacity-30',
-                  speech.listening
+                  speech.recording
                     ? 'animate-pulse bg-danger-500 text-white hover:bg-danger-600'
                     : 'text-neutral-500 hover:bg-black/[0.05] hover:text-ink-900',
                 )}

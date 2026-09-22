@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
 import avatar from '../assets/neo-avatar.png'
 import mascote from '../assets/neo-mascote.mp4'
+import listening from '../assets/neo-listening.mp4'
 
 /**
  * Retrato do NEO, já recortado no traço do rosto: a borda desenhada é a
@@ -110,6 +111,35 @@ export function NeoMascot({ playing = true, className }: NeoMascotProps) {
         // clara — sem isso fica um retângulo branco no meio da tela.
         className="absolute inset-0 h-full w-full object-cover mix-blend-multiply"
         style={{ transform: FRAMING }}
+      />
+    </div>
+  )
+}
+
+/**
+ * O NEO com a mão na orelha, ouvindo — some do DOM quando `active` é false
+ * (não só `display: none`) pra recomeçar do início a cada vez que o
+ * microfone liga, em vez de continuar de onde parou.
+ */
+// O vídeo é 16:9 com barras pretas nas laterais (pillarbox) em volta do
+// personagem; o object-cover já enquadra em pé, só falta esse zoom pra
+// cortar as barras pra fora do quadrado.
+const LISTENING_FRAMING = 'scale(1.18)'
+
+export function NeoListening({ active, className }: { active: boolean; className?: string }) {
+  if (!active) return null
+  return (
+    <div className={cn('relative overflow-hidden', className)}>
+      <video
+        src={listening}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="auto"
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover mix-blend-multiply"
+        style={{ transform: LISTENING_FRAMING }}
       />
     </div>
   )
