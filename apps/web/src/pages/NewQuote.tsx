@@ -360,7 +360,13 @@ export function NewQuote() {
     setNotes(defaultQuoteNotes(language, currency, exportScope))
   }, [language, currency, exportScope, notesEdited])
 
-  if (isEditing && loadingQuote) {
+  // `loadingQuote` vira false assim que a resposta chega, mas só nesse mesmo
+  // render — o efeito que aplica os dados no formulário (exportScope, idioma,
+  // moeda, comentários, itens…) ainda não rodou. Sem esperar `prefilled`
+  // também, a tela chegava a pintar o formulário com os valores padrão
+  // (Internacional/EN/USD, comentário padrão em inglês) por um instante antes
+  // de corrigir sozinha — visível especialmente editando orçamento nacional.
+  if (isEditing && (loadingQuote || !prefilled.current)) {
     return (
       <Page back={{ to: '/orcamentos', label: 'Orçamentos' }} title="Editar orçamento" width="narrow">
         <p className="text-[13px] text-neutral-600">Carregando orçamento…</p>
