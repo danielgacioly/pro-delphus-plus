@@ -191,9 +191,31 @@ function renderHtml(data: QuotePdfData) {
 
   const freightDisplay = data.freight === null ? t.toBeDefined : money(data.freight)
 
-  const notesBlock = data.notes
-    ? `<div class="notes-box">${escapeHtml(data.notes).replace(/\n/g, '<br />')}</div>`
-    : '<div class="notes-box"></div>'
+  const notesInner = data.notes ? escapeHtml(data.notes).replace(/\n/g, '<br />') : ''
+
+  // Linhas de Frete/Desconto/Total: rótulo numa coluna só (mesma largura da
+  // coluna de preço unitário/especial acima) e valor na coluna Total — "célula
+  // acima delas" tem que bater exatamente, então o valor nunca leva colspan.
+  // Comentários voltam para a esquerda, ocupando o resto da linha com rowspan
+  // por cima de todas essas linhas — um bloco só, não uma caixa à parte.
+  const totalColumns = showSpecial ? 7 : 6
+  const notesColspan = totalColumns - 2
+
+  const totalRows = [
+    { label: t.shipping, value: freightDisplay, grand: false },
+    ...(data.discount > 0 ? [{ label: t.discount, value: `-${money(data.discount)}`, grand: false }] : []),
+    { label: t.total, value: money(data.total), grand: true },
+  ]
+  const totalsMarkup = totalRows
+    .map(
+      (row, i) => `
+      <tr${row.grand ? ' class="grand"' : ''}>
+        ${i === 0 ? `<td rowspan="${totalRows.length}" colspan="${notesColspan}" class="notes-cell">${notesInner}</td>` : ''}
+        <td class="totals-label">${row.label}</td>
+        <td class="num total-cell">${row.value}</td>
+      </tr>`,
+    )
+    .join('')
 
   return `<!doctype html>
 <html lang="${data.language.toLowerCase()}">
@@ -220,12 +242,14 @@ function renderHtml(data: QuotePdfData) {
   table.items .struck { color: #8a8a8a; text-decoration: line-through; }
   .photo-cell { text-align: center; width: 64px; }
   .photo-cell img { max-width: 56px; max-height: 56px; object-fit: contain; }
-  .summary { display: flex; margin-top: 0; border: 1px solid #e5e3da; border-top: none; }
-  .notes-box { flex: 1; padding: 12px 14px; font-size: 10.5px; color: #4a4a4a; line-height: 1.6; border-right: 1px solid #e5e3da; }
-  .totals-box { width: 230px; }
-  .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 12px; font-weight: 700; color: #ef1818; border-bottom: 1px solid #e5e3da; }
-  .totals-row span:first-child { color: #1a1a1a; }
-  .totals-row.grand { font-size: 15px; border-bottom: none; }
+  /* Frete/Total são linhas da própria tabela de itens (mesmo grid, mesmas
+     bordas de célula) — assim a célula do valor fica do exato tamanho da
+     célula Total acima, e a divisória entre rótulo e valor sempre alinhada
+     com a coluna de preço acima. Mesmo tamanho de fonte do corpo da tabela
+     em todas as linhas, senão a linha do Total fica mais alta que as outras. */
+  table.items .totals-label { text-align: right; font-weight: 700; }
+  table.items tr.grand td { font-weight: 800; }
+  table.items .notes-cell { font-size: 10.5px; font-weight: 400; color: #4a4a4a; line-height: 1.6; vertical-align: top; text-align: left; }
   .signature { margin-top: 40px; }
   ${SIGNATURE_CSS}
 </style>
@@ -265,20 +289,10 @@ function renderHtml(data: QuotePdfData) {
     <tbody>
       ${rows}
     </tbody>
+    <tbody>
+      ${totalsMarkup}
+    </tbody>
   </table>
-
-  <div class="summary">
-    ${notesBlock}
-    <div class="totals-box">
-      <div class="totals-row"><span>${t.shipping}</span><span>${freightDisplay}</span></div>
-      ${
-        data.discount > 0
-          ? `<div class="totals-row"><span>${t.discount}</span><span>-${money(data.discount)}</span></div>`
-          : ''
-      }
-      <div class="totals-row grand"><span>${t.total}</span><span>${money(data.total)}</span></div>
-    </div>
-  </div>
 
   ${
     data.signature.signatureImageDataUri
