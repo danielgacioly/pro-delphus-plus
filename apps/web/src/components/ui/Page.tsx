@@ -105,6 +105,13 @@ export function Page({
           {description && <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-neutral-600">{description}</p>}
         </div>
         {children}
+        {/* Nota de licenciamento e copyright — só nas telas do sistema, nunca
+            em documento gerado (orçamento, pedido, relatório), que tem o
+            próprio rodapé. */}
+        <footer className="mt-12 space-y-0.5 border-t border-black/[0.06] pt-4 pb-2 text-[11px] leading-relaxed text-neutral-400">
+          <p>Pro Delphus+ é um produto licenciado da PLUS — Plataforma de Logística, Unificação e Solução.</p>
+          <p>© {new Date().getFullYear()} PLUS. Todos os direitos reservados.</p>
+        </footer>
       </div>
     </>
   )
