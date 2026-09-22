@@ -103,7 +103,7 @@ const readTools: FunctionDeclaration[] = [
   {
     name: 'buscar_produtos',
     description:
-      'Busca produtos ativos do catálogo por setor(es), tipo e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo ("modelo completo" ou "componente (peça)"), setores e todos os preços. Pra "quais são os modelos completos" ou "quantos componentes existem", use o parâmetro tipo — sem ele a lista e o total misturam os dois. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total".',
+      'Busca produtos ativos do catálogo por setor(es), tipo e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo ("modelo completo" ou "componente (peça)"), setores e todos os preços. Pra "quais são os modelos completos" ou "quantos componentes existem", use o parâmetro tipo — sem ele a lista e o total misturam os dois. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total". Se o texto buscado não bater com nada, a resposta pode vir com "sugestoesPorSemelhanca" (produto parecido, possível erro de digitação) — nesse caso PERGUNTE à pessoa se é um desses antes de usar; nunca escolha sozinho.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -137,7 +137,8 @@ const readTools: FunctionDeclaration[] = [
   },
   {
     name: 'buscar_cliente',
-    description: 'Busca um cliente pelo nome da pessoa ou da instituição. Use antes de propor orçamento pra pegar o clientId real.',
+    description:
+      'Busca um cliente pelo nome da pessoa ou da instituição. Use antes de propor orçamento pra pegar o clientId real. Se não achar nome exato, a resposta pode vir com "sugestoesPorSemelhanca" (cliente parecido, possível erro de digitação) — nesse caso PERGUNTE à pessoa se é um desses ("Você quis dizer X?") antes de usar o clientId; nunca escolha sozinho.',
     parameters: { type: Type.OBJECT, properties: { nome: { type: Type.STRING } }, required: ['nome'] },
   },
   {
@@ -181,6 +182,12 @@ const itemSchema = {
   properties: {
     productId: { type: Type.STRING },
     quantity: { type: Type.NUMBER },
+    unitPrice: {
+      type: Type.NUMBER,
+      description:
+        'Preço negociado do item ("preço especial"), quando diferente do preço de catálogo. Pedido de desconto num item específico ("10% de desconto nesse produto") vai AQUI — calcule preço de catálogo × (1 - desconto) e preencha este campo. Não use o campo "discount" do orçamento pra isso: ele é um abatimento geral sobre o total, não por item.',
+    },
+    title: { type: Type.STRING, description: 'Nome customizado do item, só se a pessoa pedir um diferente do nome de catálogo' },
   },
   required: ['productId', 'quantity'],
 }
@@ -193,7 +200,11 @@ const editItemSchema = {
   properties: {
     productId: { type: Type.STRING },
     quantity: { type: Type.NUMBER },
-    unitPrice: { type: Type.NUMBER, description: 'Repita o unitPrice atual do item (de buscar_orcamentos) quando ele difere do preço de catálogo' },
+    unitPrice: {
+      type: Type.NUMBER,
+      description:
+        'Preço negociado do item ("preço especial"). Repita o valor atual (de buscar_orcamentos) quando não muda; se a pessoa pedir desconto nesse item agora, calcule o valor novo aqui — não use o campo "discount" do orçamento, que é um abatimento geral sobre o total, não por item.',
+    },
     title: { type: Type.STRING, description: 'Repita o title atual do item, se houver' },
   },
   required: ['productId', 'quantity'],
@@ -208,8 +219,16 @@ const quoteFieldsProps = {
   language: { type: Type.STRING, enum: ['PT', 'EN', 'ES'], description: 'Idioma do documento. Obrigatório se INTERNATIONAL' },
   priceTier: { type: Type.STRING, enum: ['FINAL', 'DISTRIBUTOR'], description: 'Obrigatório se USD' },
   freight: { type: Type.NUMBER, description: 'Frete, na moeda do orçamento' },
-  discount: { type: Type.NUMBER, description: 'Desconto em valor absoluto, na moeda do orçamento' },
-  notes: { type: Type.STRING },
+  discount: {
+    type: Type.NUMBER,
+    description:
+      'Desconto GERAL, sem menção a item específico ("me dá 10% de desconto" sem falar de produto nenhum) — valor ABSOLUTO sobre o total do orçamento, na moeda do orçamento, nunca porcentagem. Some o subtotal dos itens (quantidade × preço de catálogo de cada um) e calcule você mesmo o valor absoluto antes de preencher. Desconto pedido pra um produto específico vai no unitPrice desse item, não aqui.',
+  },
+  notes: {
+    type: Type.STRING,
+    description:
+      'Observações do orçamento. Ao editar, ACRESCENTA ao que já existe — pegue o notes atual de buscar_orcamentos e mande ele + o texto novo. Só substitui o texto inteiro se a pessoa pedir isso explicitamente.',
+  },
 }
 
 // Peso por unidade e divisão por caixa são informados por SKU/nome do item; a

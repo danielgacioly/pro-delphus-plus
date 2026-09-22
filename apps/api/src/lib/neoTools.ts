@@ -7,6 +7,7 @@ import { clientBodySchema } from '../routes/clients.routes.js'
 import { ensureColumns } from '../routes/tasks.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
+import { normalize, bestMatches } from './fuzzyMatch.js'
 
 /**
  * O catálogo separa o que é um simulador inteiro do que é peça de reposição.
@@ -42,9 +43,6 @@ function productSummary(p: {
     priceEUR: p.priceEUR?.toString() ?? null,
   }
 }
-
-const normalize = (s: string) =>
-  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
 // `products.sectors`/`clients.sectors` guardam o nome canônico (inglês), mas o
 // modelo lê `listar_setores` e às vezes devolve o `namePt` — "Injeção Vascular"
@@ -105,13 +103,23 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
   const limite = Math.min(Math.max(args.limite ?? PRODUCT_LIMIT, 1), PRODUCT_LIMIT)
   const kind =
     tipo === 'modelo_completo' ? ('COMPLETE_MODEL' as const) : tipo === 'componente' ? ('COMPONENT' as const) : undefined
+  // Sem o texto: usado tanto no filtro principal quanto, se ele não achar
+  // nada, pra montar o universo de candidatos da busca por semelhança.
+  const semTexto = [
+    setores.length > 0 ? { sectors: { hasSome: setores } } : {},
+    // Filtrar aqui (e não depois, na lista) é o que faz "quantos modelos
+    // completos existem" bater: `total` conta o mesmo recorte.
+    kind ? { kind } : {},
+    // Produto sem preço na moeda pedida não pode entrar num ranking de
+    // preço: apareceria como "mais barato" por não ter valor nenhum.
+    porPreco ? { [coluna]: { not: null } } : {},
+    precoMin !== undefined ? { [coluna]: { gte: precoMin } } : {},
+    precoMax !== undefined ? { [coluna]: { lte: precoMax } } : {},
+  ]
   const where = {
     active: true,
     AND: [
-      setores.length > 0 ? { sectors: { hasSome: setores } } : {},
-      // Filtrar aqui (e não depois, na lista) é o que faz "quantos modelos
-      // completos existem" bater: `total` conta o mesmo recorte.
-      kind ? { kind } : {},
+      ...semTexto,
       texto
         ? {
             OR: [
@@ -121,11 +129,6 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
             ],
           }
         : {},
-      // Produto sem preço na moeda pedida não pode entrar num ranking de
-      // preço: apareceria como "mais barato" por não ter valor nenhum.
-      porPreco ? { [coluna]: { not: null } } : {},
-      precoMin !== undefined ? { [coluna]: { gte: precoMin } } : {},
-      precoMax !== undefined ? { [coluna]: { lte: precoMax } } : {},
     ],
   }
   // `total` é a contagem real, sem o corte de `limite` — sem isto, "quantos
@@ -140,6 +143,23 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
     }),
     prisma.product.count({ where }),
   ])
+
+  // Texto buscado, nada bateu: pode ser erro de digitação ("Thor" por
+  // "Thoor") — sugere pelos mais parecidos dentro dos MESMOS outros filtros,
+  // em vez de simplesmente devolver uma lista vazia.
+  if (total === 0 && texto) {
+    const candidatos = await prisma.product.findMany({ where: { active: true, AND: semTexto }, take: 300 })
+    const sugeridos = bestMatches(texto, candidatos, (p) => p.name)
+    if (sugeridos.length > 0) {
+      return {
+        total: 0,
+        produtos: [],
+        sugestoesPorSemelhanca: sugeridos.map(productSummary),
+        aviso: 'Nenhum produto bateu exatamente com esse texto — pode ser erro de digitação. Pergunte à pessoa se é um desses antes de usar.',
+      }
+    }
+  }
+
   return {
     total,
     ...(porPreco && { criterio: `preços em ${moeda}${ordenar === 'preco_desc' ? ', do mais caro' : ordenar === 'preco_asc' ? ', do mais barato' : ''}` }),
@@ -181,7 +201,19 @@ export async function buscarCliente(args: { nome: string }) {
     take: 5,
     orderBy: { name: 'asc' },
   })
-  return clients.map((c) => toClientDTO(c))
+  if (clients.length > 0) return { clientes: clients.map((c) => toClientDTO(c)) }
+
+  // Nada bateu por substring: pode ser erro de digitação ("MediGlobal" por
+  // "Mad Global") — sugere pelos cadastros mais parecidos, em nome OU
+  // instituição, em vez de simplesmente dizer que o cliente não existe.
+  const candidatos = await prisma.client.findMany({ take: 500, orderBy: { name: 'asc' } })
+  const sugeridos = bestMatches(args.nome, candidatos, (c) => `${c.name} ${c.institution ?? ''}`.trim())
+  if (sugeridos.length === 0) return { clientes: [], aviso: 'Nenhum cliente encontrado com esse nome.' }
+  return {
+    clientes: [],
+    sugestoesPorSemelhanca: sugeridos.map((c) => toClientDTO(c)),
+    aviso: 'Nenhum cliente com esse nome exato — pode ser erro de digitação. Pergunte à pessoa se é um desses antes de usar o clientId; nunca escolha sozinho.',
+  }
 }
 
 /**
