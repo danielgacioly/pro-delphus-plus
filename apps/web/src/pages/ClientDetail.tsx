@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatAmount, formatOrderNumber, type ClientDTO, type OrderStatus, type QuoteDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
-import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
@@ -84,7 +83,6 @@ export function ClientDetail() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const toast = useToast()
-  const { user } = useAuth()
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['client', id], queryFn: () => fetchClient(id) })
 
@@ -331,13 +329,11 @@ export function ClientDetail() {
             </TableShell>
           </Section>
 
-          {user?.role === 'ADMIN' && (
-            <div className="mt-8 flex justify-end">
-              <Button variant="ghost" className="text-brand-600" onClick={() => setDeleting(true)}>
-                {client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
-              </Button>
-            </div>
-          )}
+          <div className="mt-8 flex justify-end">
+            <Button variant="ghost" className="text-brand-600" onClick={() => setDeleting(true)}>
+              {client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
+            </Button>
+          </div>
         </div>
       </div>
 

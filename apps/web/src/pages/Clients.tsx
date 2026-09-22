@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClientDTO, ClientKind } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
-import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Modal } from '../components/Modal'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
@@ -49,12 +48,10 @@ function relativeDate(iso: string | null) {
 
 function ClientCard({
   client,
-  isAdmin,
   onDelete,
   onToggleService,
 }: {
   client: ClientDTO
-  isAdmin: boolean
   onDelete: (client: ClientDTO) => void
   onToggleService: (client: ClientDTO) => void
 }) {
@@ -92,21 +89,19 @@ function ClientCard({
               {!client.active && <Badge tone="warning">Inativo</Badge>}
             </div>
           </div>
-          {isAdmin && (
-            <button
-              type="button"
-              title={client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
-              aria-label={client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onDelete(client)
-              }}
-              className="-m-1 shrink-0 rounded-md p-1 text-neutral-500 transition-colors hover:bg-black/[0.05] hover:text-danger-600"
-            >
-              <IconTrash className="h-4 w-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            title={client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
+            aria-label={client.stats.quoteCount > 0 ? 'Desativar cliente' : 'Excluir cliente'}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onDelete(client)
+            }}
+            className="-m-1 shrink-0 rounded-md p-1 text-neutral-500 transition-colors hover:bg-black/[0.05] hover:text-danger-600"
+          >
+            <IconTrash className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="mt-3.5 mb-4 space-y-1 text-[13px] text-neutral-600">
@@ -149,8 +144,6 @@ function ClientCard({
 export function Clients() {
   const queryClient = useQueryClient()
   const toast = useToast()
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'ADMIN'
   const { data: clients, isLoading, isError } = useQuery({ queryKey: ['clients'], queryFn: fetchClients })
 
   const [search, setSearch] = useState('')
@@ -309,7 +302,6 @@ export function Clients() {
               <div key={client.id} style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }} className="animate-fade-in-up">
                 <ClientCard
                   client={client}
-                  isAdmin={isAdmin}
                   onDelete={setDeletingClient}
                   onToggleService={(c) => toggleServiceMutation.mutate({ id: c.id, inService: !c.inService })}
                 />

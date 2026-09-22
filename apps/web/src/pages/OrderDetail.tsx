@@ -4,7 +4,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatAmount, formatOrderNumber, invoiceTotal, type OrderDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { triggerBlobDownload } from '../lib/download'
-import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
@@ -104,7 +103,6 @@ export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { user } = useAuth()
   const toast = useToast()
 
   const {
@@ -325,18 +323,16 @@ export function OrderDetail() {
               >
                 <IconPencil className="h-3.5 w-3.5" />
               </Link>
-              {user?.role === 'ADMIN' && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title="Excluir pedido"
-                  aria-label="Excluir pedido"
-                  onClick={() => setDeleting(true)}
-                  className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
-                >
-                  <IconTrash className="h-3.5 w-3.5" />
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                title="Excluir pedido"
+                aria-label="Excluir pedido"
+                onClick={() => setDeleting(true)}
+                className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
+              >
+                <IconTrash className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">

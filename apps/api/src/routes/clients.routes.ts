@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { requireAuth, requireRole } from '../middleware/auth.js'
+import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toQuoteDTO, toClientDTO, type ClientAggregate } from '../lib/dto.js'
 
@@ -182,7 +182,6 @@ clientsRouter.patch(
 
 clientsRouter.delete(
   '/:id',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const client = await prisma.client.findUnique({
       where: { id: req.params.id },

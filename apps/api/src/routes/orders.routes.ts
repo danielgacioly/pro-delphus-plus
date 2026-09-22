@@ -6,7 +6,7 @@ import { ZipArchive, type ArchiverError } from 'archiver'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { Prisma } from '../../generated/prisma/client.js'
-import { requireAuth, requireRole } from '../middleware/auth.js'
+import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { toOrderDTO } from '../lib/dto.js'
 import { generateInvoicePdf, generatePackingListPdf, generatePackingListBoxPdf } from '../lib/orderPdf.js'
@@ -655,7 +655,6 @@ ordersRouter.patch(
 
 ordersRouter.delete(
   '/:id',
-  requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
     const existing = await prisma.order.findUnique({ where: { id: req.params.id } })
     if (!existing) throw new HttpError(404, 'Pedido não encontrado')
