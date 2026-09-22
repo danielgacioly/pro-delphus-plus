@@ -4,8 +4,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   catalogPriceFor,
   clientPrefixLabel,
+  defaultQuoteNotes,
   formatAmount,
   formatOrderNumber,
+  type CatalogPrices,
   type ClientPrefix,
   type Currency,
   type ExportScope,
@@ -47,9 +49,11 @@ interface DraftItem {
   productId: string
   query: string
   quantity: number
-  // Nome impresso no documento. Vazio = usa o nome do catálogo; preenchido
-  // vira um override que sobrevive a renomeações do produto.
+  // Nome impresso no documento. Já entra preenchido com o nome do catálogo,
+  // editável — só vira override de verdade (`titleOverride`, sobrevive a
+  // renomeações do produto) quando `titleEdited` fica true.
   title: string
+  titleEdited: boolean
   catalogName: string
   description: string
   // Descrição do catálogo no idioma do orçamento e em português, guardadas
@@ -59,10 +63,22 @@ interface DraftItem {
   catalogDescriptionPt: string
   descriptionEdited: boolean
   unitPrice: string
+  // Preço de tabela do produto selecionado (as 4 colunas) — null quando não
+  // dá pra saber (editando um orçamento existente, sem re-buscar o produto).
+  // Só com isso preenchido é que o preço acompanha troca de moeda/tabela
+  // sozinho, igual antes acontecia com o campo vazio.
+  catalogPrices: CatalogPrices | null
+  priceEdited: boolean
 }
 
 function catalogDescriptionFor(item: DraftItem, language: QuoteLanguage) {
   return language === 'PT' ? item.catalogDescriptionPt || item.catalogDescription : item.catalogDescription
+}
+
+function priceForCatalog(catalogPrices: CatalogPrices | null, currency: Currency, priceTier: PriceTier): number | null {
+  if (!catalogPrices) return null
+  const raw = catalogPriceFor(catalogPrices, currency, priceTier)
+  return raw === null || raw === undefined ? null : Number(raw)
 }
 
 async function searchProducts(search: string) {
@@ -85,12 +101,15 @@ const emptyItem: DraftItem = {
   query: '',
   quantity: 1,
   title: '',
+  titleEdited: false,
   catalogName: '',
   description: '',
   catalogDescription: '',
   catalogDescriptionPt: '',
   descriptionEdited: false,
   unitPrice: '',
+  catalogPrices: null,
+  priceEdited: false,
 }
 
 export function NewQuote() {
@@ -115,7 +134,11 @@ export function NewQuote() {
   // País do cliente vinculado — decide Sr./Sra. vs Mr./Ms. (ver clientPrefixLabel).
   // Sem cliente vinculado (nome digitado à mão) fica null, sem sinal de nacionalidade.
   const [clientCountry, setClientCountry] = useState<string | null>(null)
-  const [notes, setNotes] = useState('')
+  // Já entra com o texto padrão (mesma regra do backend, ver defaultQuoteNotes)
+  // para o idioma/moeda/tipo iniciais — editável. `notesEdited` trava esse
+  // acompanhamento assim que a pessoa mexe no texto, ou ao carregar edição.
+  const [notes, setNotes] = useState(() => defaultQuoteNotes('EN', 'USD', 'INTERNATIONAL'))
+  const [notesEdited, setNotesEdited] = useState(false)
   const [items, setItems] = useState<DraftItem[]>([{ ...emptyItem }])
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [freight, setFreight] = useState('')
@@ -148,7 +171,10 @@ export function NewQuote() {
     setClientName(existingQuote.clientName)
     setClientId(existingQuote.clientId)
     setClientCountry(existingQuote.clientCountry)
+    // Orçamento existente: o texto salvo já é o que vale, não re-preenche
+    // sozinho se idioma/moeda/tipo mudarem durante a edição.
     setNotes(existingQuote.notes ?? '')
+    setNotesEdited(true)
     setFreight(existingQuote.freight ?? '')
     setDiscount(existingQuote.discount)
     setItems(
@@ -156,14 +182,16 @@ export function NewQuote() {
         const listPrice = item.listPrice !== null ? Number(item.listPrice) : null
         const unitPrice = Number(item.unitPrice)
         // Só marca como "customizado" quando difere do preço de tabela (ou
-        // não existe preço de tabela) — senão o campo fica vazio e o preço
-        // continua acompanhando a tabela normalmente.
+        // não existe preço de tabela) — senão o preço mostrado continua
+        // acompanhando a tabela normalmente (não temos as 4 colunas de preço
+        // do produto aqui pra fazer isso ao vivo, então só quando editar).
         const isCustomPrice = listPrice === null || unitPrice !== listPrice
         return {
           productId: item.productId,
           query: `${item.productName} (${item.sku})`,
           quantity: item.quantity,
-          title: item.titleOverride ?? '',
+          title: item.titleOverride ?? item.catalogName,
+          titleEdited: item.titleOverride !== null,
           catalogName: item.catalogName,
           description: item.description,
           // Orçamento existente: a descrição salva já é a que vale, não
@@ -171,7 +199,9 @@ export function NewQuote() {
           catalogDescription: '',
           catalogDescriptionPt: '',
           descriptionEdited: true,
-          unitPrice: isCustomPrice ? String(unitPrice) : '',
+          unitPrice: String(unitPrice),
+          catalogPrices: null,
+          priceEdited: isCustomPrice,
         }
       }),
     )
@@ -211,15 +241,18 @@ export function NewQuote() {
         clientPrefix,
         clientName,
         clientId: clientId ?? undefined,
-        notes: notes || undefined,
+        // Só manda como override o que a pessoa de fato editou — o que ficou
+        // só com o padrão pré-preenchido continua "automático", resolvido de
+        // novo no servidor (segue produto/idioma/moeda até alguém mexer).
+        notes: notesEdited ? notes || undefined : undefined,
         items: items
           .filter((i) => i.productId.trim())
           .map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
-            title: i.title.trim() || undefined,
-            description: i.description || undefined,
-            unitPrice: i.unitPrice ? Number(i.unitPrice) : undefined,
+            title: i.titleEdited ? i.title.trim() || undefined : undefined,
+            description: i.descriptionEdited ? i.description || undefined : undefined,
+            unitPrice: i.priceEdited && i.unitPrice ? Number(i.unitPrice) : undefined,
           })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
@@ -259,16 +292,25 @@ export function NewQuote() {
   }
 
   function selectProduct(index: number, product: ProductDTO) {
-    // Trocar de produto limpa o nome customizado: manter o nome do produto
-    // anterior no item novo é justamente o tipo de documento errado que a
-    // edição deveria evitar.
+    // Trocar de produto limpa nome, descrição e preço customizados: manter o
+    // do produto anterior no item novo é justamente o tipo de documento
+    // errado que a edição deveria evitar. Todos os três já entram com o
+    // padrão do catálogo preenchido, editável.
     const catalogDescription = product.description ?? ''
     const catalogDescriptionPt = product.descriptionPt || product.description || ''
+    const catalogPrices: CatalogPrices = {
+      priceBRL: product.priceBRL,
+      priceUSD: product.priceUSD,
+      priceUSDDistributor: product.priceUSDDistributor,
+      priceEUR: product.priceEUR,
+    }
+    const catalogPrice = priceForCatalog(catalogPrices, currency, effectivePriceTier)
     updateItem(index, {
       productId: product.id,
       query: `${product.name} (${product.sku})`,
       catalogName: product.name,
-      title: '',
+      title: product.name,
+      titleEdited: false,
       catalogDescription,
       catalogDescriptionPt,
       // Já entra preenchida com a descrição padrão do catálogo, no idioma do
@@ -276,6 +318,9 @@ export function NewQuote() {
       // nela é que vira de fato uma descrição customizada.
       description: catalogDescriptionFor({ ...emptyItem, catalogDescription, catalogDescriptionPt }, language),
       descriptionEdited: false,
+      catalogPrices,
+      unitPrice: catalogPrice === null ? '' : String(catalogPrice),
+      priceEdited: false,
     })
     setActiveIndex(null)
     setInfoIndex(null)
@@ -293,6 +338,27 @@ export function NewQuote() {
       ),
     )
   }, [language])
+
+  // Mesma ideia para o preço: troca de moeda/tabela reflete nos itens ainda
+  // não customizados manualmente — só quando temos os 4 preços do catálogo
+  // guardados (produto escolhido nesta sessão; editando um orçamento
+  // existente sem mexer no preço, o campo fica como veio, sem tentar adivinhar).
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (!item.productId || item.priceEdited || !item.catalogPrices) return item
+        const catalogPrice = priceForCatalog(item.catalogPrices, currency, effectivePriceTier)
+        return { ...item, unitPrice: catalogPrice === null ? '' : String(catalogPrice) }
+      }),
+    )
+  }, [currency, effectivePriceTier])
+
+  // Mesma ideia para os Comentários: acompanha idioma/moeda/tipo enquanto a
+  // pessoa não editar o texto à mão.
+  useEffect(() => {
+    if (notesEdited) return
+    setNotes(defaultQuoteNotes(language, currency, exportScope))
+  }, [language, currency, exportScope, notesEdited])
 
   if (isEditing && loadingQuote) {
     return (
@@ -536,7 +602,7 @@ export function NewQuote() {
                                   disabled={infoCatalogPrice === null}
                                   onClick={() => {
                                     if (infoCatalogPrice === null) return
-                                    updateItem(index, { unitPrice: String(infoCatalogPrice) })
+                                    updateItem(index, { unitPrice: String(infoCatalogPrice), priceEdited: true })
                                     setInfoIndex(null)
                                   }}
                                   className="flex-1 rounded-lg bg-neutral-500/8 px-2 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:bg-neutral-500/14 disabled:cursor-not-allowed disabled:opacity-40"
@@ -554,13 +620,12 @@ export function NewQuote() {
                   <div className="mt-2 flex gap-2">
                     <Field
                       label="Nome customizado"
-                      hint="Opcional — substitui o nome do catálogo só neste orçamento"
+                      hint="Já vem com o nome do catálogo — edite à vontade para customizar só neste orçamento"
                       className="flex-1"
                     >
                       <Input
                         value={item.title}
-                        placeholder={item.catalogName || 'Nome do catálogo'}
-                        onChange={(e) => updateItem(index, { title: e.target.value })}
+                        onChange={(e) => updateItem(index, { title: e.target.value, titleEdited: true })}
                         className="h-9 text-[13px]"
                       />
                     </Field>
@@ -582,14 +647,14 @@ export function NewQuote() {
                       label={
                         <span className="inline-flex items-center gap-1.5">
                           Preço customizado
-                          {item.unitPrice && (
+                          {item.priceEdited && item.unitPrice && (
                             <Badge tone="brand" dot>
                               Ativo
                             </Badge>
                           )}
                         </span>
                       }
-                      hint="Opcional — sobrescreve o preço de tabela só neste item"
+                      hint="Já vem com o preço de tabela — edite à vontade para sobrescrever só neste item"
                       className="w-44 shrink-0"
                     >
                       <Input
@@ -597,7 +662,7 @@ export function NewQuote() {
                         step="0.01"
                         min={0}
                         value={item.unitPrice}
-                        onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
+                        onChange={(e) => updateItem(index, { unitPrice: e.target.value, priceEdited: true })}
                         className="tabular h-9 text-[13px]"
                       />
                     </Field>
@@ -646,12 +711,18 @@ export function NewQuote() {
               </Field>
             </div>
 
-            <Field label="Comentários" hint="Se deixar em branco, usamos o texto padrão." className="mt-4">
+            <Field
+              label="Comentários"
+              hint="Já vem com o texto padrão — edite à vontade para customizar só neste orçamento"
+              className="mt-4"
+            >
               <Textarea
-                rows={3}
-                placeholder="ex: Prazo estimado, forma de pagamento, validade do orçamento…"
+                rows={6}
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  setNotes(e.target.value)
+                  setNotesEdited(true)
+                }}
               />
             </Field>
               </FormSection>
