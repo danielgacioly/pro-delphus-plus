@@ -26,3 +26,6 @@ backups/
 
 # Config local das ferramentas de desenvolvimento (não faz parte do produto)
 .claude/
+
+# Certificado TLS local (mkcert) — chave privada, nunca versionar
+certs/

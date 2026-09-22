@@ -2,8 +2,10 @@
 #
 #   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
-# HTTP puro, sem certificado — sistema interno, acesso pela rede/VPN. Só o
-# nginx publica porta; Postgres e API ficam na rede interna do compose.
+# HTTPS com certificado local (mkcert) — sistema interno, acesso pela rede/VPN.
+# Só o nginx publica porta; Postgres e API ficam na rede interna do compose.
+# Os dois arquivos do certificado (ver README, "HTTPS com certificado local")
+# vão em ./certs, fora do git.
 #
 # Nome do projeto fixo: sem isso, o Compose deriva o prefixo dos volumes do
 # nome do diretório onde o clone mora, e scripts/restore.sh (que assume
@@ -41,9 +43,8 @@ services:
       CORS_ORIGIN: ${PUBLIC_URL}
       # 1 salto: só o nginx fica entre o navegador e a API.
       TRUST_PROXY: 1
-      # HTTP puro: o cookie de sessão não pode ter a flag Secure, senão o
-      # navegador o descarta e o login para de persistir. Ver README.
-      COOKIE_SECURE: "false"
+      # Sem override: em NODE_ENV=production o padrão já é true (ver
+      # apps/api/src/lib/env.ts). O HSTS acompanha essa flag sozinho.
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       UPLOADS_DIR: /app/uploads
@@ -68,6 +69,10 @@ services:
       - api
     ports:
       - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      # Os dois arquivos gerados por `mkcert plus.prodelphus.local`.
+      - ./certs:/etc/nginx/certs:ro
 
   # Backup diário do banco e dos uploads, com expurgo por contagem (mantém só
   # os BACKUP_KEEP_COUNT mais recentes — ver scripts/backup.sh).

@@ -276,7 +276,7 @@ Sem `DATA_ROOT` definida, o padrão é `./data` — uma pasta dentro do próprio
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
-As migrações rodam sozinhas a cada subida, antes de a API aceitar tráfego. Só o nginx publica porta (`HTTP_PORT`, padrão 8080); Postgres e API ficam na rede interna.
+As migrações rodam sozinhas a cada subida, antes de a API aceitar tráfego. Só o nginx publica porta (`HTTP_PORT` para o redirecionamento, `HTTPS_PORT`, padrão 443); Postgres e API ficam na rede interna.
 
 ### 4. Criar o primeiro admin (só na primeira vez)
 
@@ -285,15 +285,23 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec api \
   node apps/api/dist/prisma/seed.js
 ```
 
-### 5. HTTP, por enquanto
+### 5. HTTPS com certificado local
 
-O sistema roda em **HTTP puro** — decisão consciente para uso interno, com acesso pela rede local ou VPN e um time pequeno e conhecido. Duas coisas garantem que isso funcione direito, já configuradas no compose:
+O sistema roda em **HTTPS**, mas sem CA pública: `plus.prodelphus.local` é um nome interno, e a Let's Encrypt (ou qualquer CA gratuita) só emite certificado para domínio que ela consegue validar pela internet. A solução é [mkcert](https://github.com/FiloSottile/mkcert) — cria uma autoridade certificadora só sua, sem custo.
 
-- `COOKIE_SECURE=false`. **Isso não é cosmético**: o cookie de sessão com a flag `Secure` é descartado pelos navegadores em conexões não criptografadas (exceto `localhost`), e sem essa flag desligada o login para de persistir entre recarregamentos.
-- O HSTS fica desligado junto — anunciar "só me acesse por HTTPS" num sistema servido por HTTP trancaria o acesso de todos.
-- A API imprime um aviso na subida lembrando que senha e sessão trafegam legíveis na rede.
+**Gerar o certificado** (numa máquina qualquer, não precisa ser o servidor):
 
-O que se abre mão: quem estiver no caminho da rede consegue ler senha e token de sessão, e o Chrome mostra "Não seguro" ao lado do campo de senha. Aceitável em rede fechada; se o acesso mudar (rede aberta, exposição externa), revisitar isso antes.
+```bash
+brew install mkcert        # ou apt/dnf, ver README do mkcert
+mkcert -install             # cria a CA local e confia nela nesta máquina
+mkcert plus.prodelphus.local
+```
+
+Isso gera `plus.prodelphus.local.pem` e `plus.prodelphus.local-key.pem`. Os dois vão em `./certs` no servidor — **nunca no git** (a chave privada expõe a sessão de qualquer um que a tenha; `./certs` está no `.gitignore` de propósito).
+
+**Confiar no certificado nas outras máquinas**: sem isso o navegador mostra aviso de certificado não confiável (a conexão continua criptografada, só o aviso é feio). Copie o `rootCA.pem` — o caminho sai de `mkcert -CAROOT` na máquina onde você gerou o certificado — e instale-o na aba de certificados confiáveis de cada computador que for acessar o sistema. É um passo único por máquina.
+
+A API já reconhece HTTPS sozinha: `COOKIE_SECURE` e o HSTS usam `true` como padrão em produção (`apps/api/src/lib/env.ts`), sem precisar de override no compose.
 
 ### 6. Trocar o número inicial dos pedidos
 
