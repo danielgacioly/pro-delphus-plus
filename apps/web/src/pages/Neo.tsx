@@ -4,7 +4,8 @@ import { cn } from '../lib/cn'
 import { Alert, Badge, Button, Textarea, buttonClasses } from '../components/ui'
 import { NeoAvatar, NeoMascot } from '../components/NeoMascot'
 import { NeoAsciiBackground } from '../components/NeoAsciiBackground'
-import { IconArrowUp, IconCheckCircle } from '../components/icons'
+import { IconArrowUp, IconCheckCircle, IconMic } from '../components/icons'
+import { useSpeechToText } from '../hooks/useSpeechToText'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -109,6 +110,7 @@ export function Neo() {
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const speech = useSpeechToText({ onTranscript: setInput, onError: setError })
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -147,6 +149,7 @@ export function Neo() {
   async function handleSend() {
     const text = input.trim()
     if (!text || loading) return
+    speech.stop()
     setError(null)
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', text }]
     setMessages(nextMessages)
@@ -329,6 +332,26 @@ export function Neo() {
               placeholder="Pergunte alguma coisa ao NEO…"
               className="max-h-32 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-1.5 text-[14px] leading-relaxed shadow-none [scrollbar-width:none] hover:border-0 focus:border-0 focus:ring-0"
             />
+            {speech.supported && (
+              <button
+                type="button"
+                onClick={() => speech.toggle(input)}
+                disabled={loading}
+                aria-label={speech.listening ? 'Parar ditado por voz' : 'Ditar mensagem por voz'}
+                aria-pressed={speech.listening}
+                title={speech.listening ? 'Parar' : 'Ditar por voz'}
+                className={cn(
+                  'mb-px flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                  'transition-[background-color,color,opacity] duration-100 ease-out',
+                  'disabled:pointer-events-none disabled:opacity-30',
+                  speech.listening
+                    ? 'animate-pulse bg-danger-500 text-white hover:bg-danger-600'
+                    : 'text-neutral-500 hover:bg-black/[0.05] hover:text-ink-900',
+                )}
+              >
+                <IconMic className="h-4 w-4" strokeWidth={2.2} />
+              </button>
+            )}
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}

@@ -349,3 +349,14 @@ export function IconDownload(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconMic(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <path d="M12 19v3" />
+      <path d="M8 22h8" />
+    </Base>
+  )
+}
