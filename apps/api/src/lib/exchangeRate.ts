@@ -13,9 +13,10 @@ export interface PairQuote {
 const cache = new Map<string, { quote: PairQuote; fetchedAt: number }>()
 const CACHE_MS = 5 * 60 * 1000
 
-export async function fetchPairQuote(pair: string): Promise<PairQuote> {
+/** `force` ignora o cache de 5 min — é o botão de atualizar do Início. */
+export async function fetchPairQuote(pair: string, { force = false } = {}): Promise<PairQuote> {
   const cached = cache.get(pair)
-  if (cached && Date.now() - cached.fetchedAt < CACHE_MS) return cached.quote
+  if (!force && cached && Date.now() - cached.fetchedAt < CACHE_MS) return cached.quote
 
   const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${pair}`, { signal: AbortSignal.timeout(5000) })
   if (!res.ok) throw new Error(`Falha ao buscar câmbio: ${res.status}`)

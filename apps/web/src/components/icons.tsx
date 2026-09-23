@@ -340,6 +340,15 @@ export function IconPencil(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconRefresh(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+      <path d="M20 4v4.5h-4.5" />
+    </Base>
+  )
+}
+
 export function IconDownload(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

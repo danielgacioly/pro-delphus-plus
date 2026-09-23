@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/cn'
 import { isInCurrentMonth, isInPreviousWindow, monthWindow, variation } from '../lib/period'
 import { Badge, Page, Section, Skeleton } from '../components/ui'
@@ -14,6 +15,7 @@ import {
   IconChevronRight,
   IconContacts,
   IconQuote,
+  IconRefresh,
   IconTag,
   IconTruck,
 } from '../components/icons'
@@ -82,8 +84,8 @@ const PAIR_LABEL: Record<string, { name: string; symbol: string }> = {
   'EUR-BRL': { name: 'Euro', symbol: '€' },
 }
 
-async function fetchRates() {
-  const { data } = await api.get<{ rates: ExchangeRate[] }>('/exchange-rates')
+async function fetchRates(refresh = false) {
+  const { data } = await api.get<{ rates: ExchangeRate[] }>('/exchange-rates', { params: refresh ? { refresh: 1 } : undefined })
   return data.rates
 }
 
@@ -294,12 +296,24 @@ export function Home() {
 
   // A API já guarda a cotação por 5 min; aqui só evitamos refazer a chamada a
   // cada volta para o Início, e uma falha não vira tentativa infinita.
+  const queryClient = useQueryClient()
+  const toast = useToast()
   const { data: rates, isLoading: loadingRates } = useQuery({
     queryKey: ['exchange-rates'],
-    queryFn: fetchRates,
+    queryFn: () => fetchRates(),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     retry: 1,
+  })
+
+  // O ícone de atualizar pula o cache de 5 min da API e busca a cotação na fonte.
+  const refreshRates = useMutation({
+    mutationFn: () => fetchRates(true),
+    onSuccess: (fresh) => {
+      queryClient.setQueryData(['exchange-rates'], fresh)
+      setNow(new Date())
+    },
+    onError: () => toast.error('Não foi possível atualizar o câmbio agora.'),
   })
 
   useEffect(() => {
@@ -383,7 +397,19 @@ export function Home() {
         <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-[13px] font-medium text-neutral-600">Câmbio de hoje</p>
-            <p className="text-[11.5px] text-neutral-500">Agora, {currentTime}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11.5px] text-neutral-500">Agora, {currentTime}</p>
+              <button
+                type="button"
+                onClick={() => refreshRates.mutate()}
+                disabled={refreshRates.isPending}
+                title="Atualizar câmbio"
+                aria-label="Atualizar câmbio"
+                className="-my-1 -mr-1.5 flex h-6 w-6 items-center justify-center rounded-md text-neutral-500 transition-colors duration-100 hover:bg-black/[0.05] hover:text-ink-900 disabled:opacity-60"
+              >
+                <IconRefresh className={cn('h-3.5 w-3.5', refreshRates.isPending && 'animate-spin')} />
+              </button>
+            </div>
           </div>
           {rates && rates.length > 0 ? (
             <div className="mt-2 grid grid-cols-2 gap-x-3 sm:gap-x-4">

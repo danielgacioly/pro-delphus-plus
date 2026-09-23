@@ -17,8 +17,10 @@ const PAIRS = ['USD-BRL', 'EUR-BRL'] as const
  */
 exchangeRouter.get(
   '/',
-  asyncHandler(async (_req, res) => {
-    const settled = await Promise.allSettled(PAIRS.map((pair) => fetchPairQuote(pair)))
+  asyncHandler(async (req, res) => {
+    // ?refresh=1 (botão de atualizar no Início) pula o cache de 5 min.
+    const force = req.query.refresh === '1'
+    const settled = await Promise.allSettled(PAIRS.map((pair) => fetchPairQuote(pair, { force })))
     const rates = settled.flatMap((result, i) =>
       result.status === 'fulfilled' ? [{ pair: PAIRS[i], ...result.value }] : [],
     )
