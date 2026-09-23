@@ -8,6 +8,7 @@ import { ensureColumns } from '../routes/tasks.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { normalize, bestMatches } from './fuzzyMatch.js'
+import { saidYesToDefault } from './neoConsent.js'
 
 /**
  * O catálogo separa o que é um simulador inteiro do que é peça de reposição.
@@ -30,7 +31,11 @@ function productSummary(p: {
   priceUSD: unknown
   priceUSDDistributor: unknown
   priceEUR: unknown
-}) {
+  description?: string | null
+  descriptionPt?: string | null
+  components?: string | null
+  componentsPt?: string | null
+}, detalhes = false) {
   return {
     id: p.id,
     sku: p.sku,
@@ -41,6 +46,12 @@ function productSummary(p: {
     priceUSD: p.priceUSD?.toString() ?? null,
     priceUSDDistributor: p.priceUSDDistributor?.toString() ?? null,
     priceEUR: p.priceEUR?.toString() ?? null,
+    // Descrição e componentes padrão (a que o orçamento usa quando ninguém
+    // customiza) — só em busca focada, pra não inchar uma lista de 30 produtos.
+    ...(detalhes && {
+      descricaoPadrao: { en: p.description ?? null, pt: p.descriptionPt || p.description || null },
+      componentesPadrao: { en: p.components ?? null, pt: p.componentsPt || p.components || null },
+    }),
   }
 }
 
@@ -154,7 +165,7 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
       return {
         total: 0,
         produtos: [],
-        sugestoesPorSemelhanca: sugeridos.map(productSummary),
+        sugestoesPorSemelhanca: sugeridos.map((p) => productSummary(p)),
         aviso: 'Nenhum produto bateu exatamente com esse texto — pode ser erro de digitação. Pergunte à pessoa se é um desses antes de usar.',
       }
     }
@@ -163,7 +174,7 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
   return {
     total,
     ...(porPreco && { criterio: `preços em ${moeda}${ordenar === 'preco_desc' ? ', do mais caro' : ordenar === 'preco_asc' ? ', do mais barato' : ''}` }),
-    produtos: products.map(productSummary),
+    produtos: products.map((p) => productSummary(p, products.length <= 5)),
     ...(total > limite && { aviso: `${total} produto(s) no total, mostrando os ${limite} primeiros — refine com texto, setor ou limite pra ver outros, mas 'total' já é a contagem real.` }),
     ...(notFound.length > 0 && { setoresNaoEncontrados: notFound }),
   }
@@ -389,6 +400,10 @@ export async function buscarOrcamentos(args: { numero?: string; cliente?: string
       // Diferente do listPrice = preço especial negociado; numa edição ele
       // precisa ser repassado, senão volta pro preço de catálogo.
       listPrice: i.listPrice?.toString() ?? null,
+      // Idem: numa edição, descrição e componentes têm que ser repassados,
+      // senão voltam pro padrão do produto e perdem o que foi customizado.
+      description: i.description,
+      components: i.components,
     })),
   }))
 }
@@ -455,7 +470,16 @@ async function describeQuote(data: CreateQuoteInput, userId: string) {
       ? 'Nacional (BRL, português)'
       : `Internacional (${currency}${resolved.priceTier === 'DISTRIBUTOR' ? ', preço distribuidor' : ''}, idioma ${data.language})`
   const lines = resolved.lineItems.map(
-    (i) => `• ${i.quantity}× ${i.title} (SKU ${i.sku}) — ${money(currency, i.unitPrice)} cada = ${money(currency, i.lineTotal)}`,
+    (i) =>
+      [
+        `• ${i.quantity}× ${i.title} (SKU ${i.sku}) — ${money(currency, i.unitPrice)} cada = ${money(currency, i.lineTotal)}`,
+        // O que vai impresso junto do item — aparece no cartão pra pessoa
+        // conferir a descrição e os componentes antes de confirmar.
+        i.description ? `   Descrição: ${i.description}` : null,
+        i.components ? `   Componentes: ${i.components}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
   )
   const extras = [
     data.freight ? `Frete: ${money(currency, data.freight)}` : null,
@@ -464,8 +488,45 @@ async function describeQuote(data: CreateQuoteInput, userId: string) {
   return [`Cliente: ${data.clientName}`, scope, ...lines, ...extras, `Total: ${money(currency, resolved.total)}`].join('\n')
 }
 
-export async function proporOrcamento(args: CreateQuoteInput, userId: string) {
+// Mesma ideia de `missingQuoteDecisions`: o modelo lite escorrega em "assumir o
+// padrão" quando a regra só está no prompt. Então deixar descrição ou
+// componentes de fora só passa se a pessoa autorizou o padrão — senão a
+// recusa volta pro modelo como instrução de perguntar.
+async function missingDescriptionDecisions(
+  items: CreateQuoteInput['items'],
+  padraoAutorizado: boolean | undefined,
+  lastUserText: string,
+) {
+  if (padraoAutorizado && saidYesToDefault(lastUserText)) return
+  const products = await prisma.product.findMany({
+    where: { id: { in: items.map((i) => i.productId) } },
+    select: { id: true, name: true, kind: true },
+  })
+  const byId = new Map(products.map((p) => [p.id, p]))
+  const pendentes = items.flatMap((item) => {
+    const product = byId.get(item.productId)
+    if (!product) return []
+    const faltando = [
+      !item.description?.trim() && 'descrição',
+      product.kind === 'COMPLETE_MODEL' && item.components === undefined && 'componentes',
+    ].filter(Boolean)
+    return faltando.length > 0 ? [`${product.name} (${faltando.join(' e ')})`] : []
+  })
+  if (pendentes.length > 0) {
+    throw new HttpError(
+      400,
+      `Não proponha ainda — pergunte à pessoa: "Quer que eu use a descrição padrão e os componentes padrão do produto?" para ${pendentes.join('; ')}. Se ela disser sim, chame de novo com padraoDescricaoComponentesAutorizado=true; se disser não, pergunte como ela quer a descrição e os componentes e preencha description e components (components vazio = sem componentes).`,
+    )
+  }
+}
+
+export async function proporOrcamento(
+  args: CreateQuoteInput & { padraoDescricaoComponentesAutorizado?: boolean },
+  userId: string,
+  lastUserText: string,
+) {
   missingQuoteDecisions(args)
+  await missingDescriptionDecisions(args.items, args.padraoDescricaoComponentesAutorizado, lastUserText)
   const data = createQuoteSchema.parse(args)
   const summary = await describeQuote(data, userId)
   const pendingAction = createPendingAction('orcamento_criar', summary, data, userId)

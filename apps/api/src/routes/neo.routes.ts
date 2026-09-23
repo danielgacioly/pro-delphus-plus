@@ -145,7 +145,7 @@ const readTools: FunctionDeclaration[] = [
   {
     name: 'buscar_produtos',
     description:
-      'Busca produtos ativos do catálogo por setor(es), tipo e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo ("modelo completo" ou "componente (peça)"), setores e todos os preços. Pra "quais são os modelos completos" ou "quantos componentes existem", use o parâmetro tipo — sem ele a lista e o total misturam os dois. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total". Se o texto buscado não bater com nada, a resposta pode vir com "sugestoesPorSemelhanca" (produto parecido, possível erro de digitação) — nesse caso PERGUNTE à pessoa se é um desses antes de usar; nunca escolha sozinho.',
+      'Busca produtos ativos do catálogo por setor(es), tipo e/ou texto livre, e também responde pergunta de preço: ordene por preço e use limite pra achar o mais caro/mais barato, ou precoMax/precoMin pra "o que cabe em até X". Devolve nome, SKU, tipo ("modelo completo" ou "componente (peça)"), setores e todos os preços — e, quando a busca traz até 5 produtos, também descricaoPadrao e componentesPadrao (en/pt), que é o que responde "qual é a descrição / quais são os componentes desse produto". Pra "quais são os modelos completos" ou "quantos componentes existem", use o parâmetro tipo — sem ele a lista e o total misturam os dois. O campo "total" da resposta é a contagem REAL de produtos que casam com o filtro (não só os que vieram na lista, que pode vir cortada) — pra "quantos produtos vocês têm", chame sem nenhum filtro e leia "total". Se o texto buscado não bater com nada, a resposta pode vir com "sugestoesPorSemelhanca" (produto parecido, possível erro de digitação) — nesse caso PERGUNTE à pessoa se é um desses antes de usar; nunca escolha sozinho.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -230,6 +230,16 @@ const itemSchema = {
         'Preço negociado do item ("preço especial"), quando diferente do preço de catálogo. Pedido de desconto num item específico ("10% de desconto nesse produto") vai AQUI — calcule preço de catálogo × (1 - desconto) e preencha este campo. Não use o campo "discount" do orçamento pra isso: ele é um abatimento geral sobre o total, não por item.',
     },
     title: { type: Type.STRING, description: 'Nome customizado do item, só se a pessoa pedir um diferente do nome de catálogo' },
+    description: {
+      type: Type.STRING,
+      description:
+        'Descrição impressa no item. OMITA para usar a descrição padrão do produto (só preencha se a pessoa recusou o padrão e ditou uma).',
+    },
+    components: {
+      type: Type.STRING,
+      description:
+        'Componentes do item, só de modelo completo ("1 MMT 0, 1 MMT 1"), sem o rótulo "Componentes:" — o sistema coloca. OMITA para usar os componentes padrão do produto; só preencha se a pessoa recusou o padrão e ditou os dela. String vazia = sem componentes.',
+    },
   },
   required: ['productId', 'quantity'],
 }
@@ -248,6 +258,14 @@ const editItemSchema = {
         'Preço negociado do item ("preço especial"). Repita o valor atual (de buscar_orcamentos) quando não muda; se a pessoa pedir desconto nesse item agora, calcule o valor novo aqui — não use o campo "discount" do orçamento, que é um abatimento geral sobre o total, não por item.',
     },
     title: { type: Type.STRING, description: 'Repita o title atual do item, se houver' },
+    description: {
+      type: Type.STRING,
+      description: 'Repita a description atual do item (de buscar_orcamentos), ou a nova se a pessoa pediu pra mudar. Sem repassar, volta pro padrão do produto.',
+    },
+    components: {
+      type: Type.STRING,
+      description: 'Repita os components atuais do item (de buscar_orcamentos), ou os novos se a pessoa pediu pra mudar. Sem repassar, voltam pro padrão do produto. String vazia = sem componentes.',
+    },
   },
   required: ['productId', 'quantity'],
 }
@@ -333,8 +351,19 @@ const writeTools: FunctionDeclaration[] = [
   {
     name: 'propor_orcamento',
     description:
-      'Monta uma prévia de orçamento novo — NÃO grava nada. Antes, tenha confirmado com a pessoa: cliente, itens (productId real de buscar_produtos) e quantidades, se é nacional ou internacional e, se internacional, moeda, idioma e (em USD) preço final ou distribuidor. Se a ferramenta devolver "erro", pergunte o que falta.',
-    parameters: { type: Type.OBJECT, properties: { ...quoteFieldsProps }, required: ['clientName', 'items'] },
+      'Monta uma prévia de orçamento novo — NÃO grava nada. Antes, tenha confirmado com a pessoa: cliente, itens (productId real de buscar_produtos) e quantidades, se é nacional ou internacional e, se internacional, moeda, idioma e (em USD) preço final ou distribuidor. Pergunte também, por item, se usa a descrição e os componentes padrão do produto. Se a ferramenta devolver "erro", pergunte o que falta.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        ...quoteFieldsProps,
+        padraoDescricaoComponentesAutorizado: {
+          type: Type.BOOLEAN,
+          description:
+            'true só se a pessoa respondeu que SIM, quer a descrição padrão e os componentes padrão dos produtos (a pergunta é obrigatória — a ferramenta recusa sem isso ou sem description/components preenchidos).',
+        },
+      },
+      required: ['clientName', 'items'],
+    },
   },
   {
     name: 'propor_edicao_orcamento',
@@ -463,6 +492,7 @@ async function dispatchTool(
   name: string,
   args: Record<string, unknown>,
   userId: string,
+  lastUserText: string,
 ): Promise<{ result: unknown; pendingAction?: Awaited<ReturnType<typeof proporOrcamento>>['pendingAction'] }> {
   switch (name) {
     case 'buscar_produtos':
@@ -482,7 +512,7 @@ async function dispatchTool(
     case 'criar_tarefa':
       return { result: await criarTarefa(toolArgs<Parameters<typeof criarTarefa>[0]>(args), userId) }
     case 'propor_orcamento': {
-      const { pendingAction, summaryForModel } = await proporOrcamento(toolArgs<Parameters<typeof proporOrcamento>[0]>(args), userId)
+      const { pendingAction, summaryForModel } = await proporOrcamento(toolArgs<Parameters<typeof proporOrcamento>[0]>(args), userId, lastUserText)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_orcamento': {
@@ -559,7 +589,7 @@ neoRouter.post(
         const toolStartedAt = Date.now()
         let result: unknown
         try {
-          const dispatched = await dispatchTool(call.name!, call.args ?? {}, req.user!.id)
+          const dispatched = await dispatchTool(call.name!, call.args ?? {}, req.user!.id, message)
           console.info(`[neo] ${call.name} levou ${Date.now() - toolStartedAt}ms`)
           result = dispatched.result
           if (dispatched.pendingAction) pendingAction = toPublicPendingAction(dispatched.pendingAction)
