@@ -37,6 +37,7 @@ const emptyForm = {
   awbNumber: '',
   incoterms: '',
   shippingMethod: '',
+  creditCardPaymentLink: '',
   prepaymentBy: 'WIRE_TRANSFER' as PrepaymentMethod,
   paypalFee: '',
   nfNumber: '',
@@ -121,6 +122,7 @@ export function NewOrder() {
       grossWeightKg: sourceOrder.grossWeightKg ?? '',
       incoterms: sourceOrder.incoterms ?? '',
       shippingMethod: sourceOrder.shippingMethod ?? '',
+      creditCardPaymentLink: sourceOrder.creditCardPaymentLink ?? '',
       prepaymentBy: sourceOrder.prepaymentBy,
       paypalFee: sourceOrder.paypalFee ?? '',
       ...(isEditing
@@ -186,6 +188,7 @@ export function NewOrder() {
         awbNumber: optionalText(form.awbNumber),
         incoterms: optionalText(form.incoterms),
         shippingMethod: optionalText(form.shippingMethod),
+        creditCardPaymentLink: optionalText(form.creditCardPaymentLink),
         prepaymentBy: form.prepaymentBy,
         paypalFee: form.prepaymentBy === 'PAYPAL' && form.paypalFee ? Number(form.paypalFee) : undefined,
         nfNumber: optionalText(form.nfNumber),
@@ -337,6 +340,15 @@ export function NewOrder() {
                         className="tabular"
                         value={form.paypalFee}
                         onChange={(e) => update({ paypalFee: e.target.value })}
+                      />
+                    </Field>
+                  )}
+                  {isNational && (
+                    <Field label="Link de pagamento (cartão)" hint="Opcional — pode ficar em branco">
+                      <Input
+                        placeholder="https://…"
+                        value={form.creditCardPaymentLink}
+                        onChange={(e) => update({ creditCardPaymentLink: e.target.value })}
                       />
                     </Field>
                   )}

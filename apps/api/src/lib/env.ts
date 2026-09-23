@@ -57,8 +57,10 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .optional(),
 
-  /** Número do primeiro pedido — só tem efeito enquanto a tabela `orders` está vazia (o próximo é sempre max+1). */
+  /** Piso do número do próximo pedido — o próximo é sempre max(maior existente + 1, este valor), nunca menor. */
   ORDER_NUMBER_START: z.coerce.number().int().min(0).default(0),
+  /** Piso do próximo "ID da pasta do cliente" (só pedido internacional) — mesma regra de piso do ORDER_NUMBER_START. */
+  CLIENT_FOLDER_ID_START: z.coerce.number().int().min(0).default(1),
 
   ADMIN_SEED_NAME: z.string().default('Administrador'),
   ADMIN_SEED_EMAIL: z.string().email().default('admin@prodelphus.com'),
@@ -78,6 +80,14 @@ const envSchema = z.object({
   // o que acaba em poucas conversas (cada pergunta com ferramenta gasta 2-5).
   // O flash-lite tem cota grátis bem maior e faz function calling bem.
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
+  // Quando o modelo principal esgota as tentativas (pico de demanda do lado
+  // do Google, 429/5xx), tenta estes em ordem antes de desistir — cada um tem
+  // cota grátis própria, então um "high demand" isolado no flash-lite não
+  // derruba o NEO inteiro. Lista separada por vírgula, sem espaço.
+  GEMINI_FALLBACK_MODELS: z
+    .string()
+    .default('gemini-3.6-flash,gemini-3.5-flash')
+    .transform((s) => s.split(',').map((m) => m.trim()).filter(Boolean)),
 
   // Groq (Whisper) transcreve o ditado por voz do NEO — free tier próprio,
   // sem gastar a cota do Gemini. Gere uma chave grátis em https://console.groq.com.

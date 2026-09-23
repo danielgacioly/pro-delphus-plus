@@ -19,6 +19,8 @@ export const LABELS: Record<QuoteLanguage, {
   item: string
   qty: string
   description: string
+  /** Rótulo da lista de componentes, impressa junto da descrição do item. */
+  components: string
   photo: string
   unitPrice: string
   specialPrice: string
@@ -35,6 +37,7 @@ export const LABELS: Record<QuoteLanguage, {
     item: 'Item',
     qty: 'Qtd.',
     description: 'Descrição',
+    components: 'Componentes',
     photo: 'Foto',
     unitPrice: 'Preço unit.',
     specialPrice: 'Preço especial',
@@ -50,6 +53,7 @@ export const LABELS: Record<QuoteLanguage, {
     item: 'Item',
     qty: 'Qty.',
     description: 'Description',
+    components: 'Components',
     photo: 'Photo',
     unitPrice: 'Unit Price',
     specialPrice: 'Special Price',
@@ -65,6 +69,7 @@ export const LABELS: Record<QuoteLanguage, {
     item: 'Ítem',
     qty: 'Cant.',
     description: 'Descripción',
+    components: 'Componentes',
     photo: 'Foto',
     unitPrice: 'Precio unit.',
     specialPrice: 'Precio especial',
@@ -74,6 +79,21 @@ export const LABELS: Record<QuoteLanguage, {
     toBeDefined: 'Por definir',
     defaultJobTitle: 'Asistente de Ventas',
   },
+}
+
+/**
+ * "(Components: A, B)" — no mesmo corpo da descrição, sem estilo próprio.
+ * O texto cadastrado no produto às vezes já traz a palavra ("Components: …" /
+ * "Componentes: …") e às vezes já vem entre parênteses: aí só se garante o
+ * parêntese, sem repetir o rótulo. Vazio quando não há componentes.
+ */
+export function componentsLine(language: QuoteLanguage, components: string | null | undefined) {
+  let text = components?.trim() ?? ''
+  if (text.startsWith('(') && text.endsWith(')')) text = text.slice(1, -1).trim()
+  if (!text) return ''
+  const label = LABELS[language].components
+  const alreadyLabeled = /^(components?|componentes?)\s*:/i.test(text)
+  return `(${alreadyLabeled ? text : `${label}: ${text}`})`
 }
 
 export function formatMoney(value: number, currency: string, language: QuoteLanguage) {

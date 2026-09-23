@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ExcelJS from 'exceljs'
 import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
-import { LABELS, type QuoteLanguage } from './quoteI18n.js'
+import { LABELS, componentsLine, type QuoteLanguage } from './quoteI18n.js'
 import { COMPANY } from './pdf.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -12,6 +12,7 @@ const logoBuffer = fs.readFileSync(path.join(__dirname, '../assets/logo-company.
 export interface QuoteXlsxItem {
   title: string
   description: string
+  components: string
   quantity: number
   /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
   listPrice: number | null
@@ -167,7 +168,7 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
       ...(showSpecial ? [hasSpecialPrice(item) || item.listPrice === null ? item.unitPrice : '—'] : []),
       { formula: `${priceRef}*B${rowIndex}` },
     ]
-    const description = item.description.trim()
+    const description = [item.description.trim(), componentsLine(data.language, item.components)].filter(Boolean).join('\n')
     row.getCell(3).value = {
       richText: [
         { text: item.title, font: { bold: true, color: { argb: INK } } },

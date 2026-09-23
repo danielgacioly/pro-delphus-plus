@@ -60,29 +60,71 @@ const MAX_TOOL_ITERATIONS = 6
 const RETRY_DELAYS_MS = [1500, 4000]
 
 function isTransient(err: unknown) {
-  return err instanceof ApiError && (err.status === 429 || err.status >= 500)
+  if (err instanceof ApiError) return err.status === 429 || err.status >= 500
+  // O timeout do nosso próprio httpOptions bate como DOMException AbortError,
+  // não ApiError — mas "não respondeu a tempo" é tão "tente de novo" quanto
+  // um 503 explícito. Visto ao vivo: gemini-3.6-flash abortou aos 45s sem
+  // nunca devolver status nenhum, e sem isto o fallback parava ali.
+  return err instanceof DOMException && err.name === 'AbortError'
 }
 
-// O ApiError do Gemini traz `status` 4xx (ex.: 429 de cota), e o errorHandler
-// repassaria a mensagem crua do Google — com detalhes de cota/projeto — como se
-// fosse erro do request. Aqui vira uma mensagem amigável e o detalhe fica no log.
-async function generateNeoContent(params: GenerateContentParameters) {
+// Tenta um modelo específico, com retry em erro transitório (429/5xx). Deixa
+// o erro original subir (sem embrulhar em HttpError) — quem decide se vale a
+// pena tentar um modelo alternativo, ou desistir de vez, é o chamador.
+async function callGeminiModel(model: string, params: Omit<GenerateContentParameters, 'model'>) {
+  const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      return await ai.models.generateContent(params)
+      const result = await ai.models.generateContent({ ...params, model })
+      // Sempre loga, mesmo em produção (sem isso, uma reclamação de "tá lento"
+      // não tinha como ser diagnosticada — só suspeita) — sem dado sensível,
+      // só duração e quantas tentativas precisou.
+      console.info(`[neo] ${model} respondeu em ${Date.now() - startedAt}ms (tentativa ${attempt + 1})`)
+      return result
     } catch (err) {
       if (isTransient(err) && attempt < RETRY_DELAYS_MS.length) {
-        console.warn(`[neo] Gemini ${(err as ApiError).status}, nova tentativa em ${RETRY_DELAYS_MS[attempt]}ms`)
+        const reason = err instanceof ApiError ? String(err.status) : 'timeout'
+        console.warn(`[neo] ${model} ${reason}, nova tentativa em ${RETRY_DELAYS_MS[attempt]}ms`)
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]))
         continue
       }
-      console.error('[neo] falha ao chamar o Gemini:', err)
-      if (err instanceof ApiError && err.status === 429) {
-        throw new HttpError(503, 'O NEO atingiu o limite de uso por agora. Tenta de novo daqui a pouco.')
-      }
-      throw new HttpError(502, 'O NEO não conseguiu responder agora. Tenta de novo em instantes.')
+      console.error(`[neo] falha ao chamar ${model} após ${Date.now() - startedAt}ms:`, err)
+      throw err
     }
   }
+}
+
+// O ApiError do Gemini traz `status` 4xx (ex.: 429 de cota), e o errorHandler
+// repassaria a mensagem crua do Google — com detalhes de cota/projeto — como
+// se fosse erro do request. Aqui vira uma mensagem amigável.
+function neoUnavailableError(err: unknown): HttpError {
+  if (err instanceof ApiError && err.status === 429) {
+    return new HttpError(503, 'O NEO atingiu o limite de uso por agora. Tenta de novo daqui a pouco.')
+  }
+  return new HttpError(502, 'O NEO não conseguiu responder agora. Tenta de novo em instantes.')
+}
+
+// Tenta o modelo preferido e, se ele esgotar as tentativas com um erro
+// transitório (pico de demanda do lado do Google, não algo que repetir vai
+// resolver), cai pros modelos de `GEMINI_FALLBACK_MODELS` em ordem — cada um
+// tem cota grátis própria, então um "high demand" isolado num modelo não
+// deixa o NEO inteiro sem responder. Devolve também qual modelo respondeu,
+// pra quem chama continuar usando o mesmo nas próximas idas e vindas da
+// mesma conversa (evita pagar o custo de redescobrir a cada iteração).
+async function generateNeoContent(preferredModel: string, params: Omit<GenerateContentParameters, 'model'>) {
+  const candidates = [preferredModel, ...env.GEMINI_FALLBACK_MODELS.filter((m) => m !== preferredModel)]
+  let lastErr: unknown
+  for (const model of candidates) {
+    try {
+      const response = await callGeminiModel(model, params)
+      return { response, modelUsed: model }
+    } catch (err) {
+      lastErr = err
+      if (!isTransient(err)) throw neoUnavailableError(err)
+      console.warn(`[neo] ${model} indisponível, tentando modelo alternativo`)
+    }
+  }
+  throw neoUnavailableError(lastErr)
 }
 
 // Erro de validação numa ferramenta (faltou moeda, cliente sem endereço,
@@ -471,6 +513,7 @@ async function dispatchTool(
 neoRouter.post(
   '/',
   asyncHandler(async (req, res) => {
+    const requestStartedAt = Date.now()
     const message = String(req.body?.message ?? '').trim()
     if (!message) throw new HttpError(400, 'Mensagem vazia')
     const historyIn = Array.isArray(req.body?.history) ? req.body.history : []
@@ -481,19 +524,25 @@ neoRouter.post(
     ]
 
     let pendingAction: ReturnType<typeof toPublicPendingAction> | undefined
+    // Começa no modelo preferido; se algum call cair num fallback, as
+    // próximas iterações desta mesma conversa já começam por ele — sem
+    // isso, cada iteração pagaria de novo o custo de esgotar as tentativas
+    // do modelo principal antes de cair pro alternativo.
+    let currentModel = env.GEMINI_MODEL
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      const response = await generateNeoContent({
-        model: env.GEMINI_MODEL,
+      const { response, modelUsed } = await generateNeoContent(currentModel, {
         contents,
         config: {
           systemInstruction: buildNeoSystemInstruction(),
           tools: [{ functionDeclarations: [...readTools, ...writeTools] }],
         },
       })
+      currentModel = modelUsed
 
       const calls = response.functionCalls ?? []
       if (calls.length === 0) {
+        console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${iteration + 1} chamada(s) ao Gemini)`)
         res.json({ reply: redactInternalIds(response.text ?? ''), pendingAction })
         return
       }
@@ -507,9 +556,11 @@ neoRouter.post(
       const responseParts = []
       for (const call of calls) {
         if (!IS_PRODUCTION) console.info(`[neo] ${call.name}`, JSON.stringify(call.args ?? {}))
+        const toolStartedAt = Date.now()
         let result: unknown
         try {
           const dispatched = await dispatchTool(call.name!, call.args ?? {}, req.user!.id)
+          console.info(`[neo] ${call.name} levou ${Date.now() - toolStartedAt}ms`)
           result = dispatched.result
           if (dispatched.pendingAction) pendingAction = toPublicPendingAction(dispatched.pendingAction)
         } catch (err) {
@@ -525,14 +576,14 @@ neoRouter.post(
     // Estourou o teto de ferramentas: em vez de devolver erro (o que joga fora
     // tudo que já foi apurado), pede uma resposta final sem ferramentas — o
     // modelo conclui com o que tem, ou pergunta.
-    const finalResponse = await generateNeoContent({
-      model: env.GEMINI_MODEL,
+    const { response: finalResponse } = await generateNeoContent(currentModel, {
       contents: [
         ...contents,
         { role: 'user', parts: [{ text: 'Responda agora em texto, sem chamar mais ferramentas, com o que você já apurou. Se ainda falta informação, pergunte.' }] },
       ],
       config: { systemInstruction: buildNeoSystemInstruction() },
     })
+    console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (estourou o teto de ${MAX_TOOL_ITERATIONS} chamadas de ferramenta)`)
     res.json({ reply: redactInternalIds(finalResponse.text ?? ''), pendingAction })
   }),
 )

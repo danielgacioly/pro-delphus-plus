@@ -111,6 +111,8 @@ export function toQuoteDTO(
       titleOverride: item.title,
       catalogName: item.product.name,
       description: item.description,
+      components: item.components,
+      productKind: item.product.kind,
     })),
   }
 }
@@ -134,6 +136,7 @@ export function toOrderDTO(
   return {
     id: order.id,
     orderNumber: order.orderNumber,
+    clientFolderId: order.clientFolderId,
     quoteId: order.quoteId,
     quoteNumber: order.quote.quoteNumber,
     purchaseOrder: order.purchaseOrder,
@@ -149,6 +152,7 @@ export function toOrderDTO(
     awbNumber: order.awbNumber,
     incoterms: order.incoterms,
     shippingMethod: order.shippingMethod,
+    creditCardPaymentLink: order.creditCardPaymentLink,
     prepaymentBy: order.prepaymentBy,
     paypalFee: order.paypalFee?.toString() ?? null,
     nfNumber: order.nfNumber,
@@ -156,6 +160,7 @@ export function toOrderDTO(
     nfDocumentUrl: order.nfDocumentUrl,
     awbDocumentUrl: order.awbDocumentUrl,
     boletoDocumentUrl: order.boletoDocumentUrl,
+    gnreDocumentUrl: order.gnreDocumentUrl,
     exchangeRate: order.exchangeRate?.toString() ?? null,
     itemWeightsKg: (order.itemWeightsKg as (number | null)[] | null) ?? null,
     packageCount: order.packageCount,

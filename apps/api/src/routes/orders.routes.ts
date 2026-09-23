@@ -15,6 +15,7 @@ import { fetchExchangeRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
 import { reservationBackoff } from '../lib/numbering.js'
+import { componentsLine } from '../lib/quoteI18n.js'
 import { formatOrderNumber, invoiceTotal, type BoxAssignments, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { boxAssignmentsFit, buildBoxPages, formatPackageCountLabel } from '../domain/packaging.js'
 import { missingPostOrderDocs, prepaymentRejection } from '../domain/orderDocuments.js'
@@ -116,6 +117,10 @@ ordersRouter.get(
         url: order.boletoDocumentUrl,
         filename: `Order-${orderNumber}-Boleto${path.extname(storageFilename(order.boletoDocumentUrl))}`,
       },
+      order.gnreDocumentUrl && {
+        url: order.gnreDocumentUrl,
+        filename: `Order-${orderNumber}-GNRE${path.extname(storageFilename(order.gnreDocumentUrl))}`,
+      },
       order.nfDocumentUrl && {
         url: order.nfDocumentUrl,
         filename: `Order-${orderNumber}-NF${path.extname(storageFilename(order.nfDocumentUrl))}`,
@@ -215,16 +220,28 @@ async function moveOrderTasksToDone(orderId: string) {
   }
 }
 
+// `ORDER_NUMBER_START` é um piso, não só um valor inicial: o próximo número é
+// sempre o maior entre "último + 1" e o piso configurado. Isso permite subir
+// o piso a qualquer momento (ex.: retomar a contagem de onde parou fora da
+// plataforma) mesmo com pedidos já existentes, sem nunca colidir com um
+// número já usado nem andar pra trás.
 async function nextOrderNumber() {
   const last = await prisma.order.findFirst({ orderBy: { orderNumber: 'desc' } })
-  return last ? last.orderNumber + 1 : env.ORDER_NUMBER_START
+  return Math.max(last ? last.orderNumber + 1 : 0, env.ORDER_NUMBER_START)
 }
 
-// `orderNumber` é o único campo único de Order além de `id` (gerado pelo
-// servidor, que na prática nunca colide), então qualquer P2002 aqui é disputa
-// pelo número do pedido. O `meta.target` do adaptador do Prisma 7 não traz o
-// nome do campo de forma confiável — conferido num P2002 real antes de
-// depender dele.
+// Mesma regra de piso do `nextOrderNumber`, mas só entre pedidos
+// internacionais (nacional fica com `clientFolderId` nulo, fora da contagem).
+async function nextClientFolderId() {
+  const last = await prisma.order.findFirst({ where: { clientFolderId: { not: null } }, orderBy: { clientFolderId: 'desc' } })
+  return Math.max(last?.clientFolderId ? last.clientFolderId + 1 : 0, env.CLIENT_FOLDER_ID_START)
+}
+
+// `orderNumber` e `clientFolderId` são os únicos campos únicos de Order além
+// de `id` (gerados pelo servidor, que na prática nunca colidem), então
+// qualquer P2002 aqui é disputa por um desses números. O `meta.target` do
+// adaptador do Prisma 7 não traz o nome do campo de forma confiável —
+// conferido num P2002 real antes de depender dele.
 function isOrderNumberConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
@@ -252,6 +269,7 @@ export const orderFieldsSchema = z.object({
   awbNumber: z.string().optional(),
   incoterms: z.string().optional(),
   shippingMethod: z.string().optional(),
+  creditCardPaymentLink: z.string().optional(),
   prepaymentBy: z.enum(['PAYPAL', 'WIRE_TRANSFER', 'PIX']).optional(),
   paypalFee: z.coerce.number().min(0).optional(),
   nfNumber: z.string().optional(),
@@ -290,6 +308,7 @@ async function buildAndWriteDocuments(
   quote: {
     quoteNumber: string
     currency: string
+    language: 'PT' | 'EN' | 'ES'
     exportScope: 'NATIONAL' | 'INTERNATIONAL'
     freight: unknown
     discount: unknown
@@ -299,6 +318,7 @@ async function buildAndWriteDocuments(
       lineTotal: unknown
       title: string | null
       description: string
+      components: string | null
       product: { name: string; weightKg: unknown }
     }[]
   },
@@ -322,7 +342,8 @@ async function buildAndWriteDocuments(
   const docItems = quote.items.map((item) => ({
     // Nome editado no orçamento vence o do catálogo — ver QuoteItem.title.
     title: item.title ?? item.product.name,
-    description: item.description,
+    // Onde a descrição aparece, os componentes aparecem junto (modelo completo).
+    description: [item.description.trim(), componentsLine(quote.language, item.components)].filter(Boolean).join('\n'),
     quantity: item.quantity,
     unitPrice: Number(item.unitPrice),
     lineTotal: Number(item.lineTotal),
@@ -458,10 +479,12 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
   for (let attempt = 0; attempt < 12; attempt++) {
     if (attempt > 0) await reservationBackoff(attempt)
     orderNumber = await nextOrderNumber()
+    const clientFolderId = isNational ? null : await nextClientFolderId()
     try {
       order = await prisma.order.create({
         data: {
           orderNumber,
+          clientFolderId,
           quoteId: data.quoteId,
           purchaseOrder: data.purchaseOrder ?? null,
           orderedByEmail: data.orderedByEmail,
@@ -475,6 +498,7 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
           awbNumber: data.awbNumber ?? null,
           incoterms: data.incoterms ?? null,
           shippingMethod: data.shippingMethod ?? null,
+          creditCardPaymentLink: data.creditCardPaymentLink ?? null,
           itemWeightsKg: data.itemWeightsKg,
           packageCount,
           boxAssignments: data.boxAssignments ?? undefined,
@@ -568,6 +592,8 @@ export async function updateOrderRecord(existingId: string, data: Partial<Omit<O
     awbNumber: data.awbNumber !== undefined ? data.awbNumber || null : existing.awbNumber,
     incoterms: data.incoterms !== undefined ? data.incoterms || null : existing.incoterms,
     shippingMethod: data.shippingMethod !== undefined ? data.shippingMethod || null : existing.shippingMethod,
+    creditCardPaymentLink:
+      data.creditCardPaymentLink !== undefined ? data.creditCardPaymentLink || null : existing.creditCardPaymentLink,
     prepaymentBy: data.prepaymentBy ?? existing.prepaymentBy,
     paypalFee: data.paypalFee !== undefined ? data.paypalFee : existing.paypalFee !== null ? Number(existing.paypalFee) : null,
     nfNumber: data.nfNumber !== undefined ? data.nfNumber || null : existing.nfNumber,
@@ -604,6 +630,7 @@ export async function updateOrderRecord(existingId: string, data: Partial<Omit<O
       awbNumber: merged.awbNumber,
       incoterms: merged.incoterms,
       shippingMethod: merged.shippingMethod,
+      creditCardPaymentLink: merged.creditCardPaymentLink,
       prepaymentBy: merged.prepaymentBy,
       paypalFee: merged.paypalFee,
       nfNumber: merged.nfNumber,
@@ -674,6 +701,7 @@ ordersRouter.delete(
       existing.exportDocXlsxUrl,
       existing.awbDocumentUrl,
       existing.boletoDocumentUrl,
+      existing.gnreDocumentUrl,
       existing.nfDocumentUrl,
     ]) {
       if (url) deleteStoredFile(url)
@@ -714,6 +742,24 @@ ordersRouter.post(
     const order = await prisma.order.update({
       where: { id: req.params.id },
       data: { boletoDocumentUrl: publicUrlFor(req.file.filename) },
+      include,
+    })
+    res.status(201).json({ order: await toOrderDTOFresh(order) })
+  }),
+)
+
+ordersRouter.post(
+  '/:id/gnre-document',
+  upload.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new HttpError(400, 'Nenhum arquivo enviado')
+    const existing = await prisma.order.findUnique({ where: { id: req.params.id } })
+    if (!existing) throw new HttpError(404, 'Pedido não encontrado')
+    if (existing.gnreDocumentUrl) deleteStoredFile(existing.gnreDocumentUrl)
+
+    const order = await prisma.order.update({
+      where: { id: req.params.id },
+      data: { gnreDocumentUrl: publicUrlFor(req.file.filename) },
       include,
     })
     res.status(201).json({ order: await toOrderDTOFresh(order) })

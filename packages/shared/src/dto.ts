@@ -161,6 +161,10 @@ export interface QuoteDTO {
     /** Nome atual do produto no catálogo, para servir de placeholder. */
     catalogName: string
     description: string
+    /** Componentes impressos junto da descrição; null = nenhum. */
+    components: string | null
+    /** Tipo do produto — só "modelo completo" tem campo de componentes. */
+    productKind: ProductKind
   }>
 }
 
@@ -179,6 +183,8 @@ export interface CreateOrderInput {
   incoterms?: string
   /** Só pra pedido nacional — texto livre tipo "PAC", "SEDEX", "Transportadora XPTO". */
   shippingMethod?: string
+  /** Só pra pedido nacional — link opcional de pagamento por cartão de crédito. */
+  creditCardPaymentLink?: string
   prepaymentBy: PrepaymentMethod
   paypalFee?: number
   nfNumber?: string
@@ -194,6 +200,8 @@ export interface CreateOrderInput {
 export interface OrderDTO {
   id: string
   orderNumber: number
+  /** "ID da pasta do cliente" — só pedido internacional, contador próprio. */
+  clientFolderId: number | null
   quoteId: string
   quoteNumber: string
   purchaseOrder: string | null
@@ -209,6 +217,8 @@ export interface OrderDTO {
   awbNumber: string | null
   incoterms: string | null
   shippingMethod: string | null
+  /** Só pedido nacional — link opcional de pagamento por cartão de crédito. */
+  creditCardPaymentLink: string | null
   prepaymentBy: PrepaymentMethod
   paypalFee: string | null
   nfNumber: string | null
@@ -216,6 +226,7 @@ export interface OrderDTO {
   nfDocumentUrl: string | null
   awbDocumentUrl: string | null
   boletoDocumentUrl: string | null
+  gnreDocumentUrl: string | null
   exchangeRate: string | null
   itemWeightsKg: (number | null)[] | null
   packageCount: number

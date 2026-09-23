@@ -136,6 +136,9 @@ export const createQuoteSchema = z.object({
         quantity: z.coerce.number().int().positive().max(100_000, 'Quantidade acima do limite (100.000)'),
         title: z.string().optional(),
         description: z.string().optional(),
+        // Ausente = usa os componentes cadastrados no produto; string (mesmo
+        // vazia) = o que a pessoa deixou no campo, inclusive "nenhum".
+        components: z.string().optional(),
         unitPrice: z.coerce.number().positive().optional(),
       }),
     )
@@ -210,6 +213,10 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
       // documento sai com texto em inglês mesmo com "Idioma: Português".
       const catalogDescription = language === 'PT' ? product.descriptionPt || product.description : product.description
       const description = item.description || catalogDescription || ''
+      // Só modelo completo lista componentes; peça avulsa nunca.
+      const catalogComponents = language === 'PT' ? product.componentsPt || product.components : product.components
+      const components =
+        product.kind === 'COMPLETE_MODEL' ? (item.components ?? catalogComponents ?? '').trim() : ''
       const primaryImage =
         product.media.find((m) => m.type === 'IMAGE' && m.isPrimary) ??
         product.media.filter((m) => m.type === 'IMAGE').toSorted((a, b) => a.order - b.order)[0]
@@ -224,6 +231,7 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
         unitPrice,
         lineTotal,
         description,
+        components,
         photoDataUri,
       }
     }),
@@ -271,6 +279,7 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
       items: lineItems.map((i) => ({
         title: i.title,
         description: i.description,
+        components: i.components,
         quantity: i.quantity,
         listPrice: i.listPrice,
         unitPrice: i.unitPrice,
@@ -294,6 +303,7 @@ async function generateQuoteFiles(quoteNumber: string, data: CreateQuoteInput, r
       items: lineItems.map((i) => ({
         title: i.title,
         description: i.description,
+        components: i.components,
         quantity: i.quantity,
         listPrice: i.listPrice,
         unitPrice: i.unitPrice,
@@ -375,6 +385,7 @@ export async function createQuoteRecord(data: CreateQuoteInput, requesterId: str
               unitPrice: i.unitPrice,
               lineTotal: i.lineTotal,
               description: i.description,
+              components: i.components || null,
             })),
           },
         },
@@ -441,6 +452,7 @@ export async function updateQuoteRecord(existingId: string, data: CreateQuoteInp
             unitPrice: i.unitPrice,
             lineTotal: i.lineTotal,
             description: i.description,
+            components: i.components || null,
           })),
         },
       },

@@ -151,6 +151,20 @@ export function OrderDetail() {
     },
   })
 
+  const uploadGnre = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      await api.post(`/orders/${id}/gnre-document`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: () => {
+      invalidate()
+      toast.success('GNRE enviada.')
+    },
+  })
+
   const uploadNf = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData()
@@ -281,12 +295,20 @@ export function OrderDetail() {
 
           <div className="mt-5 space-y-4">
             {isNational ? (
-              <ManualUpload
-                title="Boleto (manual)"
-                url={order.boletoDocumentUrl}
-                isPending={uploadBoleto.isPending}
-                onFile={(file) => uploadBoleto.mutate(file)}
-              />
+              <>
+                <ManualUpload
+                  title="Boleto (manual)"
+                  url={order.boletoDocumentUrl}
+                  isPending={uploadBoleto.isPending}
+                  onFile={(file) => uploadBoleto.mutate(file)}
+                />
+                <ManualUpload
+                  title="GNRE (manual)"
+                  url={order.gnreDocumentUrl}
+                  isPending={uploadGnre.isPending}
+                  onFile={(file) => uploadGnre.mutate(file)}
+                />
+              </>
             ) : (
               <ManualUpload
                 title="AWB (manual)"
@@ -352,6 +374,7 @@ export function OrderDetail() {
               <>
                 <ReadField label="Incoterms" value={order.incoterms} />
                 <ReadField label="AWB #" value={order.awbNumber} />
+                <ReadField label="ID da pasta do cliente" value={order.clientFolderId != null ? String(order.clientFolderId) : null} />
               </>
             )}
             <ReadField
@@ -364,6 +387,25 @@ export function OrderDetail() {
                     : 'Transferência bancária'
               }
             />
+            {isNational && (
+              <div>
+                <dt className="text-[12px] font-medium text-neutral-600">Link de pagamento (cartão)</dt>
+                <dd className="mt-1 text-[13.5px] leading-relaxed text-ink-900">
+                  {order.creditCardPaymentLink?.trim() ? (
+                    <a
+                      href={order.creditCardPaymentLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all text-brand-600 hover:underline"
+                    >
+                      {order.creditCardPaymentLink}
+                    </a>
+                  ) : (
+                    '—'
+                  )}
+                </dd>
+              </div>
+            )}
             <ReadField label="Número da NF" value={order.nfNumber} />
             <ReadField
               label="Emissão da NF"

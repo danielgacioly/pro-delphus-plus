@@ -107,6 +107,10 @@ export function Neo() {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAction | null>(() => loadChat().pending)
   const [loading, setLoading] = useState(false)
+  // O modelo gratuito do NEO às vezes passa bem dos poucos segundos normais
+  // (fila de alta demanda do lado do Google) — sem um sinal de "ainda
+  // trabalhando", passados uns segundos os três pontinhos parecem travados.
+  const [slowLoading, setSlowLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -115,6 +119,15 @@ export function Neo() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, pending, error, loading])
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoading(false)
+      return
+    }
+    const timer = setTimeout(() => setSlowLoading(true), 8000)
+    return () => clearTimeout(timer)
+  }, [loading])
 
   useEffect(() => {
     try {
@@ -301,10 +314,17 @@ export function Neo() {
             )}
 
             {loading && (
-              <div className="animate-neo-float flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+              <div className="flex flex-col items-start gap-1.5 self-start">
+                <div className="animate-neo-float flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
+                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                </div>
+                {slowLoading && (
+                  <p className="px-1 text-[12px] text-neutral-500">
+                    Tá demorando mais que o normal — o NEO ainda está tentando responder…
+                  </p>
+                )}
               </div>
             )}
 

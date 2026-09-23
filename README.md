@@ -303,15 +303,14 @@ Isso gera `plus.prodelphus.local.pem` e `plus.prodelphus.local-key.pem`. Os dois
 
 A API já reconhece HTTPS sozinha: `COOKIE_SECURE` e o HSTS usam `true` como padrão em produção (`apps/api/src/lib/env.ts`), sem precisar de override no compose.
 
-### 6. Trocar o número inicial dos pedidos
+### 6. Trocar o número inicial dos pedidos (ou o do "ID da pasta do cliente")
 
-O número do primeiro pedido ("Pedido #0000", "Pedido #2801" etc.) vem da variável `ORDER_NUMBER_START` (padrão: `0`, exibido com 4 dígitos). A partir do primeiro pedido, o próximo número é sempre `último + 1` — a variável só é lida quando a tabela `orders` está **vazia**.
+O número do próximo pedido ("Pedido #0000", "Pedido #2801" etc.) é sempre o maior entre `último pedido existente + 1` e a variável `ORDER_NUMBER_START` (padrão: `0`, exibido com 4 dígitos) — ela funciona como um **piso**, não só um valor inicial: pode ser subida a qualquer momento, mesmo com pedidos já criados, e o próximo pedido pula direto pra ela sem colidir com nenhum número já usado. O "ID da pasta do cliente" (só pedido internacional, mostrado no detalhe do pedido) segue a mesma regra numa variável separada, `CLIENT_FOLDER_ID_START` (padrão: `1`).
 
-Para mudar (ex.: quando você souber qual foi o último número de invoice emitido fora da plataforma):
+Para mudar (ex.: quando você souber qual foi o último número de invoice emitido fora da plataforma, ou quiser retomar a contagem de pastas de cliente de um ponto específico):
 
-1. Edite `ORDER_NUMBER_START` em `.env.prod` (produção) ou `apps/api/.env` (local).
-2. Confirme que não existe nenhum pedido no banco ainda — se já existir algum, o valor novo não tem efeito até a tabela `orders` ser esvaziada.
-3. Reinicie a API:
+1. Edite `ORDER_NUMBER_START` e/ou `CLIENT_FOLDER_ID_START` em `.env.prod` (produção) ou `apps/api/.env` (local).
+2. Reinicie a API:
    ```bash
    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build api
    ```

@@ -275,6 +275,9 @@ model QuoteItem {
   /// texto precisa sobreviver a renomeações posteriores do catálogo.
   title       String?
   description String
+  /// Componentes listados junto da descrição no documento (só modelo completo).
+  /// Null/vazio = nenhum. Guardado como texto final, no idioma do orçamento.
+  components  String?
   quantity    Int
   /// Preço de catálogo na moeda/tabela do orçamento, congelado na emissão.
   /// Null quando o produto não tinha preço e o vendedor digitou um valor à mão.
@@ -290,6 +293,10 @@ model QuoteItem {
 model Order {
   id          String @id @default(uuid())
   orderNumber Int    @unique
+  /// "ID da pasta do cliente" — só pra pedido internacional, contador próprio
+  /// (não tem relação com orderNumber). Nulo em pedido nacional; único
+  /// quando presente (Postgres não conta NULL como colisão de unique).
+  clientFolderId Int? @unique
 
   quoteId String
   quote   Quote  @relation(fields: [quoteId], references: [id])
@@ -312,6 +319,9 @@ model Order {
   /// XPTO", impresso na Packing List Box no lugar do Incoterms (que é coisa
   /// de exportação).
   shippingMethod   String?
+  /// Só pra pedido nacional — link opcional de pagamento por cartão de
+  /// crédito, pra mandar ao cliente. Em branco quando não usado.
+  creditCardPaymentLink String?
 
   // Number of physical boxes/cartons shipped — drives how many pages the
   // Packing List Box document gets (one per box).
@@ -333,6 +343,8 @@ model Order {
   /// Só pra pedido nacional — o upload manual aqui é o boleto de pagamento, no
   /// lugar do AWB (que é coisa de exportação e não existe em venda nacional).
   boletoDocumentUrl String?
+  /// Só pra pedido nacional — GNRE anexada manualmente, ao lado do boleto.
+  gnreDocumentUrl String?
 
   exchangeRate Decimal? @db.Decimal(10, 4)
   // Per unit weight (kg) for each quote item, aligned by array index — used to

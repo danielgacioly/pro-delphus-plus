@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
 import { renderPdf } from './browser.js'
-import { LABELS, formatMoney, type QuoteLanguage } from './quoteI18n.js'
+import { LABELS, componentsLine, formatMoney, type QuoteLanguage } from './quoteI18n.js'
 import { escapeHtml } from './html.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -22,6 +22,8 @@ export const COMPANY = {
 export interface QuotePdfItem {
   title: string
   description: string
+  /** Componentes (só modelo completo) — saem colados à descrição. */
+  components: string
   quantity: number
   /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
   listPrice: number | null
@@ -150,11 +152,11 @@ export interface QuotePdfData {
   signature: QuotePdfSignature
 }
 
-function renderItemDescription(item: QuotePdfItem) {
+function renderItemDescription(item: QuotePdfItem, language: QuoteLanguage) {
   const title = `<strong>${escapeHtml(item.title)}</strong>`
-  const description = item.description.trim()
-  if (!description) return title
-  return `${title} - ${escapeHtml(description).replace(/\n/g, '<br />')}`
+  const body = [item.description.trim(), componentsLine(language, item.components)].filter(Boolean).join('\n')
+  if (!body) return title
+  return `${title} - ${escapeHtml(body).replace(/\n/g, '<br />')}`
 }
 
 function renderHtml(data: QuotePdfData) {
@@ -169,7 +171,7 @@ function renderHtml(data: QuotePdfData) {
         <tr>
           <td class="num">${index + 1}</td>
           <td class="num">${item.quantity}</td>
-          <td>${renderItemDescription(item)}</td>
+          <td>${renderItemDescription(item, data.language)}</td>
           <td class="photo-cell">${
             item.photoDataUri ? `<img src="${item.photoDataUri}" alt="" />` : ''
           }</td>

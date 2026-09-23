@@ -13,6 +13,7 @@ import {
   type ExportScope,
   type PriceTier,
   type ProductDTO,
+  type ProductKind,
   type QuoteDTO,
   type QuoteLanguage,
 } from '@prodelphusplus/shared'
@@ -69,10 +70,22 @@ interface DraftItem {
   // sozinho, igual antes acontecia com o campo vazio.
   catalogPrices: CatalogPrices | null
   priceEdited: boolean
+  // Componentes (só modelo completo): já entram com os cadastrados no produto,
+  // editáveis; mesma lógica de `description` para idioma e para o que vai ao
+  // servidor (só manda o que foi editado).
+  productKind: ProductKind | null
+  components: string
+  componentsEdited: boolean
+  catalogComponents: string
+  catalogComponentsPt: string
 }
 
 function catalogDescriptionFor(item: DraftItem, language: QuoteLanguage) {
   return language === 'PT' ? item.catalogDescriptionPt || item.catalogDescription : item.catalogDescription
+}
+
+function catalogComponentsFor(item: Pick<DraftItem, 'catalogComponents' | 'catalogComponentsPt'>, language: QuoteLanguage) {
+  return language === 'PT' ? item.catalogComponentsPt || item.catalogComponents : item.catalogComponents
 }
 
 function priceForCatalog(catalogPrices: CatalogPrices | null, currency: Currency, priceTier: PriceTier): number | null {
@@ -110,6 +123,11 @@ const emptyItem: DraftItem = {
   unitPrice: '',
   catalogPrices: null,
   priceEdited: false,
+  productKind: null,
+  components: '',
+  componentsEdited: false,
+  catalogComponents: '',
+  catalogComponentsPt: '',
 }
 
 export function NewQuote() {
@@ -202,6 +220,11 @@ export function NewQuote() {
           unitPrice: String(unitPrice),
           catalogPrices: null,
           priceEdited: isCustomPrice,
+          productKind: item.productKind,
+          components: item.components ?? '',
+          componentsEdited: true,
+          catalogComponents: '',
+          catalogComponentsPt: '',
         }
       }),
     )
@@ -253,6 +276,7 @@ export function NewQuote() {
             title: i.titleEdited ? i.title.trim() || undefined : undefined,
             description: i.descriptionEdited ? i.description || undefined : undefined,
             unitPrice: i.priceEdited && i.unitPrice ? Number(i.unitPrice) : undefined,
+            components: i.productKind === 'COMPLETE_MODEL' && i.componentsEdited ? i.components.trim() : undefined,
           })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
@@ -305,6 +329,8 @@ export function NewQuote() {
       priceEUR: product.priceEUR,
     }
     const catalogPrice = priceForCatalog(catalogPrices, currency, effectivePriceTier)
+    const catalogComponents = product.components ?? ''
+    const catalogComponentsPt = product.componentsPt || product.components || ''
     updateItem(index, {
       productId: product.id,
       query: `${product.name} (${product.sku})`,
@@ -321,6 +347,11 @@ export function NewQuote() {
       catalogPrices,
       unitPrice: catalogPrice === null ? '' : String(catalogPrice),
       priceEdited: false,
+      productKind: product.kind,
+      catalogComponents,
+      catalogComponentsPt,
+      components: catalogComponentsFor({ catalogComponents, catalogComponentsPt }, language),
+      componentsEdited: false,
     })
     setActiveIndex(null)
     setInfoIndex(null)
@@ -334,6 +365,16 @@ export function NewQuote() {
       prev.map((item) =>
         item.productId && !item.descriptionEdited
           ? { ...item, description: catalogDescriptionFor(item, language) }
+          : item,
+      ),
+    )
+  }, [language])
+
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.productId && !item.componentsEdited
+          ? { ...item, components: catalogComponentsFor(item, language) }
           : item,
       ),
     )
@@ -673,6 +714,22 @@ export function NewQuote() {
                       />
                     </Field>
                   </div>
+
+                  {item.productKind === 'COMPLETE_MODEL' && (
+                    <div className="mt-2">
+                      <Field
+                        label="Componentes"
+                        hint="Já vem com os componentes cadastrados no produto — adicione, altere ou remova à vontade. Sai junto da descrição no documento."
+                      >
+                        <Textarea
+                          rows={2}
+                          value={item.components}
+                          onChange={(e) => updateItem(index, { components: e.target.value, componentsEdited: true })}
+                          className="text-[13px]"
+                        />
+                      </Field>
+                    </div>
+                  )}
                 </div>
               ))}
 
