@@ -270,21 +270,16 @@ export function NewOrder() {
           saveOrder.mutate()
         }}
       >
-        {/* Duas colunas a partir de xl, ancoradas: a página rola inteira, sem
-            uma coluna deslizando sobre a outra. O orçamento de origem manda no
-            pedido inteiro, então fica à direita junto da ação; criando, no
-            celular ele volta a ser o primeiro bloco (é a primeira escolha).
-            Editando não: o orçamento já está travado, e jogar o botão de salvar
-            pro topo separaria a ação do formulário que ela salva. */}
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className={isEditing ? undefined : 'order-last xl:order-none'}>
-            <Card className="space-y-7 p-6">
+        {/* Grade de 2 colunas a partir de xl, com o cartão principal (comprador,
+            endereços, embalagem) ocupando as duas linhas da esquerda: os
+            cartões da direita esticam até a altura dele e as colunas terminam
+            alinhadas, sem vazio de um dos lados. Criando, no celular o
+            orçamento de origem volta a ser o primeiro bloco (é a primeira
+            escolha); editando não, ele já está travado. */}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-[auto_1fr]">
+          <Card className="space-y-7 p-6 xl:col-start-1 xl:row-span-2 xl:row-start-1">
               <FormSection title="Comprador">
                 <BuyerFields value={form} onChange={update} />
-              </FormSection>
-
-              <FormSection title="Endereços">
-                <AddressFields value={form} onChange={update} />
               </FormSection>
 
               <FormSection title="Embalagem e pesos">
@@ -366,20 +361,9 @@ export function NewOrder() {
                   )}
                 </div>
               </FormSection>
+          </Card>
 
-              <FormSection
-                title="Nota fiscal"
-                description={isEditing ? undefined : 'Opcional — pode preencher depois no detalhe do pedido.'}
-              >
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <InvoiceFields value={form} onChange={update} />
-                </div>
-              </FormSection>
-            </Card>
-          </div>
-
-          <div>
-            <Card className="p-5">
+          <Card className={`p-5 xl:col-start-2 xl:row-start-1 ${isEditing ? '' : 'max-xl:order-first'}`}>
               <FormSection title="Orçamento de origem">
                 <Field
                   label="Orçamento"
@@ -406,10 +390,25 @@ export function NewOrder() {
                   </Select>
                 </Field>
               </FormSection>
+          </Card>
+
+          <Card className="flex flex-col space-y-7 p-5 xl:col-start-2 xl:row-start-2">
+              <FormSection title="Endereços">
+                <AddressFields value={form} onChange={update} />
+              </FormSection>
+
+              <FormSection
+                title="Nota fiscal"
+                description={isEditing ? undefined : 'Opcional — pode preencher depois no detalhe do pedido.'}
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                  <InvoiceFields value={form} onChange={update} />
+                </div>
+              </FormSection>
 
               {isEditing && <p className="mt-4 text-[12px] leading-relaxed text-neutral-500">{documentsNote}</p>}
 
-              <div className="mt-6 flex flex-col gap-2 border-t border-black/[0.06] pt-5">
+              <div className="mt-auto flex flex-col gap-2 border-t border-black/[0.06] pt-5">
                 <Button type="submit" variant="primary" size="lg" disabled={saveOrder.isPending}>
                   {saveOrder.isPending
                     ? isEditing
@@ -423,8 +422,7 @@ export function NewOrder() {
                   Cancelar
                 </Button>
               </div>
-            </Card>
-          </div>
+          </Card>
         </div>
       </form>
     </Page>

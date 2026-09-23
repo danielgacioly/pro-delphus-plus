@@ -438,14 +438,16 @@ export function NewQuote() {
           </div>
         )}
 
-        {/* Duas colunas a partir de xl, ancoradas: o documento é montado à
-            esquerda e o que fecha o orçamento — valores, observações e a ação —
-            fica à direita. A página rola inteira, sem uma coluna deslizando
-            sobre a outra. */}
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <Card className="space-y-7 p-6">
+        {/* Grade de 2 colunas a partir de xl, com o cartão de cliente e itens
+            ocupando as duas linhas da esquerda: as linhas da direita (documento
+            e valores) esticam até a altura dele, então as duas colunas
+            terminam alinhadas — sem um vazio grande de um dos lados quando a
+            lista de itens cresce. No celular a ordem é a do preenchimento:
+            documento, cliente e itens, valores. */}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-[auto_1fr]">
+          <Card className="p-5 xl:col-start-2 xl:row-start-1">
             <FormSection title="Documento">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-2">
               <Field label="Tipo" hint={exportScope === 'NATIONAL' ? 'Português, valores em Reais' : undefined}>
                 <Select
                   value={exportScope}
@@ -496,7 +498,9 @@ export function NewQuote() {
               )}
             </div>
           </FormSection>
+          </Card>
 
+          <Card className="space-y-7 p-6 xl:col-start-1 xl:row-span-2 xl:row-start-1">
           <FormSection title="Cliente">
             <div className="flex flex-wrap gap-4">
               <Field label="Prefixo" className="w-28">
@@ -747,11 +751,10 @@ export function NewQuote() {
 
           </Card>
 
-          <div>
-            <Card className="p-5">
+          <Card className="flex flex-col p-5 xl:col-start-2 xl:row-start-2">
               <FormSection title="Valores e observações">
-            <div className="flex flex-wrap gap-4">
-              <Field label="Frete" hint="Em branco = a definir" className="w-36">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Frete" hint="Em branco = a definir" >
                 <Input
                   type="number"
                   step="0.01"
@@ -762,7 +765,7 @@ export function NewQuote() {
                   className="tabular"
                 />
               </Field>
-              <Field label="Desconto" className="w-36">
+              <Field label="Desconto" >
                 <Input
                   type="number"
                   step="0.01"
@@ -790,7 +793,7 @@ export function NewQuote() {
             </Field>
               </FormSection>
 
-              <div className="mt-6 flex flex-col gap-2 border-t border-black/[0.06] pt-5">
+              <div className="mt-auto flex flex-col gap-2 border-t border-black/[0.06] pt-5">
                 <Button type="submit" variant="primary" size="lg" disabled={createQuote.isPending}>
                   {createQuote.isPending
                     ? isEditing
@@ -804,8 +807,7 @@ export function NewQuote() {
                   Cancelar
                 </Button>
               </div>
-            </Card>
-          </div>
+          </Card>
         </div>
       </form>
 

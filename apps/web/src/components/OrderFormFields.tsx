@@ -57,7 +57,7 @@ export function AddressFields({
 }) {
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
         <Field label="Faturamento (Bill To)">
           <Textarea
             required
