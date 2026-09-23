@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './context/AuthProvider'
 import { ToastProvider } from './context/ToastProvider'
+import { NeoChatProvider } from './context/NeoChatProvider'
 
 const queryClient = new QueryClient()
 
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ToastProvider>
-            <App />
+            <NeoChatProvider>
+              <App />
+            </NeoChatProvider>
           </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>

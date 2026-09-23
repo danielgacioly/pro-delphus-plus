@@ -1,6 +1,7 @@
 import { useState, type ComponentType, type SVGProps } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useNeoChat } from '../context/NeoChatContext'
 import { cn } from '../lib/cn'
 import logo from '../assets/logo.svg'
 import {
@@ -57,6 +58,7 @@ const adminNavItems: NavItem[] = [
 
 export function Layout() {
   const { user, logout } = useAuth()
+  const { loading: neoThinking } = useNeoChat()
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(loadCollapsed)
@@ -110,6 +112,15 @@ export function Layout() {
               )}
             />
             <span className={cn('truncate', labelClass)}>{label}</span>
+            {/* O NEO segue pensando mesmo com a pessoa em outra tela — o ponto
+                pulsando avisa que a resposta ainda está a caminho. */}
+            {to === '/neo' && neoThinking && !isActive && (
+              <span
+                role="status"
+                aria-label="NEO está pensando"
+                className="absolute top-1.5 right-1.5 h-1.5 w-1.5 animate-pulse rounded-full bg-brand-600"
+              />
+            )}
           </>
         )}
       </NavLink>

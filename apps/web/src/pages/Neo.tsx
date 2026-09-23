@@ -1,64 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, getErrorMessage } from '../lib/api'
 import { cn } from '../lib/cn'
 import { Alert, Badge, Button, Textarea, buttonClasses } from '../components/ui'
 import { NeoAvatar, NeoListening, NeoMascot } from '../components/NeoMascot'
 import { NeoAsciiBackground } from '../components/NeoAsciiBackground'
 import { IconArrowUp, IconCheckCircle, IconMic } from '../components/icons'
 import { useVoiceDictation } from '../hooks/useVoiceDictation'
-
-interface ChatMessage {
-  role: 'user' | 'model'
-  text: string
-  // Resultado de um clique em Confirmar/Cancelar. Aparece como aviso, não como
-  // bolha, mas vai no histórico: sem isso o NEO não sabia que o orçamento foi
-  // criado (nem o número dele) e não conseguia seguir pro pedido.
-  event?: 'done' | 'cancelled'
-}
-
-type ConfirmResult =
-  | { resource: 'quote'; quote: { quoteNumber: string } }
-  | { resource: 'order'; order: { orderNumber: number } }
-  | { resource: 'client'; client: { name: string } }
-
-interface PendingAction {
-  id: string
-  kind: 'orcamento_criar' | 'orcamento_editar' | 'pedido_criar' | 'pedido_editar' | 'cliente_criar' | 'cliente_editar'
-  summary: string
-}
-
-const KIND_LABEL: Record<PendingAction['kind'], string> = {
-  orcamento_criar: 'Criar orçamento',
-  orcamento_editar: 'Editar orçamento',
-  pedido_criar: 'Criar pedido',
-  pedido_editar: 'Editar pedido',
-  cliente_criar: 'Criar cliente',
-  cliente_editar: 'Editar cliente',
-}
-
-async function sendMessage(message: string, history: ChatMessage[]) {
-  const { data } = await api.post<{ reply: string; pendingAction?: PendingAction }>('/neo', {
-    message,
-    history: history.map((m) => ({ role: m.role, text: m.event ? `[Sistema] ${m.text}` : m.text })),
-  })
-  return data
-}
-
-async function confirmAction(id: string) {
-  const { data } = await api.post<ConfirmResult>(`/neo/actions/${id}/confirm`)
-  return data
-}
-
-function describeConfirmResult(kind: PendingAction['kind'], result: ConfirmResult) {
-  const label = KIND_LABEL[kind]
-  if (result.resource === 'quote') return `${label} — feito: orçamento ${result.quote.quoteNumber}.`
-  if (result.resource === 'order') return `${label} — feito: pedido ${result.order.orderNumber}.`
-  return `${label} — feito: ${result.client.name}.`
-}
-
-async function cancelAction(id: string) {
-  await api.post(`/neo/actions/${id}/cancel`)
-}
+import { useNeoChat } from '../context/NeoChatContext'
+import { KIND_LABEL } from '../context/neoChat'
 
 // O Gemini responde em markdown, e o pouco que ele usa de verdade — negrito,
 // itálico e listas — aparecia cru na tela ("**Peso bruto**", "*(piada)*",
@@ -81,37 +29,15 @@ function renderInlineFormatting(text: string) {
   })
 }
 
-// A conversa vive enquanto a aba viver: sair pra Orçamentos e voltar mantém o
-// fio (antes zerava, porque a página desmonta). sessionStorage e não
-// localStorage de propósito — fechou o navegador, conversa nova.
-const STORAGE_KEY = 'neo:conversa'
-
-interface StoredChat {
-  messages: ChatMessage[]
-  pending: PendingAction | null
-}
-
-function loadChat(): StoredChat {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return { messages: [], pending: null }
-    const parsed = JSON.parse(raw) as Partial<StoredChat>
-    return { messages: parsed.messages ?? [], pending: parsed.pending ?? null }
-  } catch {
-    return { messages: [], pending: null }
-  }
-}
-
 export function Neo() {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat().messages)
+  // A conversa e a chamada em andamento vivem no provider (acima das rotas):
+  // sair desta página não interrompe o NEO.
+  const { messages, pending, loading, error, setError, send, confirm, cancel, newChat } = useNeoChat()
   const [input, setInput] = useState('')
-  const [pending, setPending] = useState<PendingAction | null>(() => loadChat().pending)
-  const [loading, setLoading] = useState(false)
   // O modelo gratuito do NEO às vezes passa bem dos poucos segundos normais
   // (fila de alta demanda do lado do Google) — sem um sinal de "ainda
   // trabalhando", passados uns segundos os três pontinhos parecem travados.
   const [slowLoading, setSlowLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const speech = useVoiceDictation({ onTranscript: setInput, onError: setError })
@@ -128,14 +54,6 @@ export function Neo() {
     const timer = setTimeout(() => setSlowLoading(true), 8000)
     return () => clearTimeout(timer)
   }, [loading])
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, pending }))
-    } catch {
-      // storage cheio ou bloqueado — a conversa só não sobrevive à navegação
-    }
-  }, [messages, pending])
 
   // Cresce junto com o texto (como o campo de mensagem do Mensagens/iMessage),
   // até o teto de altura definido no CSS — dali pra frente rola por dentro.
@@ -159,55 +77,16 @@ export function Neo() {
     return () => observer.disconnect()
   }, [input])
 
-  async function handleSend() {
+  function handleSend() {
     const text = input.trim()
     if (!text || loading) return
     speech.stop()
-    setError(null)
-    const nextMessages: ChatMessage[] = [...messages, { role: 'user', text }]
-    setMessages(nextMessages)
     setInput('')
-    setLoading(true)
-    try {
-      const { reply, pendingAction } = await sendMessage(text, messages)
-      setMessages((prev) => [...prev, { role: 'model', text: reply }])
-      setPending(pendingAction ?? null)
-    } catch (err) {
-      setError(getErrorMessage(err, 'NEO não conseguiu responder agora. Tenta de novo em instantes.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleConfirm() {
-    if (!pending) return
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await confirmAction(pending.id)
-      setMessages((prev) => [...prev, { role: 'model', text: describeConfirmResult(pending.kind, result), event: 'done' }])
-      setPending(null)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Não deu pra confirmar agora. Tenta de novo ou peça pro NEO montar de novo.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleCancel() {
-    if (!pending) return
-    await cancelAction(pending.id).catch(() => {})
-    setMessages((prev) => [...prev, { role: 'model', text: `${KIND_LABEL[pending.kind]} — cancelado, nada foi gravado.`, event: 'cancelled' }])
-    setPending(null)
+    void send(text)
   }
 
   function handleNewChat() {
-    // A prévia pendente é descartada junto: guardá-la fora da conversa que a
-    // gerou é o caminho pra alguém confirmar sem lembrar do que se tratava.
-    if (pending) void cancelAction(pending.id).catch(() => {})
-    setMessages([])
-    setPending(null)
-    setError(null)
+    newChat()
     setInput('')
   }
 
@@ -333,10 +212,10 @@ export function Neo() {
                 <Badge tone="brand">{KIND_LABEL[pending.kind]}</Badge>
                 <p className="mt-2.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-900">{pending.summary}</p>
                 <div className="mt-3.5 flex gap-2">
-                  <Button size="sm" onClick={handleCancel} disabled={loading}>
+                  <Button size="sm" onClick={() => void cancel()} disabled={loading}>
                     Cancelar
                   </Button>
-                  <Button size="sm" variant="primary" onClick={handleConfirm} disabled={loading}>
+                  <Button size="sm" variant="primary" onClick={() => void confirm()} disabled={loading}>
                     Confirmar
                   </Button>
                 </div>

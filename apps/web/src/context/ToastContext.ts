@@ -5,11 +5,16 @@
  */
 import { createContext, useContext } from 'react'
 
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 export interface ToastContextValue {
   /** Confirmação positiva e breve — "Orçamento salvo", não "Sucesso!". */
-  success: (message: string) => void
+  success: (message: string, action?: ToastAction) => void
   /** Só para falhas que não têm um banner de erro melhor por perto. */
-  error: (message: string) => void
+  error: (message: string, action?: ToastAction) => void
 }
 
 export const ToastContext = createContext<ToastContextValue | undefined>(undefined)
