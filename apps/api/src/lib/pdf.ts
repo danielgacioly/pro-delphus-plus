@@ -67,9 +67,7 @@ const INSTAGRAM_ICON_SVG = contactIcon(
 )
 const COMPANY_INSTAGRAM = '@prodelphus_simuladores'
 
-// Regras da assinatura automática (logo + barra de contato), compartilhadas
-// entre o rodapé do orçamento e o card avulso pra e-mail — mudar o visual
-// num lugar só muda os dois.
+// Regras da assinatura automática (logo + barra de contato) do rodapé do orçamento.
 const SIGNATURE_CSS = `
   .signature { display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid #e5e3da; }
   .signature .sig-logo { background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 10px 20px; }
@@ -105,34 +103,6 @@ function signatureCardMarkup(signature: SignatureCardInput, defaultJobTitle: str
       <div class="sig-contact">${INSTAGRAM_ICON_SVG}${escapeHtml(COMPANY_INSTAGRAM)}</div>
     </div>
   </div>`
-}
-
-/**
- * Documento HTML mínimo com só o card de assinatura, pra tirar um print
- * dele e virar PNG — é o que a pessoa baixa em "Minha Conta" pra usar como
- * assinatura de e-mail. Mesmo card que aparece no orçamento quando ela não
- * tem assinatura de próprio punho enviada.
- */
-export function buildSignatureCardHtml(signature: SignatureCardInput, language: QuoteLanguage = 'PT') {
-  const t = LABELS[language]
-  return `<!doctype html>
-<html lang="${language.toLowerCase()}">
-<head>
-<meta charset="utf-8" />
-<style>
-  * { box-sizing: border-box; }
-  /* Mesmo padding do corpo do orçamento (renderHtml) — é o que faz a barra
-     com "flex: 1" esticar até a MESMA largura que tem lá, não uma largura
-     encolhida ao conteúdo. O print recorta só o .signature, então esse
-     padding em volta não aparece no PNG final. */
-  body { margin: 0; padding: 36px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; }
-  ${SIGNATURE_CSS}
-</style>
-</head>
-<body>
-  ${signatureCardMarkup(signature, t.defaultJobTitle)}
-</body>
-</html>`
 }
 
 export interface QuotePdfData {

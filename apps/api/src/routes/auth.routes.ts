@@ -9,8 +9,6 @@ import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { toUserDTO } from '../lib/dto.js'
 import { upload, publicUrlFor, deleteStoredFile } from '../storage/local.js'
-import { buildSignatureCardHtml } from '../lib/pdf.js'
-import { renderScreenshot } from '../lib/browser.js'
 
 export const authRouter = Router()
 
@@ -211,27 +209,6 @@ authRouter.post(
     })
 
     res.status(201).json({ user: toUserDTO(updated) })
-  }),
-)
-
-authRouter.get(
-  '/me/signature-card.png',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    // O card de logo + barra de contato — não a imagem de assinatura de
-    // próprio punho, que já tem o botão "Baixar" dela mesma na tela.
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } })
-    const html = buildSignatureCardHtml({
-      name: user.name,
-      jobTitle: user.jobTitle,
-      phone: user.phone,
-      whatsapp: user.whatsapp,
-      email: user.email,
-    })
-    const png = await renderScreenshot(html, '.signature')
-    res.setHeader('Content-Type', 'image/png')
-    res.setHeader('Content-Disposition', 'attachment; filename="assinatura-pro-delphus.png"')
-    res.send(png)
   }),
 )
 
