@@ -20,7 +20,14 @@ import { buildNeoSystemInstruction } from '../lib/neoKnowledge.js'
 import { recentHistory } from '../lib/neoHistory.js'
 import { neoThinkingFor, type NeoThinking } from '../lib/neoThinking.js'
 import { IdRedactingStream, neoToolStatus } from '../lib/neoStream.js'
-import { toPublicPendingAction, getPendingAction, discardPendingAction, redactInternalIds } from '../lib/neoPendingActions.js'
+import {
+  toPublicPendingAction,
+  getPendingAction,
+  discardPendingAction,
+  redactInternalIds,
+  type PendingAction,
+} from '../lib/neoPendingActions.js'
+import { confirmedUpFront } from '../lib/neoConsent.js'
 import {
   buscarProdutos,
   listarClientes,
@@ -445,7 +452,7 @@ const writeTools: FunctionDeclaration[] = [
         padraoDescricaoComponentesAutorizado: {
           type: Type.BOOLEAN,
           description:
-            'true só se a pessoa respondeu que SIM, quer a descrição padrão e os componentes padrão dos produtos (a pergunta é obrigatória — a ferramenta recusa sem isso ou sem description/components preenchidos).',
+            'true se a pessoa disse que quer a descrição padrão e os componentes padrão — respondendo à sua pergunta OU já no próprio pedido ("descrição e componentes padrão"); aí não pergunte de novo. Sem isso, a ferramenta recusa a proposta que não tem description/components preenchidos.',
         },
       },
       required: ['clientName', 'items'],
@@ -662,7 +669,13 @@ type NeoEvent =
   | { type: 'status'; text: string }
   | { type: 'delta'; text: string }
   | { type: 'reset' }
-  | { type: 'done'; reply: string; pendingAction?: ReturnType<typeof toPublicPendingAction> }
+  | {
+      type: 'done'
+      reply: string
+      pendingAction?: ReturnType<typeof toPublicPendingAction>
+      /** Gravado direto, sem cartão, porque a pessoa já tinha confirmado na mensagem. */
+      executed?: { kind: PendingAction['kind']; result: ExecutedAction }
+    }
   | { type: 'error'; message: string }
 
 neoRouter.post(
@@ -703,6 +716,9 @@ neoRouter.post(
     ]
 
     let pendingAction: ReturnType<typeof toPublicPendingAction> | undefined
+    let executed: { kind: PendingAction['kind']; result: ExecutedAction } | undefined
+    // A autorização vem do texto que a pessoa digitou, nunca do modelo.
+    const executeDirectly = confirmedUpFront(message)
     // Começa no modelo preferido; se algum call cair num fallback, as
     // próximas iterações desta mesma conversa já começam por ele — sem
     // isso, cada iteração pagaria de novo o custo de esgotar as tentativas
@@ -713,7 +729,7 @@ neoRouter.post(
       const rest = redactor.flush()
       if (rest) emit({ type: 'delta', text: rest })
       console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${detail}, raciocínio ${thinkingLabel()})`)
-      emit({ type: 'done', reply: redactInternalIds(turn.text), pendingAction })
+      emit({ type: 'done', reply: redactInternalIds(turn.text), pendingAction, executed })
       res.end()
     }
 
@@ -770,7 +786,26 @@ neoRouter.post(
         // Na ordem das chamadas, não na de término: se duas propostas saírem
         // juntas, fica valendo sempre a última que o modelo pediu.
         for (const outcome of outcomes) {
-          if (outcome.pendingAction) pendingAction = toPublicPendingAction(outcome.pendingAction)
+          if (outcome.pendingAction && executeDirectly) {
+            emit({ type: 'status', text: 'Gravando…' })
+            try {
+              const result = await executePendingAction(outcome.pendingAction, req.user!.id)
+              executed = { kind: outcome.pendingAction.kind, result }
+              pendingAction = undefined
+              outcome.result = {
+                gravado: `Já gravado, sem cartão — a pessoa confirmou na mensagem: ${describeExecuted(result)}.`,
+                resumo: outcome.result,
+                instrucao: 'Diga que está feito e o número/nome do que foi gravado. Não mencione cartão de confirmação.',
+              }
+            } catch (err) {
+              const forModel = toolErrorForModel(err)
+              if (!forModel) throw err
+              outcome.result = forModel
+              thinking = 'medium'
+            }
+          } else if (outcome.pendingAction) {
+            pendingAction = toPublicPendingAction(outcome.pendingAction)
+          }
           // Ferramenta recusou os dados (faltou algo, veio inválido): a
           // próxima tentativa precisa entender o que corrigir.
           if (outcome.failed) thinking = 'medium'
@@ -845,59 +880,62 @@ neoRouter.post(
   }),
 )
 
+/**
+ * Grava de verdade o que uma proposta do NEO montou — pelo botão Confirmar do
+ * cartão, ou direto quando a pessoa já confirmou na própria mensagem.
+ */
+async function executePendingAction(action: PendingAction, userId: string) {
+  const result = await (async () => {
+    switch (action.kind) {
+      case 'orcamento_criar':
+        return { resource: 'quote' as const, quote: toQuoteDTO(await createQuoteRecord(action.payload as never, userId)) }
+      case 'orcamento_editar': {
+        const { orcamentoId, data } = action.payload as { orcamentoId: string; data: unknown }
+        return { resource: 'quote' as const, quote: toQuoteDTO(await updateQuoteRecord(orcamentoId, data as never, userId)) }
+      }
+      case 'pedido_criar':
+        return { resource: 'order' as const, order: await toOrderDTOFresh(await createOrderRecord(action.payload as never, userId)) }
+      case 'pedido_editar': {
+        const { pedidoId, data } = action.payload as { pedidoId: string; data: unknown }
+        return { resource: 'order' as const, order: await toOrderDTOFresh(await updateOrderRecord(pedidoId, data as never, userId)) }
+      }
+      case 'cliente_criar':
+        return { resource: 'client' as const, client: toClientDTO(await createClientRecord(action.payload as never, userId)) }
+      case 'cliente_editar': {
+        const { clienteId, data } = action.payload as { clienteId: string; data: unknown }
+        const { client, aggregate } = await updateClientRecord(clienteId, data as never)
+        return { resource: 'client' as const, client: toClientDTO(client, aggregate) }
+      }
+      case 'biblioteca_criar':
+        return { resource: 'library' as const, entry: toLibraryEntryDTO(await createLibraryEntryRecord(action.payload as never, userId)) }
+    }
+  })()
+  discardPendingAction(action.id)
+  return result
+}
+
+type ExecutedAction = Awaited<ReturnType<typeof executePendingAction>>
+
+/** O que foi gravado, dito ao modelo para ele contar à pessoa (com o número do documento). */
+function describeExecuted(result: ExecutedAction) {
+  switch (result.resource) {
+    case 'quote':
+      return `orçamento ${result.quote.quoteNumber}`
+    case 'order':
+      return `pedido ${result.order.orderNumber}`
+    case 'client':
+      return `cliente ${result.client.name}`
+    case 'library':
+      return `pergunta "${result.entry.question}" na Biblioteca`
+  }
+}
+
 neoRouter.post(
   '/actions/:id/confirm',
   asyncHandler(async (req, res) => {
     const action = getPendingAction(req.params.id, req.user!.id)
     if (!action) throw new HttpError(404, 'Essa ação expirou ou não existe mais. Peça pro NEO montar de novo.')
-
-    switch (action.kind) {
-      case 'orcamento_criar': {
-        const quote = await createQuoteRecord(action.payload as never, req.user!.id)
-        discardPendingAction(action.id)
-        res.json({ resource: 'quote', quote: toQuoteDTO(quote) })
-        return
-      }
-      case 'orcamento_editar': {
-        const { orcamentoId, data } = action.payload as { orcamentoId: string; data: unknown }
-        const quote = await updateQuoteRecord(orcamentoId, data as never, req.user!.id)
-        discardPendingAction(action.id)
-        res.json({ resource: 'quote', quote: toQuoteDTO(quote) })
-        return
-      }
-      case 'pedido_criar': {
-        const order = await createOrderRecord(action.payload as never, req.user!.id)
-        discardPendingAction(action.id)
-        res.json({ resource: 'order', order: await toOrderDTOFresh(order) })
-        return
-      }
-      case 'pedido_editar': {
-        const { pedidoId, data } = action.payload as { pedidoId: string; data: unknown }
-        const order = await updateOrderRecord(pedidoId, data as never, req.user!.id)
-        discardPendingAction(action.id)
-        res.json({ resource: 'order', order: await toOrderDTOFresh(order) })
-        return
-      }
-      case 'cliente_criar': {
-        const client = await createClientRecord(action.payload as never, req.user!.id)
-        discardPendingAction(action.id)
-        res.json({ resource: 'client', client: toClientDTO(client) })
-        return
-      }
-      case 'cliente_editar': {
-        const { clienteId, data } = action.payload as { clienteId: string; data: unknown }
-        const { client, aggregate } = await updateClientRecord(clienteId, data as never)
-        discardPendingAction(action.id)
-        res.json({ resource: 'client', client: toClientDTO(client, aggregate) })
-        return
-      }
-      case 'biblioteca_criar': {
-        const entry = await createLibraryEntryRecord(action.payload as never, req.user!.id)
-        discardPendingAction(action.id)
-        res.json({ resource: 'library', entry: toLibraryEntryDTO(entry) })
-        return
-      }
-    }
+    res.json(await executePendingAction(action, req.user!.id))
   }),
 )
 

@@ -73,12 +73,20 @@ export function NeoChatProvider({ children }: { children: ReactNode }) {
       setDraft('')
       setStatus(null)
       try {
-        const { reply, pendingAction } = await streamMessage(text, history, {
+        const { reply, pendingAction, executed } = await streamMessage(text, history, {
           onStatus: setStatus,
           onDelta: (chunk) => setDraft((prev) => prev + chunk),
           onReset: () => setDraft(''),
         })
-        setMessages((prev) => [...prev, { role: 'model', text: reply }])
+        // O aviso de "feito" vai no histórico igual ao do clique em Confirmar:
+        // é por ele que o NEO sabe, na próxima pergunta, o número do que gravou.
+        setMessages((prev) => [
+          ...prev,
+          { role: 'model', text: reply },
+          ...(executed
+            ? [{ role: 'model' as const, text: describeConfirmResult(executed.kind, executed.result), event: 'done' as const }]
+            : []),
+        ])
         setPending(pendingAction ?? null)
         notifyIfAway('O NEO terminou de pensar e já respondeu.', 'success')
       } catch (err) {

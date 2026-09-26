@@ -54,7 +54,13 @@ type NeoEvent =
   | { type: 'status'; text: string }
   | { type: 'delta'; text: string }
   | { type: 'reset' }
-  | { type: 'done'; reply: string; pendingAction?: PendingAction }
+  | {
+      type: 'done'
+      reply: string
+      pendingAction?: PendingAction
+      /** Gravado direto, sem cartão: a pessoa já tinha confirmado na mensagem. */
+      executed?: { kind: PendingAction['kind']; result: ConfirmResult }
+    }
   | { type: 'error'; message: string }
 
 async function postNeo(body: string, token: string | null) {
@@ -102,7 +108,7 @@ export async function streamMessage(message: string, history: ChatMessage[], han
       if (event.type === 'status') handlers.onStatus(event.text)
       else if (event.type === 'delta') handlers.onDelta(event.text)
       else if (event.type === 'reset') handlers.onReset()
-      else if (event.type === 'done') return { reply: event.reply, pendingAction: event.pendingAction }
+      else if (event.type === 'done') return { reply: event.reply, pendingAction: event.pendingAction, executed: event.executed }
       else throw new NeoStreamError(event.message)
     }
     if (done) break
