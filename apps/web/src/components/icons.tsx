@@ -369,3 +369,13 @@ export function IconMic(props: SVGProps<SVGSVGElement>) {
     </Base>
   )
 }
+
+export function IconBook(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" />
+      <path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" />
+      <path d="M9 8h7M9 11.5h5" />
+    </Base>
+  )
+}

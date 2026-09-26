@@ -15,6 +15,7 @@ import { statsRouter } from './routes/stats.routes.js'
 import { tasksRouter } from './routes/tasks.routes.js'
 import { neoRouter } from './routes/neo.routes.js'
 import { exchangeRouter } from './routes/exchange.routes.js'
+import { libraryRouter } from './routes/library.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { apiLimiter, authLimiter, securityHeaders } from './middleware/security.js'
 
@@ -96,6 +97,7 @@ app.use('/api/stats', statsRouter)
 app.use('/api/tasks', tasksRouter)
 app.use('/api/neo', neoRouter)
 app.use('/api/exchange-rates', exchangeRouter)
+app.use('/api/library', libraryRouter)
 
 app.use(errorHandler)
 

@@ -114,6 +114,8 @@ model User {
   orders               Order[]               @relation("OrderCreatedBy")
   personalTasks        PersonalTask[]        @relation("PersonalTaskOwner")
   personalBoardColumns PersonalBoardColumn[] @relation("PersonalBoardColumnOwner")
+  libraryEntriesCreated LibraryEntry[]       @relation("LibraryEntryCreatedBy")
+  libraryEntriesUpdated LibraryEntry[]       @relation("LibraryEntryUpdatedBy")
 
   @@map("users")
 }
@@ -145,6 +147,7 @@ model Product {
   brochures       ProductBrochure[]
   customizations  ProductCustomization[]
   quoteItems      QuoteItem[]
+  libraryEntries  LibraryEntry[]
 
   @@map("products")
 }
@@ -222,7 +225,8 @@ model Client {
   createdById String?
   createdBy   User?   @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  quotes Quote[]
+  quotes         Quote[]
+  libraryEntries LibraryEntry[]
 
   @@index([name])
   @@map("clients")
@@ -410,4 +414,35 @@ model PersonalTask {
   updatedAt  DateTime            @updatedAt
 
   @@map("personal_tasks")
+}
+
+/// Biblioteca: perguntas que clientes já fizeram sobre os simuladores (ou
+/// sobre o próprio atendimento), com a resposta que a empresa confirmou.
+/// Tópico é produto e/ou cliente — uma resposta pode valer para mais de um.
+model LibraryEntry {
+  id       String @id @default(uuid())
+  question String
+  answer   String
+
+  /// Vetor de significado (embedding do Gemini) de pergunta + resposta +
+  /// tópicos. Fica num array comum, não em pgvector: a biblioteca é pequena
+  /// o bastante para comparar em memória, e o Postgres de produção e da CI é
+  /// a imagem alpine, que não traz a extensão. Vazio quando o Gemini falhou
+  /// ao salvar — a busca recalcula depois.
+  embedding      Float[] @default([])
+  /// Modelo que gerou `embedding` — vetores de modelos diferentes não se
+  /// comparam, então trocar o modelo obriga a recalcular.
+  embeddingModel String?
+
+  products Product[]
+  clients  Client[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation("LibraryEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?    @relation("LibraryEntryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("library_entries")
 }

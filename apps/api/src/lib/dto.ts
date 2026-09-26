@@ -1,5 +1,6 @@
 import type {
   Client,
+  LibraryEntry,
   Order,
   PersonalBoardColumn,
   PersonalTask,
@@ -250,5 +251,30 @@ export function toClientDTO(client: ClientRow, agg?: ClientAggregate) {
       totalQuoted: agg?.totalQuoted ?? '0',
       lastQuoteAt: agg?.lastQuoteAt?.toISOString() ?? null,
     },
+  }
+}
+
+export function toLibraryEntryDTO(
+  entry: LibraryEntry & {
+    products: Pick<Product, 'id' | 'name' | 'sku'>[]
+    clients: Pick<Client, 'id' | 'name' | 'institution'>[]
+    createdBy: Pick<User, 'name'> | null
+    updatedBy: Pick<User, 'name'> | null
+  },
+  match?: 'strong' | 'related',
+) {
+  return {
+    id: entry.id,
+    question: entry.question,
+    answer: entry.answer,
+    topics: [
+      ...entry.products.map((p) => ({ type: 'product' as const, id: p.id, name: p.name, detail: p.sku })),
+      ...entry.clients.map((c) => ({ type: 'client' as const, id: c.id, name: c.name, detail: c.institution })),
+    ],
+    createdAt: entry.createdAt.toISOString(),
+    updatedAt: entry.updatedAt.toISOString(),
+    createdByName: entry.createdBy?.name ?? null,
+    updatedByName: entry.updatedBy?.name ?? null,
+    ...(match && { match }),
   }
 }

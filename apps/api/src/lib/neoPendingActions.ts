@@ -7,6 +7,7 @@ export type PendingActionKind =
   | 'pedido_editar'
   | 'cliente_criar'
   | 'cliente_editar'
+  | 'biblioteca_criar'
 
 export interface PendingAction {
   id: string

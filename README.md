@@ -93,6 +93,13 @@ Painel de análise comercial, calculado sobre todos os pedidos e orçamentos:
 - Tarefas com título, notas, cliente associado (texto livre), tags e prazo; podem linkar direto a um orçamento ou pedido específico.
 - Colunas próprias podem ser criadas, renomeadas (duplo clique) e reordenadas; qualquer uma pode ser marcada como "coluna de concluído" — sempre precisa sobrar pelo menos uma.
 
+### Biblioteca
+
+- Perguntas que clientes já fizeram — sobre um simulador ou sobre um cliente — com a resposta que a empresa confirmou. Cada pergunta tem um ou mais tópicos (produtos e/ou clientes do cadastro).
+- A busca é por **sentido**, não por palavras exatas: "tem hemorragia?" acha "simula sangramento?". Cada pergunta ganha um vetor de significado (embedding do Gemini, `GEMINI_EMBEDDING_MODEL`) comparado em memória; se o Gemini não responder, a busca cai para coincidência de palavras (com raiz e erro de digitação) e avisa na tela.
+- Sem resposta para o que foi pesquisado, a tela oferece cadastrar a pergunta já preenchida. Todo usuário cadastra, edita e exclui.
+- O NEO consulta a Biblioteca antes de responder dúvida técnica sobre um simulador (e diz quando não há resposta cadastrada, em vez de inventar), e pode propor uma pergunta nova — com cartão de confirmação, como nas demais escritas.
+
 ### NEO — assistente de IA
 
 - Chat interno (Google Gemini) que responde em português sobre o catálogo: produtos por setor — inclusive setores correlatos, decidido pelo próprio modelo —, preços em qualquer moeda, comparação de mais caro/mais barato/dentro de um teto, situação de clientes ("em atendimento" ou não).

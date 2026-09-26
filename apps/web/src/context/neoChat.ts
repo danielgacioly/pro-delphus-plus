@@ -13,10 +13,18 @@ export type ConfirmResult =
   | { resource: 'quote'; quote: { quoteNumber: string } }
   | { resource: 'order'; order: { orderNumber: number } }
   | { resource: 'client'; client: { name: string } }
+  | { resource: 'library'; entry: { question: string } }
 
 export interface PendingAction {
   id: string
-  kind: 'orcamento_criar' | 'orcamento_editar' | 'pedido_criar' | 'pedido_editar' | 'cliente_criar' | 'cliente_editar'
+  kind:
+    | 'orcamento_criar'
+    | 'orcamento_editar'
+    | 'pedido_criar'
+    | 'pedido_editar'
+    | 'cliente_criar'
+    | 'cliente_editar'
+    | 'biblioteca_criar'
   summary: string
 }
 
@@ -27,6 +35,7 @@ export const KIND_LABEL: Record<PendingAction['kind'], string> = {
   pedido_editar: 'Editar pedido',
   cliente_criar: 'Criar cliente',
   cliente_editar: 'Editar cliente',
+  biblioteca_criar: 'Cadastrar na Biblioteca',
 }
 
 export async function sendMessage(message: string, history: ChatMessage[]) {
@@ -50,6 +59,7 @@ export function describeConfirmResult(kind: PendingAction['kind'], result: Confi
   const label = KIND_LABEL[kind]
   if (result.resource === 'quote') return `${label} — feito: orçamento ${result.quote.quoteNumber}.`
   if (result.resource === 'order') return `${label} — feito: pedido ${result.order.orderNumber}.`
+  if (result.resource === 'library') return `${label} — feito: "${result.entry.question}".`
   return `${label} — feito: ${result.client.name}.`
 }
 

@@ -30,11 +30,14 @@ import {
   proporEdicaoPedido,
   proporCliente,
   proporEdicaoCliente,
+  buscarBiblioteca,
+  proporRegistroBiblioteca,
 } from '../lib/neoTools.js'
-import { toQuoteDTO, toClientDTO } from '../lib/dto.js'
+import { toQuoteDTO, toClientDTO, toLibraryEntryDTO } from '../lib/dto.js'
 import { createQuoteRecord, updateQuoteRecord } from './quotes.routes.js'
 import { createOrderRecord, updateOrderRecord, toOrderDTOFresh } from './orders.routes.js'
 import { createClientRecord, updateClientRecord } from './clients.routes.js'
+import { createLibraryEntryRecord } from './library.routes.js'
 
 export const neoRouter = Router()
 neoRouter.use(requireAuth)
@@ -216,6 +219,20 @@ const readTools: FunctionDeclaration[] = [
     description:
       'Lista o que está parado: pedidos pendentes sem AWB e/ou Nota Fiscal (conforme o pedido é nacional ou internacional) e clientes marcados em atendimento sem orçamento recente ou nunca orçados. Use pra perguntas como "o que falta fazer", "tem pendência", "quem eu preciso retornar".',
     parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: 'buscar_biblioteca',
+    description:
+      'Busca na Biblioteca — perguntas que clientes já fizeram sobre os simuladores (funcionalidade, material, uso médico, o que dá ou não dá pra fazer) ou sobre um cliente, com a resposta que a empresa confirmou. A busca é por significado: mande a pergunta do jeito que a pessoa fez, não precisa acertar as palavras. Use SEMPRE que perguntarem se um produto tem/faz/simula algo, ou qualquer dúvida técnica/médica sobre um simulador — antes de responder com conhecimento próprio. "semelhanca" diz se é quase a mesma pergunta ou só do mesmo assunto.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        pergunta: { type: Type.STRING, description: 'A pergunta, com as palavras da pessoa (inclua o nome do produto se ela citou)' },
+        produtoId: { type: Type.STRING, description: 'Só se a pergunta é sobre um produto específico: productId de buscar_produtos' },
+        clienteId: { type: Type.STRING, description: 'Só se a pergunta é sobre um cliente específico: clienteId de buscar_cliente' },
+      },
+      required: ['pergunta'],
+    },
   },
 ]
 
@@ -479,6 +496,21 @@ const writeTools: FunctionDeclaration[] = [
       required: ['clienteId'],
     },
   },
+  {
+    name: 'propor_registro_biblioteca',
+    description:
+      'Monta uma prévia de pergunta nova na Biblioteca — NÃO grava nada. Use quando a pessoa pedir pra anotar/cadastrar/guardar na biblioteca uma resposta que ela já confirmou. Pergunta e resposta com as palavras dela (pode corrigir ortografia), nunca complete a resposta com conhecimento seu. Pelo menos um tópico: productId(s) de buscar_produtos e/ou clienteId(s) de buscar_cliente — se ela não disse de qual produto ou cliente é, pergunte.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        pergunta: { type: Type.STRING },
+        resposta: { type: Type.STRING },
+        produtoIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+        clienteIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+      },
+      required: ['pergunta', 'resposta'],
+    },
+  },
 ]
 
 function toolArgs<T>(args: Record<string, unknown>) {
@@ -509,6 +541,15 @@ async function dispatchTool(
       return { result: await buscarPedidos(toolArgs<Parameters<typeof buscarPedidos>[0]>(args)) }
     case 'verificar_pendencias':
       return { result: await verificarPendencias() }
+    case 'buscar_biblioteca':
+      return { result: await buscarBiblioteca(toolArgs<Parameters<typeof buscarBiblioteca>[0]>(args)) }
+    case 'propor_registro_biblioteca': {
+      const { pendingAction, summaryForModel } = await proporRegistroBiblioteca(
+        toolArgs<Parameters<typeof proporRegistroBiblioteca>[0]>(args),
+        userId,
+      )
+      return { result: summaryForModel, pendingAction }
+    }
     case 'criar_tarefa':
       return { result: await criarTarefa(toolArgs<Parameters<typeof criarTarefa>[0]>(args), userId) }
     case 'propor_orcamento': {
@@ -699,6 +740,12 @@ neoRouter.post(
         const { client, aggregate } = await updateClientRecord(clienteId, data as never)
         discardPendingAction(action.id)
         res.json({ resource: 'client', client: toClientDTO(client, aggregate) })
+        return
+      }
+      case 'biblioteca_criar': {
+        const entry = await createLibraryEntryRecord(action.payload as never, req.user!.id)
+        discardPendingAction(action.id)
+        res.json({ resource: 'library', entry: toLibraryEntryDTO(entry) })
         return
       }
     }
