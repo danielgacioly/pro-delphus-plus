@@ -433,7 +433,9 @@ export function Home() {
         </div>
 
         {/* NEO e Biblioteca dividem a largura ao lado do câmbio: dois atalhos
-            quadrados, sem texto de apoio — o título já diz para que serve. */}
+            quadrados, sem texto de apoio — o título já diz para que serve.
+            Branco, preto e vermelho suave: a faixa do topo repete a paleta da
+            marca. */}
         <div className="grid grid-cols-2 gap-3">
           <Link
             to="/neo"
@@ -450,17 +452,17 @@ export function Home() {
 
           <Link
             to="/biblioteca"
-            className="group flex min-h-[112px] flex-col justify-between gap-3 rounded-2xl border border-black/[0.06] bg-white p-4 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
+            className="group flex min-h-[112px] flex-col justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-100 p-4 transition-[background-color,border-color] duration-150 ease-out hover:border-brand-300 hover:bg-brand-200/70"
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-600">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-brand-600 shadow-xs">
                 <IconBook className="h-[18px] w-[18px]" />
               </span>
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-ink-900 transition-colors duration-150 group-hover:bg-black/[0.08]">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600/10 text-brand-700 transition-colors duration-150 group-hover:bg-brand-600/15">
                 <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
               </span>
             </div>
-            <h3 className="text-[15px] leading-snug font-semibold tracking-[-0.014em] text-ink-900">
+            <h3 className="text-[15px] leading-snug font-semibold tracking-[-0.014em] text-brand-900">
               Cliente perguntou? Veja na Biblioteca
             </h3>
           </Link>
