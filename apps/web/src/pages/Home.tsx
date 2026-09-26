@@ -120,7 +120,7 @@ function CreateCard({ action }: { action: Shortcut }) {
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[15px] font-semibold tracking-[-0.014em] text-ink-900">{title}</h3>
+        <h3 className="text-[15px] leading-snug font-semibold tracking-[-0.014em] text-ink-900 sm:truncate">{title}</h3>
         <p className="mt-0.5 truncate text-[12.5px] leading-snug text-neutral-600">{description}</p>
       </div>
       <IconChevronRight className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={2.2} />
@@ -393,9 +393,9 @@ export function Home() {
       title={`${greeting()}, ${firstName}.`}
       description="Tudo em ordem. Vamos começar?"
     >
-      {/* Câmbio e NEO dividem a faixa do topo: informação de um lado, o
-          assistente do outro — as ações de criar moram na barra de cima. */}
-      <div className="grid gap-3 lg:grid-cols-2">
+      {/* Câmbio divide a faixa do topo com os atalhos de NEO e Biblioteca:
+          informação de um lado, onde perguntar do outro. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-[13px] font-medium text-neutral-600">Câmbio de hoje</p>
@@ -432,22 +432,39 @@ export function Home() {
           )}
         </div>
 
-        <Link
-          to="/neo"
-          className="group flex items-center gap-3.5 rounded-2xl bg-ink-900 px-4 py-3 text-white transition-colors duration-150 ease-out hover:bg-ink-800"
-        >
-          <NeoAvatar className="h-10 w-10 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[15px] font-semibold tracking-[-0.014em] text-white">Vamos bater um papo!</h3>
-            <p className="mt-0.5 text-[13px] leading-snug text-white/60">
-              Pergunte ao NEO sobre preços e clientes, ou peça um orçamento pronto.
-            </p>
-          </div>
-          <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-white/[0.12] px-3 text-[13px] font-medium text-white transition-colors duration-150 group-hover:bg-white/[0.18]">
-            Conversar
-            <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
-          </span>
-        </Link>
+        {/* NEO e Biblioteca dividem a altura do câmbio: cada um é um atalho de
+            uma linha, sem texto de apoio — o título já diz para que serve. */}
+        <div className="flex flex-col gap-3">
+          <Link
+            to="/neo"
+            className="group flex flex-1 items-center gap-3 rounded-2xl bg-ink-900 px-4 py-2.5 text-white transition-colors duration-150 ease-out hover:bg-ink-800"
+          >
+            <NeoAvatar className="h-8 w-8 shrink-0" />
+            <h3 className="min-w-0 flex-1 text-[15px] leading-snug font-semibold tracking-[-0.014em] text-white sm:truncate">
+              Vamos bater um papo!
+            </h3>
+            <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-lg bg-white/[0.12] px-2.5 text-[13px] font-medium text-white transition-colors duration-150 group-hover:bg-white/[0.18]">
+              <span className="hidden sm:inline">Conversar</span>
+              <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+            </span>
+          </Link>
+
+          <Link
+            to="/biblioteca"
+            className="group flex flex-1 items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-4 py-2.5 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.12] hover:shadow-md"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-600">
+              <IconBook className="h-4 w-4" />
+            </span>
+            <h3 className="min-w-0 flex-1 text-[15px] leading-snug font-semibold tracking-[-0.014em] text-ink-900 sm:truncate">
+              Cliente perguntou? Veja na Biblioteca
+            </h3>
+            <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-lg bg-black/[0.05] px-2.5 text-[13px] font-medium text-ink-900 transition-colors duration-150 group-hover:bg-black/[0.08]">
+              <span className="hidden sm:inline">Pesquisar</span>
+              <IconChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+            </span>
+          </Link>
+        </div>
       </div>
 
       <Section title="Principal" className="mt-8">
