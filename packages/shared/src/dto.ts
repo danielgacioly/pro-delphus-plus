@@ -279,3 +279,35 @@ export interface CreatePersonalTaskInput {
   orderId?: string
 }
 
+
+/** Tópico de uma pergunta da Biblioteca — um produto do catálogo ou um cliente. */
+export interface LibraryTopicDTO {
+  type: 'product' | 'client'
+  id: string
+  name: string
+  /** SKU do produto, ou instituição do cliente — o que diferencia nomes parecidos. */
+  detail: string | null
+}
+
+export interface LibraryEntryDTO {
+  id: string
+  question: string
+  answer: string
+  topics: LibraryTopicDTO[]
+  createdAt: string
+  updatedAt: string
+  createdByName: string | null
+  updatedByName: string | null
+  /**
+   * Só vem numa busca: quão perto do que foi pesquisado — `strong` é quase a
+   * mesma pergunta, `related` é do mesmo assunto.
+   */
+  match?: 'strong' | 'related'
+}
+
+export interface LibraryEntryInput {
+  question: string
+  answer: string
+  productIds: string[]
+  clientIds: string[]
+}

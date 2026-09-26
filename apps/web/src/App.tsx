@@ -17,6 +17,7 @@ import { Orders } from './pages/Orders'
 import { NewOrder } from './pages/NewOrder'
 import { OrderDetail } from './pages/OrderDetail'
 import { Stats } from './pages/Stats'
+import { Library } from './pages/Library'
 import { AdminUsers } from './pages/admin/Users'
 import { AdminSectors } from './pages/admin/Sectors'
 import { NewSector } from './pages/admin/NewSector'
@@ -43,6 +44,7 @@ function App() {
           <Route path="/pedidos/:id/editar" element={<NewOrder />} />
           <Route path="/minha-conta" element={<Account />} />
           <Route path="/minha-pro-delphus" element={<MyDesk />} />
+          <Route path="/biblioteca" element={<Library />} />
           <Route path="/neo" element={<Neo />} />
 
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>

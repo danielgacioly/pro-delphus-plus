@@ -5,6 +5,7 @@ import { orderFieldsSchema, type OrderFieldsInput } from '../routes/orders.route
 import { missingPostOrderDocs } from '../domain/orderDocuments.js'
 import { clientBodySchema } from '../routes/clients.routes.js'
 import { ensureColumns } from '../routes/tasks.routes.js'
+import { libraryEntrySchema, searchLibraryEntries } from '../routes/library.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { normalize, bestMatches } from './fuzzyMatch.js'
@@ -876,5 +877,61 @@ export async function proporEdicaoCliente(args: { clienteId: string } & Record<s
   const changes = describeChanges(rest)
   const summary = [`Edição do cliente ${client.name}`, ...(changes.length ? changes : ['(nenhum campo alterado)'])].join('\n')
   const pendingAction = createPendingAction('cliente_editar', summary, { clienteId, data: rest }, userId)
+  return { pendingAction, summaryForModel: summary }
+}
+
+const LIBRARY_MATCH_LABEL = {
+  strong: 'quase a mesma pergunta',
+  related: 'mesmo assunto',
+} as const
+
+export async function buscarBiblioteca(args: { pergunta: string; produtoId?: string; clienteId?: string }) {
+  const { entries } = await searchLibraryEntries({
+    query: args.pergunta,
+    productId: args.produtoId,
+    clientId: args.clienteId,
+    limit: 5,
+  })
+  if (entries.length === 0) {
+    return {
+      encontrados: [],
+      aviso: 'Nada parecido na Biblioteca. Diga isso à pessoa, sem inventar a resposta — ela verifica com a empresa e depois cadastra.',
+    }
+  }
+  return {
+    encontrados: entries.map((e) => ({
+      pergunta: e.question,
+      resposta: e.answer,
+      topicos: e.topics.map((t) => `${t.type === 'product' ? 'Produto' : 'Cliente'}: ${t.name}${t.detail ? ` (${t.detail})` : ''}`),
+      semelhanca: LIBRARY_MATCH_LABEL[e.match ?? 'related'],
+      atualizadoEm: e.updatedAt.slice(0, 10),
+    })),
+  }
+}
+
+export async function proporRegistroBiblioteca(
+  args: { pergunta: string; resposta: string; produtoIds?: string[]; clienteIds?: string[] },
+  userId: string,
+) {
+  const data = libraryEntrySchema.parse({
+    question: args.pergunta,
+    answer: args.resposta,
+    productIds: args.produtoIds ?? [],
+    clientIds: args.clienteIds ?? [],
+  })
+  const [products, clients] = await Promise.all([
+    prisma.product.findMany({ where: { id: { in: data.productIds } }, select: { name: true } }),
+    prisma.client.findMany({ where: { id: { in: data.clientIds } }, select: { name: true } }),
+  ])
+  if (products.length !== new Set(data.productIds).size || clients.length !== new Set(data.clientIds).size) {
+    throw new HttpError(400, 'Algum tópico não existe — pegue o productId com buscar_produtos e o clienteId com buscar_cliente.')
+  }
+  const summary = [
+    'Nova pergunta na Biblioteca',
+    `• Pergunta: ${data.question}`,
+    `• Resposta: ${data.answer}`,
+    `• Tópicos: ${[...products.map((p) => p.name), ...clients.map((c) => c.name)].join(', ')}`,
+  ].join('\n')
+  const pendingAction = createPendingAction('biblioteca_criar', summary, data, userId)
   return { pendingAction, summaryForModel: summary }
 }

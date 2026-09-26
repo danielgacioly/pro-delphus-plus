@@ -88,6 +88,10 @@ const envSchema = z.object({
     .string()
     .default('gemini-3.6-flash,gemini-3.5-flash')
     .transform((s) => s.split(',').map((m) => m.trim()).filter(Boolean)),
+  // Gera o "vetor de significado" das perguntas da Biblioteca, que é o que
+  // deixa a busca achar "simula sangramento?" quando o cadastrado é "tem
+  // hemorragia?". Trocar o modelo faz a busca recalcular os vetores antigos.
+  GEMINI_EMBEDDING_MODEL: z.string().min(1).default('gemini-embedding-001'),
 
   // Groq (Whisper) transcreve o ditado por voz do NEO — free tier próprio,
   // sem gastar a cota do Gemini. Gere uma chave grátis em https://console.groq.com.
