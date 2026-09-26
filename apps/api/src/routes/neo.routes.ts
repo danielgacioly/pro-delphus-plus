@@ -6,8 +6,10 @@ import {
   ThinkingLevel,
   Type,
   type Content,
+  type FunctionCall,
   type FunctionDeclaration,
   type GenerateContentParameters,
+  type Part,
   type Schema,
 } from '@google/genai'
 import { ZodError } from 'zod'
@@ -17,6 +19,7 @@ import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { buildNeoSystemInstruction } from '../lib/neoKnowledge.js'
 import { recentHistory } from '../lib/neoHistory.js'
 import { neoThinkingFor, type NeoThinking } from '../lib/neoThinking.js'
+import { IdRedactingStream, neoToolStatus } from '../lib/neoStream.js'
 import { toPublicPendingAction, getPendingAction, discardPendingAction, redactInternalIds } from '../lib/neoPendingActions.js'
 import {
   buscarProdutos,
@@ -78,9 +81,6 @@ function isTransient(err: unknown) {
   return err instanceof DOMException && err.name === 'AbortError'
 }
 
-// Tenta um modelo específico, com retry em erro transitório (429/5xx). Deixa
-// o erro original subir (sem embrulhar em HttpError) — quem decide se vale a
-// pena tentar um modelo alternativo, ou desistir de vez, é o chamador.
 // Modelos que recusaram o nível de raciocínio (400). O parâmetro é só
 // otimização: se um modelo novo configurado no .env não aceitar, o NEO segue
 // sem ele em vez de parar de responder.
@@ -90,18 +90,59 @@ function isThinkingLevelRejected(err: unknown) {
   return err instanceof ApiError && err.status === 400 && /thinking/i.test(err.message)
 }
 
-async function callGeminiModel(model: string, params: Omit<GenerateContentParameters, 'model'>) {
+/** Uma resposta do Gemini já montada a partir dos pedaços do stream. */
+interface NeoTurn {
+  /** Todas as partes, como vieram — inclui o `thoughtSignature` dos modelos 3.x. */
+  content: Content
+  functionCalls: FunctionCall[]
+  text: string
+}
+
+interface StreamHandlers {
+  /** Texto novo da resposta, na hora em que o Gemini escreve. */
+  onText: (text: string) => void
+  /** O texto já mostrado não vale mais (a tentativa falhou e vai ser refeita). */
+  onReset: () => void
+}
+
+// Tenta um modelo específico, em streaming, com retry em erro transitório
+// (429/5xx). Deixa o erro original subir (sem embrulhar em HttpError) — quem
+// decide se vale a pena tentar um modelo alternativo, ou desistir de vez, é
+// o chamador.
+async function callGeminiModel(model: string, params: Omit<GenerateContentParameters, 'model'>, handlers: StreamHandlers) {
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
+    let emitted = false
     try {
       const config = modelsWithoutThinkingLevel.has(model) ? { ...params.config, thinkingConfig: undefined } : params.config
-      const result = await ai.models.generateContent({ ...params, config, model })
+      const stream = await ai.models.generateContentStream({ ...params, config, model })
+      const parts: Part[] = []
+      let firstTextAt: number | undefined
+      for await (const chunk of stream) {
+        for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+          parts.push(part)
+          if (part.text && !part.thought) {
+            firstTextAt ??= Date.now()
+            emitted = true
+            handlers.onText(part.text)
+          }
+        }
+      }
       // Sempre loga, mesmo em produção (sem isso, uma reclamação de "tá lento"
       // não tinha como ser diagnosticada — só suspeita) — sem dado sensível,
       // só duração e quantas tentativas precisou.
-      console.info(`[neo] ${model} respondeu em ${Date.now() - startedAt}ms (tentativa ${attempt + 1})`)
-      return result
+      const firstText = firstTextAt ? `, primeiro texto em ${firstTextAt - startedAt}ms` : ''
+      console.info(`[neo] ${model} respondeu em ${Date.now() - startedAt}ms${firstText} (tentativa ${attempt + 1})`)
+      return {
+        content: { role: 'model', parts },
+        functionCalls: parts.flatMap((p) => (p.functionCall ? [p.functionCall] : [])),
+        text: parts
+          .filter((p) => p.text && !p.thought)
+          .map((p) => p.text)
+          .join(''),
+      } satisfies NeoTurn
     } catch (err) {
+      if (emitted) handlers.onReset()
       if (isThinkingLevelRejected(err) && !modelsWithoutThinkingLevel.has(model)) {
         console.warn(`[neo] ${model} não aceita thinkingLevel, seguindo sem ele`)
         modelsWithoutThinkingLevel.add(model)
@@ -138,13 +179,17 @@ function neoUnavailableError(err: unknown): HttpError {
 // deixa o NEO inteiro sem responder. Devolve também qual modelo respondeu,
 // pra quem chama continuar usando o mesmo nas próximas idas e vindas da
 // mesma conversa (evita pagar o custo de redescobrir a cada iteração).
-async function generateNeoContent(preferredModel: string, params: Omit<GenerateContentParameters, 'model'>) {
+async function generateNeoContent(
+  preferredModel: string,
+  params: Omit<GenerateContentParameters, 'model'>,
+  handlers: StreamHandlers,
+) {
   const candidates = [preferredModel, ...env.GEMINI_FALLBACK_MODELS.filter((m) => m !== preferredModel)]
   let lastErr: unknown
   for (const model of candidates) {
     try {
-      const response = await callGeminiModel(model, params)
-      return { response, modelUsed: model }
+      const turn = await callGeminiModel(model, params, handlers)
+      return { turn, modelUsed: model }
     } catch (err) {
       lastErr = err
       if (!isTransient(err)) throw neoUnavailableError(err)
@@ -605,6 +650,21 @@ async function dispatchTool(
   }
 }
 
+/**
+ * Conversa com o NEO em streaming (NDJSON, um evento por linha): `status` diz
+ * o que ele está fazendo, `delta` é texto novo da resposta, `reset` descarta
+ * o texto mostrado até ali (ele ia chamar ferramenta, ou a tentativa falhou),
+ * `done` fecha com a resposta completa e `error` com a mensagem de falha.
+ * Esperar a resposta inteira deixava a pessoa olhando três pontinhos durante
+ * todas as idas e vindas de um orçamento.
+ */
+type NeoEvent =
+  | { type: 'status'; text: string }
+  | { type: 'delta'; text: string }
+  | { type: 'reset' }
+  | { type: 'done'; reply: string; pendingAction?: ReturnType<typeof toPublicPendingAction> }
+  | { type: 'error'; message: string }
+
 neoRouter.post(
   '/',
   asyncHandler(async (req, res) => {
@@ -614,6 +674,28 @@ neoRouter.post(
     const historyIn = recentHistory(Array.isArray(req.body?.history) ? req.body.history : [])
     const lastModelText = historyIn.findLast((h: { role: string }) => h.role === 'model')?.text ?? ''
     let thinking: NeoThinking = neoThinkingFor(message, lastModelText)
+
+    res.status(200)
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
+    res.setHeader('Cache-Control', 'no-cache, no-transform')
+    // Sem isto o nginx de produção junta a resposta inteira antes de repassar,
+    // e o streaming vira de novo uma espera só.
+    res.setHeader('X-Accel-Buffering', 'no')
+    res.flushHeaders()
+    const emit = (event: NeoEvent) => res.write(`${JSON.stringify(event)}\n`)
+
+    const redactor = new IdRedactingStream()
+    const handlers: StreamHandlers = {
+      onText: (text) => {
+        const ready = redactor.push(text)
+        if (ready) emit({ type: 'delta', text: ready })
+      },
+      onReset: () => {
+        redactor.reset()
+        emit({ type: 'reset' })
+      },
+    }
+    const thinkingLabel = () => (thinking === 'medium' ? 'médio' : 'baixo')
 
     const contents: Content[] = [
       ...historyIn.map((h: { role: string; text: string }) => ({ role: h.role, parts: [{ text: h.text }] })),
@@ -627,65 +709,102 @@ neoRouter.post(
     // do modelo principal antes de cair pro alternativo.
     let currentModel = env.GEMINI_MODEL
 
-    for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      const { response, modelUsed } = await generateNeoContent(currentModel, {
-        contents,
-        config: {
-          systemInstruction: buildNeoSystemInstruction(),
-          tools: [{ functionDeclarations: [...readTools, ...writeTools] }],
-          thinkingConfig: { thinkingLevel: THINKING_LEVEL[thinking] },
-        },
-      })
-      currentModel = modelUsed
-
-      const calls = response.functionCalls ?? []
-      if (calls.length === 0) {
-        console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${iteration + 1} chamada(s) ao Gemini, raciocínio ${thinking === 'medium' ? 'médio' : 'baixo'})`)
-        res.json({ reply: redactInternalIds(response.text ?? ''), pendingAction })
-        return
-      }
-
-      // Reaproveita o `content` que o próprio Gemini devolveu (em vez de
-      // reconstruir só com `functionCall`), porque modelos 3.x anexam um
-      // `thoughtSignature` por parte — descartá-lo quebra a continuidade do
-      // raciocínio nas próximas iterações do loop de tool calling.
-      contents.push(response.candidates?.[0]?.content ?? { role: 'model', parts: calls.map((c) => ({ functionCall: c })) })
-
-      const responseParts = []
-      for (const call of calls) {
-        if (!IS_PRODUCTION) console.info(`[neo] ${call.name}`, JSON.stringify(call.args ?? {}))
-        const toolStartedAt = Date.now()
-        let result: unknown
-        try {
-          const dispatched = await dispatchTool(call.name!, call.args ?? {}, req.user!.id, message)
-          console.info(`[neo] ${call.name} levou ${Date.now() - toolStartedAt}ms`)
-          result = dispatched.result
-          if (dispatched.pendingAction) pendingAction = toPublicPendingAction(dispatched.pendingAction)
-        } catch (err) {
-          const forModel = toolErrorForModel(err)
-          if (!forModel) throw err
-          result = forModel
-          // Ferramenta recusou os dados (faltou algo, veio inválido): a
-          // próxima tentativa precisa entender o que corrigir.
-          thinking = 'medium'
-        }
-        responseParts.push({ functionResponse: { name: call.name!, response: { result } } })
-      }
-      contents.push({ role: 'user', parts: responseParts })
+    function finish(turn: NeoTurn, detail: string) {
+      const rest = redactor.flush()
+      if (rest) emit({ type: 'delta', text: rest })
+      console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${detail}, raciocínio ${thinkingLabel()})`)
+      emit({ type: 'done', reply: redactInternalIds(turn.text), pendingAction })
+      res.end()
     }
 
-    // Estourou o teto de ferramentas: em vez de devolver erro (o que joga fora
-    // tudo que já foi apurado), pede uma resposta final sem ferramentas — o
-    // modelo conclui com o que tem, ou pergunta.
-    const { response: finalResponse } = await generateNeoContent(currentModel, {
-      contents: [
-        ...contents,
-        { role: 'user', parts: [{ text: 'Responda agora em texto, sem chamar mais ferramentas, com o que você já apurou. Se ainda falta informação, pergunte.' }] },
-      ],
-      config: { systemInstruction: buildNeoSystemInstruction(), thinkingConfig: { thinkingLevel: THINKING_LEVEL[thinking] } },
-    })
-    console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (estourou o teto de ${MAX_TOOL_ITERATIONS} chamadas de ferramenta, raciocínio ${thinking === 'medium' ? 'médio' : 'baixo'})`)
-    res.json({ reply: redactInternalIds(finalResponse.text ?? ''), pendingAction })
+    try {
+      emit({ type: 'status', text: 'Pensando…' })
+      for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+        const { turn, modelUsed } = await generateNeoContent(
+          currentModel,
+          {
+            contents,
+            config: {
+              systemInstruction: buildNeoSystemInstruction(),
+              tools: [{ functionDeclarations: [...readTools, ...writeTools] }],
+              thinkingConfig: { thinkingLevel: THINKING_LEVEL[thinking] },
+            },
+          },
+          handlers,
+        )
+        currentModel = modelUsed
+
+        const calls = turn.functionCalls
+        if (calls.length === 0) {
+          finish(turn, `${iteration + 1} chamada(s) ao Gemini`)
+          return
+        }
+
+        // Texto que vem junto com uma chamada de ferramenta ("vou buscar…")
+        // não é a resposta — a resposta é a que vem depois dos resultados.
+        if (turn.text) handlers.onReset()
+        // Reaproveita as partes que o próprio Gemini devolveu (em vez de
+        // reconstruir só com `functionCall`), porque modelos 3.x anexam um
+        // `thoughtSignature` por parte — descartá-lo quebra a continuidade do
+        // raciocínio nas próximas iterações do loop de tool calling.
+        contents.push(turn.content)
+        emit({ type: 'status', text: neoToolStatus(calls.map((c) => c.name ?? '')) })
+
+        // Em paralelo: quando o Gemini pede várias buscas de uma vez, uma não
+        // depende da outra, e esperar em fila só somava os tempos.
+        const outcomes = await Promise.all(
+          calls.map(async (call) => {
+            if (!IS_PRODUCTION) console.info(`[neo] ${call.name}`, JSON.stringify(call.args ?? {}))
+            const toolStartedAt = Date.now()
+            try {
+              const dispatched = await dispatchTool(call.name!, call.args ?? {}, req.user!.id, message)
+              console.info(`[neo] ${call.name} levou ${Date.now() - toolStartedAt}ms`)
+              return { call, result: dispatched.result, pendingAction: dispatched.pendingAction, failed: false }
+            } catch (err) {
+              const forModel = toolErrorForModel(err)
+              if (!forModel) throw err
+              return { call, result: forModel as unknown, pendingAction: undefined, failed: true }
+            }
+          }),
+        )
+        // Na ordem das chamadas, não na de término: se duas propostas saírem
+        // juntas, fica valendo sempre a última que o modelo pediu.
+        for (const outcome of outcomes) {
+          if (outcome.pendingAction) pendingAction = toPublicPendingAction(outcome.pendingAction)
+          // Ferramenta recusou os dados (faltou algo, veio inválido): a
+          // próxima tentativa precisa entender o que corrigir.
+          if (outcome.failed) thinking = 'medium'
+        }
+        contents.push({
+          role: 'user',
+          parts: outcomes.map(({ call, result }) => ({ functionResponse: { name: call.name!, response: { result } } })),
+        })
+        emit({ type: 'status', text: 'Analisando…' })
+      }
+
+      // Estourou o teto de ferramentas: em vez de devolver erro (o que joga
+      // fora tudo que já foi apurado), pede uma resposta final sem
+      // ferramentas — o modelo conclui com o que tem, ou pergunta.
+      const { turn: finalTurn } = await generateNeoContent(
+        currentModel,
+        {
+          contents: [
+            ...contents,
+            { role: 'user', parts: [{ text: 'Responda agora em texto, sem chamar mais ferramentas, com o que você já apurou. Se ainda falta informação, pergunte.' }] },
+          ],
+          config: { systemInstruction: buildNeoSystemInstruction(), thinkingConfig: { thinkingLevel: THINKING_LEVEL[thinking] } },
+        },
+        handlers,
+      )
+      finish(finalTurn, `estourou o teto de ${MAX_TOOL_ITERATIONS} chamadas de ferramenta`)
+    } catch (err) {
+      // O cabeçalho já saiu (é streaming): o errorHandler não consegue mais
+      // mandar um JSON de erro, então a falha vira o último evento.
+      if (!(err instanceof HttpError)) console.error('[neo] falha inesperada:', err)
+      const text = err instanceof HttpError ? err.message : 'O NEO não conseguiu responder agora. Tenta de novo em instantes.'
+      emit({ type: 'error', message: text })
+      res.end()
+    }
   }),
 )
 

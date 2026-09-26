@@ -75,6 +75,11 @@ export function setAccessToken(token: string | null) {
   accessToken = token
 }
 
+/** Para chamadas que não passam pelo axios (streaming com `fetch`). */
+export function getAccessToken() {
+  return accessToken
+}
+
 export const api = axios.create({
   baseURL: '/api',
   withCredentials: true,

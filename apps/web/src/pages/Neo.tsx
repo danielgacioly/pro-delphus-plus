@@ -32,7 +32,7 @@ function renderInlineFormatting(text: string) {
 export function Neo() {
   // A conversa e a chamada em andamento vivem no provider (acima das rotas):
   // sair desta página não interrompe o NEO.
-  const { messages, pending, loading, error, setError, send, confirm, cancel, newChat } = useNeoChat()
+  const { messages, pending, loading, draft, status, error, setError, send, confirm, cancel, newChat } = useNeoChat()
   const [input, setInput] = useState('')
   // O modelo gratuito do NEO às vezes passa bem dos poucos segundos normais
   // (fila de alta demanda do lado do Google) — sem um sinal de "ainda
@@ -44,7 +44,7 @@ export function Neo() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, pending, error, loading])
+  }, [messages, pending, error, loading, draft, status])
 
   useEffect(() => {
     if (!loading) {
@@ -192,12 +192,26 @@ export function Neo() {
               ),
             )}
 
-            {loading && (
+            {loading && draft && (
+              <div className="max-w-[80%] self-start whitespace-pre-wrap rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-2.5 text-[13.5px] leading-relaxed text-ink-900">
+                {renderInlineFormatting(draft)}
+                <span aria-hidden className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] animate-pulse bg-neutral-400" />
+              </div>
+            )}
+
+            {loading && !draft && (
               <div className="flex flex-col items-start gap-1.5 self-start">
-                <div className="animate-neo-float flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-3">
-                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                <div className="animate-neo-float flex items-center gap-2.5 rounded-2xl rounded-bl-md bg-neutral-500/8 px-4 py-2.5">
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                  </span>
+                  {status && (
+                    <span role="status" className="text-[13px] text-neutral-600">
+                      {status}
+                    </span>
+                  )}
                 </div>
                 {slowLoading && (
                   <p className="px-1 text-[12px] text-neutral-500">

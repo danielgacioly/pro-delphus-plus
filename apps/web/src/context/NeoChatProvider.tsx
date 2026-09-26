@@ -8,7 +8,8 @@ import {
   confirmAction,
   describeConfirmResult,
   loadChat,
-  sendMessage,
+  NeoStreamError,
+  streamMessage,
   type ChatMessage,
   type PendingAction,
 } from './neoChat'
@@ -28,6 +29,8 @@ export function NeoChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat().messages)
   const [pending, setPending] = useState<PendingAction | null>(() => loadChat().pending)
   const [loading, setLoading] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Refs porque o fim da chamada acontece muito depois do render em que ela
@@ -67,16 +70,25 @@ export function NeoChatProvider({ children }: { children: ReactNode }) {
       setError(null)
       setMessages([...history, { role: 'user', text }])
       setLoading(true)
+      setDraft('')
+      setStatus(null)
       try {
-        const { reply, pendingAction } = await sendMessage(text, history)
+        const { reply, pendingAction } = await streamMessage(text, history, {
+          onStatus: setStatus,
+          onDelta: (chunk) => setDraft((prev) => prev + chunk),
+          onReset: () => setDraft(''),
+        })
         setMessages((prev) => [...prev, { role: 'model', text: reply }])
         setPending(pendingAction ?? null)
         notifyIfAway('O NEO terminou de pensar e já respondeu.', 'success')
       } catch (err) {
-        const message = getErrorMessage(err, 'NEO não conseguiu responder agora. Tenta de novo em instantes.')
+        const message =
+          err instanceof NeoStreamError ? err.message : getErrorMessage(err, 'NEO não conseguiu responder agora. Tenta de novo em instantes.')
         setError(message)
         notifyIfAway('O NEO não conseguiu responder. Abra a conversa para tentar de novo.', 'error')
       } finally {
+        setDraft('')
+        setStatus(null)
         setLoading(false)
       }
     },
@@ -115,7 +127,7 @@ export function NeoChatProvider({ children }: { children: ReactNode }) {
   }, [pending])
 
   return (
-    <NeoChatContext.Provider value={{ messages, pending, loading, error, setError, send, confirm, cancel, newChat }}>
+    <NeoChatContext.Provider value={{ messages, pending, loading, draft, status, error, setError, send, confirm, cancel, newChat }}>
       {children}
     </NeoChatContext.Provider>
   )

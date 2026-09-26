@@ -6,6 +6,10 @@ export interface NeoChatValue {
   messages: ChatMessage[]
   pending: PendingAction | null
   loading: boolean
+  /** Resposta sendo escrita agora — vazia até chegar o primeiro trecho. */
+  draft: string
+  /** O que o NEO está fazendo agora ("Buscando produtos…"), enquanto não há texto. */
+  status: string | null
   error: string | null
   setError: (message: string | null) => void
   send: (text: string) => Promise<void>
