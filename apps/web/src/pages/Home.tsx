@@ -439,7 +439,7 @@ export function Home() {
         <div className="grid grid-cols-2 gap-3">
           <Link
             to="/neo"
-            className="group flex min-h-[112px] flex-col justify-between gap-3 rounded-2xl bg-ink-900 p-4 text-white transition-colors duration-150 ease-out hover:bg-ink-800"
+            className="group flex min-h-[112px] flex-col justify-between gap-3 rounded-2xl bg-neutral-700 p-4 text-white transition-colors duration-150 ease-out hover:bg-neutral-800"
           >
             <div className="flex items-start justify-between gap-2">
               <NeoAvatar className="h-9 w-9 shrink-0" />
