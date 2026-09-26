@@ -76,17 +76,17 @@ const envSchema = z.object({
   // recusar subir do que o endpoint falhar silenciosamente na primeira
   // pergunta.
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY é obrigatório — gere uma chave grátis em https://aistudio.google.com/apikey'),
-  // A cota grátis é separada por modelo: o 3.6-flash só dá 20 requisições/dia,
-  // o que acaba em poucas conversas (cada pergunta com ferramenta gasta 2-5).
-  // O flash-lite tem cota grátis bem maior e faz function calling bem.
+  // O flash-lite é o mais rápido e o mais barato da família, e faz function
+  // calling bem — modelo "maior" não deixa o NEO mais rápido, só mais lento
+  // (raciocina mais antes de responder).
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
   // Quando o modelo principal esgota as tentativas (pico de demanda do lado
-  // do Google, 429/5xx), tenta estes em ordem antes de desistir — cada um tem
-  // cota grátis própria, então um "high demand" isolado no flash-lite não
-  // derruba o NEO inteiro. Lista separada por vírgula, sem espaço.
+  // do Google, 429/5xx), tenta estes em ordem antes de desistir. O 3.5-flash
+  // vem antes do 3.6-flash por ser bem mais rápido: visto ao vivo, o 3.6
+  // chegou a abortar aos 45s sem responder. Lista separada por vírgula.
   GEMINI_FALLBACK_MODELS: z
     .string()
-    .default('gemini-3.6-flash,gemini-3.5-flash')
+    .default('gemini-3.5-flash,gemini-3.6-flash')
     .transform((s) => s.split(',').map((m) => m.trim()).filter(Boolean)),
   // Gera o "vetor de significado" das perguntas da Biblioteca, que é o que
   // deixa a busca achar "simula sangramento?" quando o cadastrado é "tem

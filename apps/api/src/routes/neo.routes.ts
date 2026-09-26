@@ -3,6 +3,7 @@ import multer from 'multer'
 import {
   ApiError,
   GoogleGenAI,
+  ThinkingLevel,
   Type,
   type Content,
   type FunctionDeclaration,
@@ -14,6 +15,7 @@ import { env, IS_PRODUCTION } from '../lib/env.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { buildNeoSystemInstruction } from '../lib/neoKnowledge.js'
+import { recentHistory } from '../lib/neoHistory.js'
 import { toPublicPendingAction, getPendingAction, discardPendingAction, redactInternalIds } from '../lib/neoPendingActions.js'
 import {
   buscarProdutos,
@@ -58,6 +60,11 @@ const AUDIO_EXTENSION: Record<string, string> = {
   'audio/wav': 'wav',
 }
 const MAX_TOOL_ITERATIONS = 6
+// O NEO escolhe ferramentas e segue regras escritas; não resolve problema
+// difícil. Raciocínio baixo corta tempo e custo de cada chamada (o
+// raciocínio é cobrado como saída), e o ganho se multiplica pelas 3-5
+// chamadas de um orçamento.
+const THINKING_CONFIG = { thinkingLevel: ThinkingLevel.LOW }
 // Picos de 429 (limite por minuto) e 5xx do Gemini costumam passar em segundos;
 // sem retry, cada soluço desses virava erro na cara do usuário.
 const RETRY_DELAYS_MS = [1500, 4000]
@@ -74,17 +81,34 @@ function isTransient(err: unknown) {
 // Tenta um modelo específico, com retry em erro transitório (429/5xx). Deixa
 // o erro original subir (sem embrulhar em HttpError) — quem decide se vale a
 // pena tentar um modelo alternativo, ou desistir de vez, é o chamador.
+// Modelos que recusaram o nível de raciocínio (400). O parâmetro é só
+// otimização: se um modelo novo configurado no .env não aceitar, o NEO segue
+// sem ele em vez de parar de responder.
+const modelsWithoutThinkingLevel = new Set<string>()
+
+function isThinkingLevelRejected(err: unknown) {
+  return err instanceof ApiError && err.status === 400 && /thinking/i.test(err.message)
+}
+
 async function callGeminiModel(model: string, params: Omit<GenerateContentParameters, 'model'>) {
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      const result = await ai.models.generateContent({ ...params, model })
+      const config = modelsWithoutThinkingLevel.has(model) ? { ...params.config, thinkingConfig: undefined } : params.config
+      const result = await ai.models.generateContent({ ...params, config, model })
       // Sempre loga, mesmo em produção (sem isso, uma reclamação de "tá lento"
       // não tinha como ser diagnosticada — só suspeita) — sem dado sensível,
       // só duração e quantas tentativas precisou.
       console.info(`[neo] ${model} respondeu em ${Date.now() - startedAt}ms (tentativa ${attempt + 1})`)
       return result
     } catch (err) {
+      if (isThinkingLevelRejected(err) && !modelsWithoutThinkingLevel.has(model)) {
+        console.warn(`[neo] ${model} não aceita thinkingLevel, seguindo sem ele`)
+        modelsWithoutThinkingLevel.add(model)
+        // Não conta como tentativa: as de erro transitório continuam todas.
+        attempt--
+        continue
+      }
       if (isTransient(err) && attempt < RETRY_DELAYS_MS.length) {
         const reason = err instanceof ApiError ? String(err.status) : 'timeout'
         console.warn(`[neo] ${model} ${reason}, nova tentativa em ${RETRY_DELAYS_MS[attempt]}ms`)
@@ -587,7 +611,7 @@ neoRouter.post(
     const requestStartedAt = Date.now()
     const message = String(req.body?.message ?? '').trim()
     if (!message) throw new HttpError(400, 'Mensagem vazia')
-    const historyIn = Array.isArray(req.body?.history) ? req.body.history : []
+    const historyIn = recentHistory(Array.isArray(req.body?.history) ? req.body.history : [])
 
     const contents: Content[] = [
       ...historyIn.map((h: { role: string; text: string }) => ({ role: h.role, parts: [{ text: h.text }] })),
@@ -607,6 +631,7 @@ neoRouter.post(
         config: {
           systemInstruction: buildNeoSystemInstruction(),
           tools: [{ functionDeclarations: [...readTools, ...writeTools] }],
+          thinkingConfig: THINKING_CONFIG,
         },
       })
       currentModel = modelUsed
@@ -652,7 +677,7 @@ neoRouter.post(
         ...contents,
         { role: 'user', parts: [{ text: 'Responda agora em texto, sem chamar mais ferramentas, com o que você já apurou. Se ainda falta informação, pergunte.' }] },
       ],
-      config: { systemInstruction: buildNeoSystemInstruction() },
+      config: { systemInstruction: buildNeoSystemInstruction(), thinkingConfig: THINKING_CONFIG },
     })
     console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (estourou o teto de ${MAX_TOOL_ITERATIONS} chamadas de ferramenta)`)
     res.json({ reply: redactInternalIds(finalResponse.text ?? ''), pendingAction })
