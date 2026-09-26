@@ -16,6 +16,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js'
 import { buildNeoSystemInstruction } from '../lib/neoKnowledge.js'
 import { recentHistory } from '../lib/neoHistory.js'
+import { neoThinkingFor, type NeoThinking } from '../lib/neoThinking.js'
 import { toPublicPendingAction, getPendingAction, discardPendingAction, redactInternalIds } from '../lib/neoPendingActions.js'
 import {
   buscarProdutos,
@@ -60,11 +61,10 @@ const AUDIO_EXTENSION: Record<string, string> = {
   'audio/wav': 'wav',
 }
 const MAX_TOOL_ITERATIONS = 6
-// O NEO escolhe ferramentas e segue regras escritas; não resolve problema
-// difícil. Raciocínio baixo corta tempo e custo de cada chamada (o
-// raciocínio é cobrado como saída), e o ganho se multiplica pelas 3-5
-// chamadas de um orçamento.
-const THINKING_CONFIG = { thinkingLevel: ThinkingLevel.LOW }
+// Quanto raciocinar vem de neoThinkingFor (por pergunta). Raciocínio é
+// cobrado como saída e soma tempo em cada uma das 3-5 chamadas de um
+// orçamento, então só sobe onde há interpretação a fazer.
+const THINKING_LEVEL = { low: ThinkingLevel.LOW, medium: ThinkingLevel.MEDIUM } as const
 // Picos de 429 (limite por minuto) e 5xx do Gemini costumam passar em segundos;
 // sem retry, cada soluço desses virava erro na cara do usuário.
 const RETRY_DELAYS_MS = [1500, 4000]
@@ -612,6 +612,8 @@ neoRouter.post(
     const message = String(req.body?.message ?? '').trim()
     if (!message) throw new HttpError(400, 'Mensagem vazia')
     const historyIn = recentHistory(Array.isArray(req.body?.history) ? req.body.history : [])
+    const lastModelText = historyIn.findLast((h: { role: string }) => h.role === 'model')?.text ?? ''
+    let thinking: NeoThinking = neoThinkingFor(message, lastModelText)
 
     const contents: Content[] = [
       ...historyIn.map((h: { role: string; text: string }) => ({ role: h.role, parts: [{ text: h.text }] })),
@@ -631,14 +633,14 @@ neoRouter.post(
         config: {
           systemInstruction: buildNeoSystemInstruction(),
           tools: [{ functionDeclarations: [...readTools, ...writeTools] }],
-          thinkingConfig: THINKING_CONFIG,
+          thinkingConfig: { thinkingLevel: THINKING_LEVEL[thinking] },
         },
       })
       currentModel = modelUsed
 
       const calls = response.functionCalls ?? []
       if (calls.length === 0) {
-        console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${iteration + 1} chamada(s) ao Gemini)`)
+        console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${iteration + 1} chamada(s) ao Gemini, raciocínio ${thinking === 'medium' ? 'médio' : 'baixo'})`)
         res.json({ reply: redactInternalIds(response.text ?? ''), pendingAction })
         return
       }
@@ -663,6 +665,9 @@ neoRouter.post(
           const forModel = toolErrorForModel(err)
           if (!forModel) throw err
           result = forModel
+          // Ferramenta recusou os dados (faltou algo, veio inválido): a
+          // próxima tentativa precisa entender o que corrigir.
+          thinking = 'medium'
         }
         responseParts.push({ functionResponse: { name: call.name!, response: { result } } })
       }
@@ -677,9 +682,9 @@ neoRouter.post(
         ...contents,
         { role: 'user', parts: [{ text: 'Responda agora em texto, sem chamar mais ferramentas, com o que você já apurou. Se ainda falta informação, pergunte.' }] },
       ],
-      config: { systemInstruction: buildNeoSystemInstruction(), thinkingConfig: THINKING_CONFIG },
+      config: { systemInstruction: buildNeoSystemInstruction(), thinkingConfig: { thinkingLevel: THINKING_LEVEL[thinking] } },
     })
-    console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (estourou o teto de ${MAX_TOOL_ITERATIONS} chamadas de ferramenta)`)
+    console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (estourou o teto de ${MAX_TOOL_ITERATIONS} chamadas de ferramenta, raciocínio ${thinking === 'medium' ? 'médio' : 'baixo'})`)
     res.json({ reply: redactInternalIds(finalResponse.text ?? ''), pendingAction })
   }),
 )
