@@ -11,6 +11,7 @@ import { Badge, Page, Section, Skeleton } from '../components/ui'
 import { NeoAvatar } from '../components/NeoMascot'
 import {
   IconBoard,
+  IconBook,
   IconBox,
   IconChevronRight,
   IconContacts,
@@ -41,6 +42,7 @@ const secondaryShortcuts: Shortcut[] = [
   { to: '/minha-pro-delphus', title: 'Minha Pro Delphus', description: 'Seu mural pessoal de tarefas e lembretes', icon: IconBoard },
   { to: '/precos', title: 'Tabela de preço', description: 'Preços em real, dólar e euro por setor', icon: IconTag },
   { to: '/produtos', title: 'Produtos', description: 'Catálogo, mídia e customizações disponíveis', icon: IconBox },
+  { to: '/biblioteca', title: 'Biblioteca', description: 'Perguntas de clientes com a resposta confirmada', icon: IconBook },
 ]
 
 const currencySymbol: Record<string, string> = { BRL: 'R$', USD: '$', EUR: '€' }
