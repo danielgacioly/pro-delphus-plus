@@ -79,7 +79,6 @@ export function Orders() {
   const { data: orders, isLoading, isError } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
 
   const [scope, setScope] = useState<'all' | 'mine'>('all')
-  const [status, setStatus] = useState<'all' | 'PENDING' | 'COMPLETED'>('all')
   const [exportScope, setExportScope] = useState<'all' | 'NATIONAL' | 'INTERNATIONAL'>('all')
   const [yearFilter, setYearFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -95,12 +94,11 @@ export function Orders() {
       const date = new Date(o.createdAt)
       if (yearFilter !== 'all' && date.getFullYear() !== Number(yearFilter)) return false
       if (scope === 'mine' && o.createdBy.id !== user?.id) return false
-      if (status !== 'all' && o.status !== status) return false
       if (exportScope !== 'all' && o.quote.exportScope !== exportScope) return false
       if (term && !`${o.orderNumber} ${o.quote.clientName} ${o.quoteNumber}`.toLowerCase().includes(term)) return false
       return true
     })
-  }, [orders, yearFilter, scope, status, exportScope, user?.id, search])
+  }, [orders, yearFilter, scope, exportScope, user?.id, search])
 
   return (
     <Page
@@ -115,16 +113,6 @@ export function Orders() {
           options={[
             { value: 'all', label: 'Todos' },
             { value: 'mine', label: 'Meus' },
-          ]}
-        />
-        <SegmentedControl
-          aria-label="Status"
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: 'all', label: 'Qualquer status' },
-            { value: 'PENDING', label: 'Pendentes' },
-            { value: 'COMPLETED', label: 'Concluídos' },
           ]}
         />
         <SegmentedControl
