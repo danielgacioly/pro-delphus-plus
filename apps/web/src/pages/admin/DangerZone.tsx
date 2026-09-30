@@ -170,10 +170,15 @@ function PriceAdjustment() {
           <p>
             <strong className="font-semibold text-ink-900">{preview.data.productCount}</strong> produto(s) têm preço na
             tabela {table.label}
-            {percentValid ? ` e passam a valer ${formatPercent(percent)}:` : '.'}
+            {percentValid ? ` — todos passam a valer ${formatPercent(percent)}.` : '.'}
           </p>
           {percentValid && preview.data.samples.length > 0 && (
-            <ul className="mt-1.5 space-y-0.5 tabular">
+            <p className="mt-1.5 text-neutral-500">
+              Exemplos ({preview.data.samples.length} de {preview.data.productCount}, em ordem alfabética):
+            </p>
+          )}
+          {percentValid && preview.data.samples.length > 0 && (
+            <ul className="mt-0.5 space-y-0.5 tabular">
               {preview.data.samples.map((s) => (
                 <li key={s.sku + s.name}>
                   {s.name}: {money(table.currency, s.price)} → {money(table.currency, adjustedPrice(s.price, percent))}
