@@ -370,6 +370,11 @@ const editItemSchema = {
 }
 
 const quoteFieldsProps = {
+  clientPrefix: {
+    type: Type.STRING,
+    enum: ['NONE', 'MR', 'MS'],
+    description: 'Prefixo do cliente no documento: MR = Sr./Mr., MS = Sra./Ms., NONE = nenhum. Só se a pessoa disser.',
+  },
   clientName: { type: Type.STRING },
   clientId: { type: Type.STRING, description: 'Id do cliente cadastrado (de buscar_cliente), se houver' },
   items: { type: Type.ARRAY, items: itemSchema },
@@ -386,7 +391,7 @@ const quoteFieldsProps = {
   notes: {
     type: Type.STRING,
     description:
-      'Observações do orçamento. Ao editar, ACRESCENTA ao que já existe — pegue o notes atual de buscar_orcamentos e mande ele + o texto novo. Só substitui o texto inteiro se a pessoa pedir isso explicitamente.',
+      'Comentários/observações do orçamento. Ao CRIAR: mande só o comentário da pessoa — o sistema junta às observações padrão. Ao EDITAR: acrescenta ao que já existe — pegue o notes atual de buscar_orcamentos e mande ele + o texto novo. Só substitui o texto inteiro se a pessoa pedir isso explicitamente.',
   },
 }
 
@@ -495,6 +500,8 @@ const writeTools: FunctionDeclaration[] = [
         orderedByEmail: { type: Type.STRING },
         billToText: { type: Type.STRING, description: 'Endereço de cobrança completo' },
         shipToText: { type: Type.STRING, description: 'Endereço de entrega completo' },
+        shipToNote: { type: Type.STRING, description: 'Observação de entrega, se a pessoa der' },
+        exchangeRate: { type: Type.NUMBER, description: 'Só internacional: câmbio da moeda do orçamento pra BRL. Omita pra usar o câmbio do dia.' },
         packageCount: { type: Type.NUMBER, description: 'Número de caixas' },
         prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'], description: 'PIX só em pedido nacional; PAYPAL só em internacional' },
         paypalFee: { type: Type.NUMBER, description: 'Taxa do PayPal. Só quando o pagamento é PayPal, e perguntada numa mensagem separada' },
@@ -540,6 +547,8 @@ const writeTools: FunctionDeclaration[] = [
         ...orderItemProps,
         billToText: { type: Type.STRING },
         shipToText: { type: Type.STRING },
+        shipToNote: { type: Type.STRING, description: 'Observação de entrega' },
+        exchangeRate: { type: Type.NUMBER, description: 'Só internacional: câmbio pra BRL' },
         orderedByEmail: { type: Type.STRING },
       },
       required: ['pedidoId'],

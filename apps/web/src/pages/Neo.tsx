@@ -29,26 +29,58 @@ function renderInlineFormatting(text: string) {
   })
 }
 
-// Final dos formulários de pedido. AWB só existe no internacional (é o
-// conhecimento aéreo do DHL) — a tela de Novo pedido também o esconde no
-// nacional.
-const orderTail = (international: boolean) => [
-  'Peso líquido (kg): ',
-  'Peso bruto (kg): ',
-  'Peso por unidade de cada item (kg): ',
-  ...(international ? ['AWB: '] : []),
-  'Pedido de compra: ',
-  'Data de expedição: ',
-  'Número e data da NF: ',
-  'O que eu deixei em branco pode ficar em branco.',
-]
-
 /**
- * Atalhos da tela inicial. Cada um já traz, em forma de formulário, tudo o que
- * o NEO perguntaria (os mesmos campos que o servidor exige) — preenchido de
- * uma vez, ele vai direto pra prévia em vez de gastar idas e voltas (e
- * tokens) perguntando campo a campo. Campo em branco é ignorado.
+ * Atalhos da tela inicial. Cada um já traz, em forma de formulário, os mesmos
+ * campos (e na mesma ordem) das telas de Novo orçamento e Novo pedido para
+ * aquele tipo — preenchido de uma vez, o NEO vai direto pra prévia em vez de
+ * gastar idas e voltas (e tokens) perguntando campo a campo. Campo em branco
+ * é ignorado.
  */
+const quoteTemplate = (international: boolean) =>
+  [
+    international ? 'Monta um orçamento internacional:' : 'Monta um orçamento nacional:',
+    ...(international
+      ? ['Idioma (EN, ES ou PT): ', 'Moeda (USD ou EUR): ', 'Tabela (só USD: final ou distribuidor): ']
+      : []),
+    international ? 'Prefixo (Mr. ou Ms.; em branco = nenhum): ' : 'Prefixo (Sr. ou Sra.; em branco = nenhum): ',
+    'Cliente: ',
+    'Itens (quantidade × produto; preço ou nome especial, se houver): ',
+    'Descrição e componentes: padrão',
+    'Frete: ',
+    'Desconto: ',
+    'Comentários (somados às observações padrão): ',
+  ].join('\n')
+
+// AWB, Incoterms, PayPal e câmbio só existem no internacional; via de envio,
+// Pix e link do cartão só no nacional — igual à tela de Novo pedido.
+const orderTemplate = (international: boolean) =>
+  [
+    international ? 'Gera o pedido internacional do orçamento: ' : 'Gera o pedido nacional do orçamento: ',
+    'Pedido de compra (em branco = número do orçamento): ',
+    'E-mail do comprador (em branco = do cadastro): ',
+    'Data de expedição: ',
+    'Endereço de faturamento (em branco = do cadastro): ',
+    'Endereço de entrega (em branco = do cadastro): ',
+    'Observação de entrega: ',
+    'Peso líquido (kg): ',
+    'Peso bruto (kg): ',
+    international ? 'Incoterms (EXW, DAP, DDP…): ' : 'Via de envio (SEDEX, PAC, transportadora…): ',
+    'Número de caixas: ',
+    'O que vai em cada caixa: ',
+    'Peso por unidade de cada item (kg): ',
+    ...(international
+      ? [
+          'AWB: ',
+          'Forma de pagamento (PayPal ou transferência): ',
+          'Taxa do PayPal (só PayPal): ',
+          'Câmbio (em branco = o de hoje): ',
+        ]
+      : ['Forma de pagamento (Pix ou transferência): ', 'Link de pagamento (cartão): ']),
+    'Número da NF: ',
+    'Data de emissão da NF: ',
+    'O que eu deixei em branco pode ficar em branco.',
+  ].join('\n')
+
 const SUGGESTIONS = [
   {
     label: 'Consultar um produto',
@@ -58,61 +90,10 @@ const SUGGESTIONS = [
     label: 'Buscar um cliente',
     prompt: ['Quero ver o cadastro de um cliente:', 'Nome ou instituição: '].join('\n'),
   },
-  {
-    label: 'Orçamento nacional',
-    prompt: [
-      'Monta um orçamento nacional:',
-      'Cliente: ',
-      'Itens (quantidade × produto): ',
-      'Descrição e componentes: padrão',
-      'Frete: ',
-      'Desconto: ',
-    ].join('\n'),
-  },
-  {
-    label: 'Orçamento internacional',
-    prompt: [
-      'Monta um orçamento internacional:',
-      'Cliente: ',
-      'Itens (quantidade × produto): ',
-      'Moeda (USD ou EUR): ',
-      'Idioma (EN, ES ou PT): ',
-      'Tipo de preço (só USD: final ou distribuidor): ',
-      'Descrição e componentes: padrão',
-      'Frete: ',
-      'Desconto: ',
-    ].join('\n'),
-  },
-  {
-    label: 'Pedido nacional',
-    prompt: [
-      'Gera o pedido nacional do orçamento: ',
-      'E-mail de quem pediu (em branco = do cadastro): ',
-      'Endereço de cobrança (em branco = do cadastro): ',
-      'Endereço de entrega (em branco = do cadastro): ',
-      'Número de caixas: ',
-      'O que vai em cada caixa: ',
-      'Pagamento (Pix ou transferência): ',
-      'Link de pagamento do cartão: ',
-      'Forma de envio (SEDEX, PAC, transportadora…): ',
-      ...orderTail(false),
-    ].join('\n'),
-  },
-  {
-    label: 'Pedido internacional',
-    prompt: [
-      'Gera o pedido internacional do orçamento: ',
-      'E-mail de quem pediu (em branco = do cadastro): ',
-      'Endereço de cobrança (em branco = do cadastro): ',
-      'Endereço de entrega (em branco = do cadastro): ',
-      'Número de caixas: ',
-      'O que vai em cada caixa: ',
-      'Pagamento (PayPal ou transferência): ',
-      'Taxa do PayPal (só PayPal): ',
-      'Incoterms (EXW, DAP, DDP…): ',
-      ...orderTail(true),
-    ].join('\n'),
-  },
+  { label: 'Orçamento nacional', prompt: quoteTemplate(false) },
+  { label: 'Orçamento internacional', prompt: quoteTemplate(true) },
+  { label: 'Pedido nacional', prompt: orderTemplate(false) },
+  { label: 'Pedido internacional', prompt: orderTemplate(true) },
 ]
 
 export function Neo() {

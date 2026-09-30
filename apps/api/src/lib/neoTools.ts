@@ -7,6 +7,8 @@ import { clientBodySchema } from '../routes/clients.routes.js'
 import { ensureColumns } from '../routes/tasks.routes.js'
 import { libraryEntrySchema, searchLibraryEntries } from '../routes/library.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
+import { defaultQuoteNotes } from './quoteI18n.js'
+import { clientPrefixLabel } from '@prodelphusplus/shared'
 import { HttpError } from '../middleware/errorHandler.js'
 import { normalize, bestMatches } from './fuzzyMatch.js'
 import { declaredExportScope, declaredPrepayment, saidYesToDefault } from './neoConsent.js'
@@ -499,7 +501,8 @@ async function describeQuote(data: CreateQuoteInput, userId: string) {
     data.freight ? `Frete: ${money(currency, data.freight)}` : null,
     data.discount ? `Desconto: ${money(currency, data.discount)}` : null,
   ].filter(Boolean)
-  return [`Cliente: ${data.clientName}`, scope, ...lines, ...extras, `Total: ${money(currency, resolved.total)}`].join('\n')
+  const prefix = clientPrefixLabel(data.clientPrefix, resolved.clientCountry, resolved.language)
+  return [`Cliente: ${prefix ? `${prefix} ` : ''}${data.clientName}`, scope, ...lines, ...extras, `Total: ${money(currency, resolved.total)}`].join('\n')
 }
 
 /**
@@ -571,9 +574,16 @@ export async function proporOrcamento(
   const { padraoDescricaoComponentesAutorizado, ...quoteArgs } = args
   // Valida antes de perguntar: o rascunho guardado com a pergunta tem que
   // estar pronto pra virar cartão só com o "sim".
-  const data = createQuoteSchema.parse(quoteArgs)
+  const parsed = createQuoteSchema.parse(quoteArgs)
+  // Como na tela: as observações padrão (prazo, NCM, validade…) já vêm no
+  // orçamento e o comentário da pessoa é acrescentado — sem isto, qualquer
+  // comentário pelo NEO apagava o padrão inteiro.
+  const comentario = parsed.notes?.trim()
+  const national = parsed.exportScope === 'NATIONAL'
+  const defaults = defaultQuoteNotes(national ? 'PT' : parsed.language, national ? 'BRL' : (parsed.currency ?? 'USD'), parsed.exportScope)
+  const data = comentario && !comentario.startsWith(defaults.trim()) ? { ...parsed, notes: `${defaults}\n${comentario}` } : parsed
   await missingDescriptionDecisions(data, padraoDescricaoComponentesAutorizado, lastUserText)
-  const summary = await describeQuote(data, userId)
+  const summary = `${await describeQuote(data, userId)}${comentario ? `\nComentários: ${comentario}` : ''}`
   const pendingAction = createPendingAction('orcamento_criar', summary, data, userId)
   return { pendingAction, summaryForModel: summary }
 }
@@ -630,6 +640,8 @@ const FIELD_LABEL: Record<string, string> = {
   nfDate: 'Data da NF',
   paypalFee: 'Taxa do PayPal',
   creditCardPaymentLink: 'Link de pagamento do cartão',
+  shipToNote: 'Observação de entrega',
+  exchangeRate: 'Câmbio',
 }
 
 function describeChanges(fields: Record<string, unknown>) {
@@ -865,6 +877,7 @@ export async function proporPedido(
     `E-mail do pedido: ${data.orderedByEmail}${fromClient('orderedByEmail')}`,
     `Cobrança: ${data.billToText}${fromClient('billToText')}`,
     `Entrega: ${data.shipToText}${fromClient('shipToText')}`,
+    ...(data.shipToNote ? [`Observação de entrega: ${data.shipToNote}`] : []),
     `Caixas: ${data.packageCount ?? '1 (padrão)'}`,
     `Pagamento: ${data.prepaymentBy ? PREPAYMENT_LABEL[data.prepaymentBy] : 'Transferência bancária (padrão)'}`,
     isNational ? `Envio: ${data.shippingMethod ?? '(em branco)'}` : `Incoterms: ${data.incoterms ?? '(em branco)'}`,
@@ -877,6 +890,7 @@ export async function proporPedido(
     `NF: ${data.nfNumber ?? '(em branco)'} — ${formatDate(data.nfDate)}`,
     ...(data.prepaymentBy === 'PAYPAL' ? [`Taxa do PayPal: ${money(quote.currency, data.paypalFee ?? 0)}`] : []),
     ...(data.creditCardPaymentLink ? [`Link de pagamento do cartão: ${data.creditCardPaymentLink}`] : []),
+    ...(!isNational ? [`Câmbio: ${data.exchangeRate ?? 'o do dia (automático)'}`] : []),
     ...describeItemWeights(quoteItems, data.itemWeightsKg),
     ...describeBoxes(data.boxAssignments, avulsos),
   ].join('\n')
