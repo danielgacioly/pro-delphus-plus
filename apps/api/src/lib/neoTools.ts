@@ -436,9 +436,11 @@ export async function buscarPedidos(args: { numero?: number; cliente?: string })
     prepaymentBy: o.prepaymentBy,
     incoterms: o.incoterms,
     shippingMethod: o.shippingMethod,
-    // Só internacional: número da pasta do cliente no arquivo da empresa.
-    clientFolderId: o.clientFolderId,
-    creditCardPaymentLink: o.creditCardPaymentLink,
+    // Só internacional: "ID da pasta do cliente" no arquivo da empresa. Sem
+    // "id" no nome de propósito — o modelo tratava como id interno e se
+    // recusava a dizer o número, que é dado de negócio.
+    numeroPastaCliente: o.clientFolderId,
+    linkPagamentoCartao: o.creditCardPaymentLink,
     netWeightKg: o.netWeightKg?.toString() ?? null,
     grossWeightKg: o.grossWeightKg?.toString() ?? null,
   }))
