@@ -91,31 +91,32 @@ model Sector {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  name         String
-  email        String        @unique
-  passwordHash String
-  role         Role          @default(USER)
-  status       AccountStatus @default(PENDING)
-  active       Boolean       @default(true)
+  id              String        @id @default(uuid())
+  name            String
+  email           String        @unique
+  passwordHash    String
+  role            Role          @default(USER)
+  status          AccountStatus @default(PENDING)
+  active          Boolean       @default(true)
   /// Telefone fixo — ver `whatsapp` para o número de WhatsApp, exibido
   /// separadamente na assinatura automática dos documentos.
-  phone        String?
-  whatsapp     String?
-  jobTitle     String?
-  signatureUrl String?
-  catalogLanguage String     @default("EN")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  phone           String?
+  whatsapp        String?
+  jobTitle        String?
+  signatureUrl    String?
+  catalogLanguage String        @default("EN")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  productUpdates       Product[]             @relation("ProductUpdatedBy")
-  clients              Client[]              @relation("ClientCreatedBy")
-  quotes               Quote[]               @relation("QuoteCreatedBy")
-  orders               Order[]               @relation("OrderCreatedBy")
-  personalTasks        PersonalTask[]        @relation("PersonalTaskOwner")
-  personalBoardColumns PersonalBoardColumn[] @relation("PersonalBoardColumnOwner")
-  libraryEntriesCreated LibraryEntry[]       @relation("LibraryEntryCreatedBy")
-  libraryEntriesUpdated LibraryEntry[]       @relation("LibraryEntryUpdatedBy")
+  productUpdates        Product[]             @relation("ProductUpdatedBy")
+  clients               Client[]              @relation("ClientCreatedBy")
+  quotes                Quote[]               @relation("QuoteCreatedBy")
+  orders                Order[]               @relation("OrderCreatedBy")
+  personalTasks         PersonalTask[]        @relation("PersonalTaskOwner")
+  personalBoardColumns  PersonalBoardColumn[] @relation("PersonalBoardColumnOwner")
+  libraryEntriesCreated LibraryEntry[]        @relation("LibraryEntryCreatedBy")
+  libraryEntriesUpdated LibraryEntry[]        @relation("LibraryEntryUpdatedBy")
+  priceAdjustments      PriceAdjustment[]     @relation("PriceAdjustmentCreatedBy")
 
   @@map("users")
 }
@@ -143,11 +144,11 @@ model Product {
   updatedById String?
   updatedBy   User?   @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
 
-  media           ProductMedia[]
-  brochures       ProductBrochure[]
-  customizations  ProductCustomization[]
-  quoteItems      QuoteItem[]
-  libraryEntries  LibraryEntry[]
+  media          ProductMedia[]
+  brochures      ProductBrochure[]
+  customizations ProductCustomization[]
+  quoteItems     QuoteItem[]
+  libraryEntries LibraryEntry[]
 
   @@map("products")
 }
@@ -178,12 +179,12 @@ model ProductBrochure {
 }
 
 model ProductCustomization {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name        String
-  options     Json
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  options   Json
+  createdAt DateTime @default(now())
 
   @@map("product_customizations")
 }
@@ -193,20 +194,20 @@ model ProductCustomization {
 /// texto livre porque formato postal varia demais entre países; billTo/shipTo
 /// guardam o bloco pronto que o pedido reaproveita.
 model Client {
-  id       String     @id @default(uuid())
-  kind     ClientKind @default(INDIVIDUAL)
-  prefix   ClientPrefix @default(NONE)
-  name     String
+  id          String       @id @default(uuid())
+  kind        ClientKind   @default(INDIVIDUAL)
+  prefix      ClientPrefix @default(NONE)
+  name        String
   /// Instituição/hospital quando o cliente é uma pessoa
   institution String?
-  email    String?
-  phone    String?
-  taxId    String?
-  website  String?
+  email       String?
+  phone       String?
+  taxId       String?
+  website     String?
 
-  country String?
-  state   String?
-  city    String?
+  country    String?
+  state      String?
+  city       String?
   /// Blocos completos reaproveitados no pedido (Invoice / Packing List)
   billToText String?
   shipToText String?
@@ -249,7 +250,7 @@ model Quote {
   client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   notes        String?
   freight      Decimal?      @db.Decimal(12, 2)
-  discount     Decimal       @db.Decimal(12, 2) @default(0)
+  discount     Decimal       @default(0) @db.Decimal(12, 2)
   subtotal     Decimal       @db.Decimal(12, 2)
   total        Decimal       @db.Decimal(12, 2)
   pdfUrl       String?
@@ -268,11 +269,11 @@ model Quote {
 }
 
 model QuoteItem {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   quoteId     String
-  quote       Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   productId   String
-  product     Product @relation(fields: [productId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
   sku         String
   /// Nome impresso no documento. Null = usar o nome do produto no catálogo.
   /// Preenchido quando o vendedor edita o nome dentro do orçamento — aí o
@@ -288,48 +289,48 @@ model QuoteItem {
   /// Quando difere de `unitPrice`, o documento ganha a coluna de preço especial.
   listPrice   Decimal? @db.Decimal(12, 2)
   /// Preço efetivamente cobrado — é ele que vai para o total e para o invoice.
-  unitPrice   Decimal @db.Decimal(12, 2)
-  lineTotal   Decimal @db.Decimal(12, 2)
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  lineTotal   Decimal  @db.Decimal(12, 2)
 
   @@map("quote_items")
 }
 
 model Order {
-  id          String @id @default(uuid())
-  orderNumber Int    @unique
+  id             String @id @default(uuid())
+  orderNumber    Int    @unique
   /// "ID da pasta do cliente" — só pra pedido internacional, contador próprio
   /// (não tem relação com orderNumber). Nulo em pedido nacional; único
   /// quando presente (Postgres não conta NULL como colisão de unique).
-  clientFolderId Int? @unique
+  clientFolderId Int?   @unique
 
   quoteId String
   quote   Quote  @relation(fields: [quoteId], references: [id])
 
-  purchaseOrder String?
+  purchaseOrder  String?
   orderedByEmail String
-  shipDate      DateTime?
-  invoiceDate   DateTime  @default(now())
+  shipDate       DateTime?
+  invoiceDate    DateTime  @default(now())
 
-  billToText  String
-  shipToText  String
-  shipToNote  String?
+  billToText String
+  shipToText String
+  shipToNote String?
 
-  numberOfPackages String?
-  netWeightKg      Decimal? @db.Decimal(10, 3)
-  grossWeightKg    Decimal? @db.Decimal(10, 3)
-  awbNumber        String?
-  incoterms        String?
+  numberOfPackages      String?
+  netWeightKg           Decimal? @db.Decimal(10, 3)
+  grossWeightKg         Decimal? @db.Decimal(10, 3)
+  awbNumber             String?
+  incoterms             String?
   /// Só pra pedido nacional — texto livre tipo "PAC", "SEDEX", "Transportadora
   /// XPTO", impresso na Packing List Box no lugar do Incoterms (que é coisa
   /// de exportação).
-  shippingMethod   String?
+  shippingMethod        String?
   /// Só pra pedido nacional — link opcional de pagamento por cartão de
   /// crédito, pra mandar ao cliente. Em branco quando não usado.
   creditCardPaymentLink String?
 
   // Number of physical boxes/cartons shipped — drives how many pages the
   // Packing List Box document gets (one per box).
-  packageCount Int @default(1)
+  packageCount   Int   @default(1)
   // Which quote items (by index) and quantities go in each box, aligned by
   // array index with packageCount. Null/omitted means "everything in box 1"
   // (the pre-existing single-box behavior).
@@ -340,17 +341,17 @@ model Order {
   prepaymentBy PrepaymentMethod @default(WIRE_TRANSFER)
   paypalFee    Decimal?         @db.Decimal(12, 2)
 
-  nfNumber       String?
-  nfDate         DateTime?
-  nfDocumentUrl  String?
-  awbDocumentUrl String?
+  nfNumber          String?
+  nfDate            DateTime?
+  nfDocumentUrl     String?
+  awbDocumentUrl    String?
   /// Só pra pedido nacional — o upload manual aqui é o boleto de pagamento, no
   /// lugar do AWB (que é coisa de exportação e não existe em venda nacional).
   boletoDocumentUrl String?
   /// Só pra pedido nacional — GNRE anexada manualmente, ao lado do boleto.
-  gnreDocumentUrl String?
+  gnreDocumentUrl   String?
 
-  exchangeRate Decimal? @db.Decimal(10, 4)
+  exchangeRate  Decimal? @db.Decimal(10, 4)
   // Per unit weight (kg) for each quote item, aligned by array index — used to
   // fill in the export document's "KG Unit." column when the product itself
   // has no catalog weight. Kept on the order (not the product) since it's
@@ -385,7 +386,9 @@ model PersonalBoardColumn {
   user      User     @relation("PersonalBoardColumnOwner", fields: [userId], references: [id], onDelete: Cascade)
   name      String
   position  Int      @default(0)
-  /** Tarefas neste quadro contam como concluídas — suprime o aviso de atraso. */
+  /**
+   * Tarefas neste quadro contam como concluídas — suprime o aviso de atraso.
+   */
   isDone    Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -445,4 +448,21 @@ model LibraryEntry {
   updatedBy   User?    @relation("LibraryEntryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("library_entries")
+}
+
+/// Reajuste aplicado a uma tabela de preço do catálogo, pelo Painel do ADM.
+/// O reajuste em si já mudou os preços dos produtos (é permanente); isto é só
+/// o registro de quem aplicou, quanto e quando.
+model PriceAdjustment {
+  id           String   @id @default(uuid())
+  /// Chave de PRICE_TABLES (@prodelphusplus/shared), ex.: USD_FINAL.
+  priceTable   String
+  percent      Decimal  @db.Decimal(7, 2)
+  /// Quantos produtos tinham preço nessa tabela e foram reajustados.
+  productCount Int
+  createdAt    DateTime @default(now())
+  createdById  String?
+  createdBy    User?    @relation("PriceAdjustmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("price_adjustments")
 }

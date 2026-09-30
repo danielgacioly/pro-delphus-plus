@@ -12,7 +12,6 @@ import {
   Card,
   Field,
   Input,
-  Page,
   Section,
   Select,
   SkeletonRows,
@@ -36,7 +35,8 @@ const statusLabel: Record<UserDTO['status'], { label: string; tone: 'warning' | 
   REJECTED: { label: 'Rejeitado', tone: 'neutral' },
 }
 
-export function AdminUsers() {
+/** A seção de contas do Painel do ADM — a antiga página "Contas", igual. */
+export function AccountsSection() {
   const queryClient = useQueryClient()
   const { data: users, isLoading } = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
 
@@ -130,10 +130,7 @@ export function AdminUsers() {
   const others = users?.filter((u) => u.status !== 'PENDING') ?? []
 
   return (
-    <Page
-      title="Contas"
-      description="Gerencie o acesso dos usuários ao Pro Delphus+."
-    >
+    <>
       <div className="mb-6 flex items-center justify-between gap-4 border-b border-black/[0.07] pb-3">
         <div>
           <p className="text-[13px] font-medium text-ink-900">Acesso da equipe</p>
@@ -359,6 +356,6 @@ export function AdminUsers() {
           onCancel={() => setDeletingUser(null)}
         />
       )}
-    </Page>
+    </>
   )
 }

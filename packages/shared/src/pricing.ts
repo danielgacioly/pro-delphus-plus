@@ -17,6 +17,35 @@ export interface CatalogPrices {
 }
 
 /**
+ * Todas as tabelas de preço do catálogo — fonte única pro reajuste de preços
+ * (Painel do ADM): a tela lista daqui, o servidor valida e acha a coluna
+ * daqui. Tabela nova (distribuidor em euro, tabela de um cliente) entra
+ * adicionando uma linha — com a coluna no banco — e já nasce reajustável.
+ */
+export const PRICE_TABLES = [
+  { key: 'USD_FINAL', column: 'priceUSD', currency: 'USD', label: 'Final USD' },
+  { key: 'BRL_FINAL', column: 'priceBRL', currency: 'BRL', label: 'Final BRL' },
+  { key: 'USD_DISTRIBUTOR', column: 'priceUSDDistributor', currency: 'USD', label: 'Distribuidor USD' },
+  { key: 'EUR_FINAL', column: 'priceEUR', currency: 'EUR', label: 'Final EUR' },
+] as const satisfies readonly { key: string; column: keyof CatalogPrices; currency: Currency; label: string }[]
+
+export type PriceTable = (typeof PRICE_TABLES)[number]
+export type PriceTableKey = PriceTable['key']
+
+export function findPriceTable(key: string): PriceTable | undefined {
+  return PRICE_TABLES.find((t) => t.key === key)
+}
+
+/** Limites do reajuste, em %: nunca zera nem inverte preço, e trava erro de digitação (1000 em vez de 10). */
+export const PRICE_ADJUSTMENT_MIN_PERCENT = -90
+export const PRICE_ADJUSTMENT_MAX_PERCENT = 200
+
+/** Preço depois do reajuste, arredondado em centavos como o banco guarda. */
+export function adjustedPrice(price: number, percent: number): number {
+  return Math.round(price * (1 + percent / 100) * 100) / 100
+}
+
+/**
  * Venda nacional é sempre em português e em real — quem decide não é o idioma
  * escolhido, é o tipo de venda. Na exportação, dólar é o padrão histórico de
  * quem não manda moeda.

@@ -18,7 +18,7 @@ import {
   IconSidebar,
   IconTag,
   IconTruck,
-  IconUsers,
+  IconSliders,
 } from './icons'
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
@@ -53,7 +53,7 @@ const navItems: NavItem[] = [
 ]
 
 const adminNavItems: NavItem[] = [
-  { to: '/admin/contas', label: 'Contas', icon: IconUsers },
+  { to: '/admin/painel', label: 'Painel', icon: IconSliders },
   { to: '/admin/setores', label: 'Setores', icon: IconLayers },
   { to: '/admin/metricas', label: 'Métricas', icon: IconChart },
 ]

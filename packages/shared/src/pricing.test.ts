@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  adjustedPrice,
   catalogPriceFor,
+  findPriceTable,
+  PRICE_TABLES,
   hasSpecialPrice,
   priceTierLabel,
   resolvePriceTier,
@@ -80,5 +83,20 @@ describe('hasSpecialPrice', () => {
 
   it('item sem preço de tabela não tem com o que comparar', () => {
     assert.equal(hasSpecialPrice({ listPrice: null, unitPrice: 800 }), false)
+  })
+})
+
+describe('reajuste de preço', () => {
+  it('aplica a porcentagem e arredonda em centavos', () => {
+    assert.equal(adjustedPrice(2874.63, 10), 3162.09)
+    assert.equal(adjustedPrice(1000, -10), 900)
+    assert.equal(adjustedPrice(999.99, 3.5), 1034.99)
+  })
+
+  it('cada tabela aponta pra uma coluna diferente do catálogo', () => {
+    const columns = PRICE_TABLES.map((t) => t.column)
+    assert.equal(new Set(columns).size, columns.length)
+    assert.equal(findPriceTable('USD_DISTRIBUTOR')?.column, 'priceUSDDistributor')
+    assert.equal(findPriceTable('NAO_EXISTE'), undefined)
   })
 })

@@ -6,6 +6,7 @@ import { env } from './lib/env.js'
 import { verifyRefreshToken } from './lib/jwt.js'
 import { authRouter } from './routes/auth.routes.js'
 import { usersRouter } from './routes/users.routes.js'
+import { adminRouter } from './routes/admin.routes.js'
 import { productsRouter } from './routes/products.routes.js'
 import { quotesRouter } from './routes/quotes.routes.js'
 import { clientsRouter } from './routes/clients.routes.js'
@@ -88,6 +89,7 @@ app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/register', authLimiter)
 app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/admin', adminRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/quotes', quotesRouter)
 app.use('/api/clients', clientsRouter)

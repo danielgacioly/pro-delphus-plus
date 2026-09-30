@@ -311,3 +311,14 @@ export interface LibraryEntryInput {
   productIds: string[]
   clientIds: string[]
 }
+
+/** Um reajuste já aplicado a uma tabela de preço (histórico do Painel do ADM). */
+export interface PriceAdjustmentDTO {
+  id: string
+  /** Chave de PRICE_TABLES. */
+  priceTable: string
+  percent: number
+  productCount: number
+  createdAt: string
+  createdByName: string | null
+}

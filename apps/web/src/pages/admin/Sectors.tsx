@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SectorDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage as extractError } from '../../lib/api'
-import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal'
 import {
   Alert,
   Button,
@@ -22,7 +21,7 @@ import {
   Toolbar,
   Tr,
 } from '../../components/ui'
-import { IconLayers, IconPencil, IconPlus, IconTrash } from '../../components/icons'
+import { IconLayers, IconPencil, IconPlus } from '../../components/icons'
 
 async function fetchSectors() {
   const { data } = await api.get<{ sectors: SectorDTO[] }>('/sectors')
@@ -38,7 +37,6 @@ export function AdminSectors() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editNamePt, setEditNamePt] = useState('')
-  const [deletingSector, setDeletingSector] = useState<SectorDTO | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const filteredSectors = useMemo(() => {
@@ -71,19 +69,6 @@ export function AdminSectors() {
       setError(null)
     },
     onError: (err: unknown) => setError(extractError(err, 'Não foi possível renomear o setor.')),
-  })
-
-  const deleteSector = useMutation({
-    mutationFn: async (id: string) => api.delete(`/sectors/${id}`),
-    onSuccess: () => {
-      invalidate()
-      setDeletingSector(null)
-      setError(null)
-    },
-    onError: (err: unknown) => {
-      setError(extractError(err, 'Não foi possível excluir o setor.'))
-      setDeletingSector(null)
-    },
   })
 
   function startEdit(sector: SectorDTO) {
@@ -197,16 +182,6 @@ export function AdminSectors() {
                         >
                           <IconPencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          title="Excluir setor"
-                          aria-label={`Excluir ${sector.name}`}
-                          onClick={() => setDeletingSector(sector)}
-                          className="px-2 text-neutral-600 hover:bg-brand-50 hover:text-brand-600"
-                        >
-                          <IconTrash className="h-3.5 w-3.5" />
-                        </Button>
                       </div>
                     )}
                   </Td>
@@ -224,19 +199,6 @@ export function AdminSectors() {
         )}
       </TableShell>
 
-      {deletingSector && (
-        <ConfirmDeleteModal
-          title={`Excluir "${deletingSector.name}"?`}
-          description={
-            deletingSector.productCount > 0
-              ? `Este setor tem ${deletingSector.productCount} produto(s) vinculado(s). Mova ou exclua esses produtos antes de remover o setor.`
-              : 'Esta ação não pode ser desfeita.'
-          }
-          isPending={deleteSector.isPending}
-          onCancel={() => setDeletingSector(null)}
-          onConfirm={() => deleteSector.mutate(deletingSector.id)}
-        />
-      )}
     </Page>
   )
 }

@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
@@ -18,7 +18,7 @@ import { NewOrder } from './pages/NewOrder'
 import { OrderDetail } from './pages/OrderDetail'
 import { Stats } from './pages/Stats'
 import { Library } from './pages/Library'
-import { AdminUsers } from './pages/admin/Users'
+import { AdminPanel } from './pages/admin/AdminPanel'
 import { AdminSectors } from './pages/admin/Sectors'
 import { NewSector } from './pages/admin/NewSector'
 
@@ -48,7 +48,9 @@ function App() {
           <Route path="/neo" element={<Neo />} />
 
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/admin/contas" element={<AdminUsers />} />
+            <Route path="/admin/painel" element={<AdminPanel />} />
+            {/* Endereço antigo (a página se chamava Contas): favoritos continuam funcionando. */}
+            <Route path="/admin/contas" element={<Navigate to="/admin/painel" replace />} />
             <Route path="/admin/setores" element={<AdminSectors />} />
             <Route path="/admin/setores/novo" element={<NewSector />} />
             <Route path="/admin/metricas" element={<Stats />} />

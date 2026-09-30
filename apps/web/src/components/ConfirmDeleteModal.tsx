@@ -9,13 +9,24 @@ interface ConfirmDeleteModalProps {
   onCancel: () => void
   isPending?: boolean
   error?: string | null
+  /** Palavra que a pessoa digita pra liberar o botão (padrão: "excluir"). */
+  confirmWord?: string
+  /** Texto do botão de confirmar (padrão: "Excluir"). */
+  confirmLabel?: string
 }
 
-const CONFIRM_WORD = 'excluir'
-
-export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, isPending, error }: ConfirmDeleteModalProps) {
+export function ConfirmDeleteModal({
+  title,
+  description,
+  onConfirm,
+  onCancel,
+  isPending,
+  error,
+  confirmWord = 'excluir',
+  confirmLabel = 'Excluir',
+}: ConfirmDeleteModalProps) {
   const [value, setValue] = useState('')
-  const canConfirm = value.trim().toLowerCase() === CONFIRM_WORD
+  const canConfirm = value.trim().toLowerCase() === confirmWord
 
   return (
     <Modal onClose={onCancel}>
@@ -24,7 +35,7 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
         <p className="mt-1 text-sm text-neutral-600">{description}</p>
         {error && <p className="mt-3 text-sm text-danger-600">{error}</p>}
         <p className="mt-3 text-sm text-neutral-600">
-          Para confirmar, digite <strong className="text-danger-600">excluir</strong> abaixo:
+          Para confirmar, digite <strong className="text-danger-600">{confirmWord}</strong> abaixo:
         </p>
         <Input
           autoFocus
@@ -40,7 +51,7 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onCancel, is
             Cancelar
           </Button>
           <Button variant="danger" size="md" onClick={onConfirm} disabled={!canConfirm} isLoading={isPending}>
-            Excluir
+            {confirmLabel}
           </Button>
         </div>
       </div>
