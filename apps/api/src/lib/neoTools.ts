@@ -489,7 +489,8 @@ async function describeQuote(data: CreateQuoteInput, userId: string) {
         // O que vai impresso junto do item — aparece no cartão pra pessoa
         // conferir a descrição e os componentes antes de confirmar.
         i.description ? `   Descrição: ${i.description}` : null,
-        i.components ? `   Componentes: ${i.components}` : null,
+        // O cadastro às vezes já traz o rótulo ("Components: 1 THOR-0…").
+        i.components ? `   Componentes: ${i.components.replace(/^\s*(componentes|components)\s*:\s*/i, '')}` : null,
       ]
         .filter(Boolean)
         .join('\n'),

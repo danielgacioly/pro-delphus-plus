@@ -3,12 +3,15 @@ const plain = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').to
 // O flag vem do próprio modelo, que já marcou `true` sem perguntar (visto ao
 // vivo) — então só vale se a última mensagem REAL da pessoa também diz "sim,
 // o padrão". Texto que ela digitou o modelo não consegue forjar.
+const AFFIRMATIVE =
+  /\b(sim|s|ss|pode|podes|padrao|padroes|default|usa|usar|use|ok|okay|claro|isso|quero|blz|beleza|perfeito|certo|correto|exato|exatamente|fechado|fechou|bora|siga|show|top|otimo|positivo|afirmativo|yes|yep|uhum|aham|tranquilo|joia|combinado|mantem|mantenha|manter|valeu)\b|\b(manda ver|manda bala|pode seguir|segue assim|ta bom|pode ser)\b/
+
 export function saidYesToDefault(userText: string) {
   const t = plain(userText)
   if (/\b(nao|nunca|custom\w*|minha|meu|outra|outro|diferente|mudar|alterar)\b/.test(t)) return false
   // "padroes" (plural, sem acento) era recusado: a pessoa escrevia "descrição
   // e componentes padrões" já no pedido e o NEO perguntava de novo.
-  return /\b(sim|pode|padrao|padroes|default|usa|usar|use|ok|claro|isso|quero|blz|beleza|s)\b/.test(t)
+  return AFFIRMATIVE.test(t) || /👍|✅|👌/.test(userText)
 }
 
 /**
@@ -29,26 +32,24 @@ export function confirmedUpFront(userText: string) {
   )
 }
 
-// Só palavras de "sim" — qualquer outra (nome de cliente, produto, "orçamento")
-// indica mensagem nova, não resposta à pergunta.
-const PLAIN_YES_WORDS = new Set(
-  (
-    'sim s ss pode podes ok okay blz beleza claro isso exato certo perfeito fechado bora quero ' +
-    'usa use usar usando manter mantem mantenha mesmo o os a as e de do da dos das deste desse destes desses esse esses este estes ' +
-    'padrao padroes default descricao descricoes componente componentes com tudo por favor pfv pf ' +
-    'gera gerar gere cria criar crie grava gravar grave salva salvar salve direto confirmo confirma confirmar pode sem perguntar ja'
-  ).split(' '),
-)
+// Mensagem com cara de pedido novo ou de resposta com condição — não é um
+// "sim" puro, mesmo tendo "padrão" ou "pode" no meio.
+const NOT_A_PLAIN_ANSWER =
+  /\b(orcamento|orcamentos|cotacao|pedido|pedidos|cliente|faz|faca|monta|monte|novo|nova|unidade|unidades|mas|porem|exceto|menos|troca|troque|muda|mude|so que)\b/
 
 /**
- * A mensagem é SÓ a resposta "sim" à pergunta do padrão ("sim", "pode usar o
- * padrão", "sim, pode gravar direto")? É o que libera montar o cartão sem o
- * modelo, a partir do rascunho guardado — e por isso é bem mais estrito que
- * `saidYesToDefault`: visto ao vivo, "Faz um orçamento nacional pro Dr. X com
- * 1 HOP, descrição e componentes padrão" tem "padrão" e "pode", e gravava o
- * rascunho da conversa ANTERIOR no lugar do orçamento novo.
+ * A mensagem é só a resposta "sim" à pergunta do padrão — de qualquer jeito
+ * que a pessoa fale ("manda ver", "pode seguir", "beleza, pode ser", "👍")?
+ * É o que libera montar o cartão sem o modelo, a partir do rascunho guardado.
+ * Por isso recusa o que tem cara de pedido novo ou de condição: visto ao
+ * vivo, "Faz um orçamento nacional pro Dr. X com 1 HOP, descrição e
+ * componentes padrão" tem "padrão" e "pode", e gravava o rascunho da
+ * conversa ANTERIOR no lugar do orçamento novo. Número, pergunta e "mas…"
+ * também ficam de fora — aí o modelo interpreta.
  */
 export function isPlainYesToDefault(userText: string) {
-  const words = plain(userText).split(/[^a-z0-9]+/).filter(Boolean)
-  return words.length > 0 && words.length <= 12 && words.every((w) => PLAIN_YES_WORDS.has(w)) && saidYesToDefault(userText)
+  const t = plain(userText)
+  if (/\d|\?/.test(t) || NOT_A_PLAIN_ANSWER.test(t)) return false
+  if (t.split(/\s+/).filter(Boolean).length > 20) return false
+  return saidYesToDefault(userText)
 }

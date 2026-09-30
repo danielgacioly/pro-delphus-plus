@@ -9,18 +9,27 @@ describe('quanto o NEO raciocina', () => {
     assert.equal(neoThinkingFor('o Mastotrainer simula sangramento?'), 'low')
   })
 
-  it('raciocina mais com desconto, que exige escolher o campo e fazer conta', () => {
+  it('fica no mínimo ao montar orçamento, pedido ou cliente simples', () => {
+    assert.equal(neoThinkingFor('monta um orçamento pro cliente da Malásia com 2 LAB-COR'), 'low')
+    assert.equal(neoThinkingFor('orçamento nacional pro Carlos com 1 Thor, descrição e componentes padrão'), 'low')
+    assert.equal(neoThinkingFor('3 caixas, PayPal, DAP'), 'low')
+    assert.equal(neoThinkingFor('cadastra o Dr. Rafael, do Hospital X'), 'low')
+  })
+
+  it('raciocina mais com desconto e preço especial, que exigem escolher o campo e fazer conta', () => {
     assert.equal(neoThinkingFor('dá 10% no total'), 'medium')
     assert.equal(neoThinkingFor('coloca um desconto no LAB-COR'), 'medium')
+    assert.equal(neoThinkingFor('o Thor por R$ 12.000'), 'medium')
   })
 
-  it('raciocina mais ao montar ou editar orçamento e pedido', () => {
-    assert.equal(neoThinkingFor('monta um orçamento pro cliente da Malásia'), 'medium')
+  it('raciocina mais ao editar algo que já existe', () => {
     assert.equal(neoThinkingFor('troca a quantidade para 3'), 'medium')
+    assert.equal(neoThinkingFor('muda o orçamento 260930-06 pra 2 unidades'), 'medium')
   })
 
-  it('raciocina mais quando a pessoa responde uma pergunta de pedido, mesmo sem palavra-chave na resposta', () => {
-    assert.equal(neoThinkingFor('3, PayPal', 'Quantas caixas e qual a forma de pagamento?'), 'medium')
+  it('raciocina mais com descrição ditada e com várias caixas', () => {
+    assert.equal(neoThinkingFor('não, a descrição é "Venipuncture hand trainer"'), 'medium')
+    assert.equal(neoThinkingFor('caixa 1 com 2 Thor e caixa 2 com o LAB-COR'), 'medium')
   })
 
   it('não confunde palavra parecida com campo do pedido', () => {

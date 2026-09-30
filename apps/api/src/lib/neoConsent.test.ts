@@ -17,6 +17,7 @@ describe('saidYesToDefault', () => {
 
   it('não conta o pedido original de orçamento como autorização', () => {
     assert.equal(saidYesToDefault('Monta um orçamento pro cliente Carlos Andrade com 1 Thor. Internacional, USD, inglês, preço final.'), false)
+    assert.equal(saidYesToDefault('Bom dia! Manda um orçamento pro Carlos Andrade, vamos fechar com 1 Thor'), false)
   })
 
   // Visto ao vivo: o padrão estava pedido no próprio pedido, no plural e sem
@@ -50,19 +51,36 @@ describe('confirmedUpFront', () => {
 })
 
 describe('isPlainYesToDefault', () => {
-  it('aceita só a resposta "sim" à pergunta do padrão', () => {
-    for (const t of ['sim', 'Sim!', 'sim, padrão', 'pode usar o padrão', 'ok', 'sim, pode gravar direto', 'usa o padrão nos dois']) {
-      assert.equal(isPlainYesToDefault(t), t !== 'usa o padrão nos dois', t)
+  it('aceita qualquer afirmativa como resposta à pergunta do padrão', () => {
+    for (const t of [
+      'sim',
+      'Sim!',
+      'pode usar o padrão',
+      'ok',
+      'sim, pode gravar direto',
+      'usa o padrão nos dois',
+      'manda ver',
+      'pode seguir',
+      'beleza, pode ser',
+      'tá ótimo',
+      'perfeito',
+      'fechado, grava direto',
+      '👍',
+    ]) {
+      assert.equal(isPlainYesToDefault(t), true, t)
     }
   })
 
-  // Visto ao vivo: gravava o rascunho da conversa anterior.
-  it('recusa um pedido novo que só menciona o padrão', () => {
+  // Visto ao vivo: um pedido novo gravava o rascunho da conversa anterior.
+  it('recusa pedido novo, condição, pergunta e negativa', () => {
     for (const t of [
       'Faz um orçamento nacional pro Dr. Rafael Teste com 1 HOP difficult access, descrição e componentes padrão, pode gravar direto',
       'sim, mas com 3 unidades',
+      'pode, só que troca o cliente',
       'não',
+      'não precisa, eu digo a descrição',
       'qual é a descrição?',
+      'sim, 2 unidades',
     ]) {
       assert.equal(isPlainYesToDefault(t), false, t)
     }

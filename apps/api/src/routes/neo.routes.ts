@@ -724,7 +724,7 @@ neoRouter.post(
     if (!message) throw new HttpError(400, 'Mensagem vazia')
     const historyIn = recentHistory(Array.isArray(req.body?.history) ? req.body.history : [])
     const lastModelText = historyIn.findLast((h: { role: string }) => h.role === 'model')?.text ?? ''
-    let thinking: NeoThinking = neoThinkingFor(message, lastModelText)
+    let thinking: NeoThinking = neoThinkingFor(message)
 
     res.status(200)
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
@@ -776,7 +776,7 @@ neoRouter.post(
       redactor.reset()
       emit({ type: 'reset' })
       emit({ type: 'delta', text })
-      console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${detail})`)
+      console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${detail}, raciocínio ${thinkingLabel()})`)
       emit({ type: 'done', reply: text, pendingAction, executed })
       res.end()
     }
