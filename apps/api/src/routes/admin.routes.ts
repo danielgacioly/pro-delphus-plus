@@ -44,6 +44,9 @@ adminRouter.get(
   }),
 )
 
+/** Linhas usadas como exemplo na prévia do reajuste — as que a equipe conhece de cor. */
+const SAMPLE_PRODUCTS = ['THOR', 'LARS', 'MMT']
+
 /**
  * Prévia do reajuste: quantos produtos têm preço na tabela (a mesma contagem
  * que o reajuste vai usar, inativos inclusive) e alguns exemplos, pra quem
@@ -55,18 +58,33 @@ adminRouter.get(
     const table = findPriceTable(z.string().parse(req.query.priceTable))
     if (!table) throw new HttpError(400, 'Tabela de preço desconhecida')
     const where = { [table.column]: { not: null } }
-    const [productCount, samples] = await Promise.all([
+    const [productCount, candidates, fallback] = await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
-        where: { ...where, active: true },
-        orderBy: { name: 'asc' },
-        take: 3,
-        select: { name: true, sku: true, [table.column]: true },
+        where: { ...where, active: true, OR: SAMPLE_PRODUCTS.map((name) => ({ name: { startsWith: name, mode: 'insensitive' as const } })) },
       }),
+      prisma.product.findMany({ where: { ...where, active: true }, orderBy: { name: 'asc' }, take: SAMPLE_PRODUCTS.length }),
     ])
+    // Um de cada linha conhecida — o modelo completo, de preferência o de
+    // nome exato ("THOR", não "THOR-P" nem a peça "THOR-0"). Linha sem preço
+    // nesta tabela cede o lugar ao primeiro do catálogo em ordem alfabética.
+    const samples = SAMPLE_PRODUCTS.map((line) =>
+      candidates
+        .filter((p) => p.name.toUpperCase().startsWith(line))
+        .toSorted(
+          (a, b) =>
+            Number(b.kind === 'COMPLETE_MODEL') - Number(a.kind === 'COMPLETE_MODEL') ||
+            Number(b.name.toUpperCase() === line) - Number(a.name.toUpperCase() === line) ||
+            a.name.length - b.name.length,
+        )[0],
+    ).filter((p) => p !== undefined)
+    for (const p of fallback) {
+      if (samples.length >= SAMPLE_PRODUCTS.length) break
+      if (!samples.some((s) => s.name === p.name)) samples.push(p)
+    }
     res.json({
       productCount,
-      samples: samples.map((p) => ({ name: p.name, sku: p.sku, price: Number(p[table.column as keyof typeof p]) })),
+      samples: samples.map((p) => ({ name: p.name, sku: p.sku, price: Number(p[table.column]) })),
     })
   }),
 )

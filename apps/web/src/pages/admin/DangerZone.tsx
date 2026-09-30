@@ -174,7 +174,7 @@ function PriceAdjustment() {
           </p>
           {percentValid && preview.data.samples.length > 0 && (
             <p className="mt-1.5 text-neutral-500">
-              Exemplos ({preview.data.samples.length} de {preview.data.productCount}, em ordem alfabética):
+              Exemplos ({preview.data.samples.length} de {preview.data.productCount}):
             </p>
           )}
           {percentValid && preview.data.samples.length > 0 && (
