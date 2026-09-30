@@ -9,7 +9,7 @@ import { libraryEntrySchema, searchLibraryEntries } from '../routes/library.rout
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { normalize, bestMatches } from './fuzzyMatch.js'
-import { declaredExportScope, saidYesToDefault } from './neoConsent.js'
+import { declaredExportScope, declaredPrepayment, saidYesToDefault } from './neoConsent.js'
 
 /**
  * O catálogo separa o que é um simulador inteiro do que é peça de reposição.
@@ -745,6 +745,22 @@ function buildBoxAssignments(
 
 const SCOPE_LABEL = { NATIONAL: 'nacional', INTERNATIONAL: 'internacional' } as const
 
+// Mesma regra da tela de Novo pedido: Pix só existe no nacional e PayPal só
+// no internacional. Sem isto, bastava a pessoa dizer "PayPal" num pedido
+// nacional pro NEO aceitar (e ainda perguntar a taxa).
+function checkPrepaymentForScope(modelPrepayment: string | undefined, exportScope: 'NATIONAL' | 'INTERNATIONAL', lastUserText: string) {
+  // O que a pessoa escreveu vale mais que o que o modelo mandou: ele "corrige"
+  // sozinho uma forma inválida em vez de avisar.
+  const prepaymentBy = declaredPrepayment(lastUserText) ?? modelPrepayment
+  const invalid = (exportScope === 'NATIONAL' && prepaymentBy === 'PAYPAL') || (exportScope === 'INTERNATIONAL' && prepaymentBy === 'PIX')
+  if (!invalid) return
+  const options = exportScope === 'NATIONAL' ? 'Pix ou transferência' : 'PayPal ou transferência'
+  throw new HttpError(
+    400,
+    `Pedido ${SCOPE_LABEL[exportScope]} não aceita ${prepaymentBy === 'PAYPAL' ? 'PayPal' : 'Pix'} — só ${options}. Avise a pessoa e pergunte qual das duas.`,
+  )
+}
+
 export async function proporPedido(
   args: Partial<OrderFieldsInput> & { quoteId: string; tipoPedido?: 'NATIONAL' | 'INTERNATIONAL' } & NeoOrderExtras,
   userId: string,
@@ -831,6 +847,7 @@ export async function proporPedido(
   // A taxa do PayPal entra no total do invoice, então é perguntada sozinha,
   // depois de a pessoa dizer que o pagamento é PayPal — e nenhuma autorização
   // genérica de "usa o padrão" pula esta.
+  checkPrepaymentForScope(orderArgs.prepaymentBy, quote.exportScope, lastUserText)
   if (orderArgs.prepaymentBy === 'PAYPAL' && orderArgs.paypalFee === undefined) {
     throw new HttpError(
       400,
@@ -870,6 +887,7 @@ export async function proporPedido(
 export async function proporEdicaoPedido(
   args: { pedidoId: string } & Omit<OrderFieldsInput, 'quoteId'> & NeoOrderExtras,
   userId: string,
+  lastUserText = '',
 ) {
   const { pedidoId, pesosPorItem, caixas, pessoaAutorizouPadrao: _ignorado, ...rest } = args
   const order = await prisma.order.findUnique({
@@ -878,10 +896,11 @@ export async function proporEdicaoPedido(
       orderNumber: true,
       packageCount: true,
       boxAssignments: true,
-      quote: { select: { items: { include: { product: { select: { name: true } } } } } },
+      quote: { select: { exportScope: true, items: { include: { product: { select: { name: true } } } } } },
     },
   })
   if (!order) throw new HttpError(404, 'Pedido não encontrado — use buscar_pedidos pra achar o id certo.')
+  checkPrepaymentForScope(rest.prepaymentBy, order.quote.exportScope, lastUserText)
 
   const quoteItems: QuoteItemRef[] = order.quote.items.map((i) => ({
     sku: i.sku,

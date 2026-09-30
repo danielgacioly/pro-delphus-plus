@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { confirmedUpFront, declaredExportScope, isPlainYesToDefault, saidYesToDefault } from './neoConsent.js'
+import { confirmedUpFront, declaredExportScope, declaredPrepayment, isPlainYesToDefault, saidYesToDefault } from './neoConsent.js'
 
 describe('saidYesToDefault', () => {
   it('aceita um "sim" ao padrão', () => {
@@ -97,5 +97,19 @@ describe('declaredExportScope', () => {
   it('não decide sem tipo, ou com os dois', () => {
     assert.equal(declaredExportScope('gera o pedido do orçamento 260930-09'), undefined)
     assert.equal(declaredExportScope('é nacional ou internacional?'), undefined)
+  })
+})
+
+describe('declaredPrepayment', () => {
+  it('lê Pix ou PayPal no que a pessoa escreveu', () => {
+    assert.equal(declaredPrepayment('pedido internacional, Pix, DAP'), 'PIX')
+    assert.equal(declaredPrepayment('pagamento: PayPal com taxa 30'), 'PAYPAL')
+    assert.equal(declaredPrepayment('Pagamento (PayPal ou transferência): Pix\nTaxa do PayPal (só PayPal): '), 'PIX')
+  })
+
+  it('não decide com transferência junto, com os dois ou sem nenhum', () => {
+    assert.equal(declaredPrepayment('não é PayPal, é transferência'), undefined)
+    assert.equal(declaredPrepayment('Pix ou PayPal?'), undefined)
+    assert.equal(declaredPrepayment('transferência então'), undefined)
   })
 })

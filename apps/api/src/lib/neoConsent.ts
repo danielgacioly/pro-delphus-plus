@@ -66,3 +66,23 @@ export function declaredExportScope(userText: string): 'NATIONAL' | 'INTERNATION
   if (international === national) return undefined
   return international ? 'INTERNATIONAL' : 'NATIONAL'
 }
+
+/**
+ * A forma de pagamento que a pessoa escreveu (Pix ou PayPal). Visto ao vivo:
+ * ela pediu Pix num pedido internacional e o modelo, sabendo que não pode,
+ * trocou sozinho pra transferência sem avisar. Citar transferência junto
+ * ("não é PayPal, é transferência") não decide nada.
+ */
+export function declaredPrepayment(userText: string): 'PIX' | 'PAYPAL' | undefined {
+  // Nos formulários de atalho só conta o valor de cada linha, não o rótulo
+  // ("Pagamento (PayPal ou transferência): Pix", "Taxa do PayPal: ").
+  const values = userText
+    .split('\n')
+    .map((line) => line.match(/^[^:\n]{1,120}:(.*)$/)?.[1] ?? line)
+    .join('\n')
+  const t = plain(values.replace(/\([^)]*\)/g, ''))
+  const pix = /\bpix\b/.test(t)
+  const paypal = /\bpaypal\b/.test(t)
+  if (pix === paypal || /\btransferencia|\bwire\b/.test(t)) return undefined
+  return pix ? 'PIX' : 'PAYPAL'
+}

@@ -496,7 +496,7 @@ const writeTools: FunctionDeclaration[] = [
         billToText: { type: Type.STRING, description: 'Endereço de cobrança completo' },
         shipToText: { type: Type.STRING, description: 'Endereço de entrega completo' },
         packageCount: { type: Type.NUMBER, description: 'Número de caixas' },
-        prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'] },
+        prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'], description: 'PIX só em pedido nacional; PAYPAL só em internacional' },
         paypalFee: { type: Type.NUMBER, description: 'Taxa do PayPal. Só quando o pagamento é PayPal, e perguntada numa mensagem separada' },
         creditCardPaymentLink: {
           type: Type.STRING,
@@ -525,7 +525,7 @@ const writeTools: FunctionDeclaration[] = [
       properties: {
         pedidoId: { type: Type.STRING },
         packageCount: { type: Type.NUMBER },
-        prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'] },
+        prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'], description: 'PIX só em pedido nacional; PAYPAL só em internacional' },
         paypalFee: { type: Type.NUMBER },
         creditCardPaymentLink: { type: Type.STRING, description: 'Só nacional: link de pagamento do cartão. String vazia apaga.' },
         incoterms: { type: Type.STRING },
@@ -657,7 +657,7 @@ async function dispatchTool(
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_pedido': {
-      const { pendingAction, summaryForModel } = await proporEdicaoPedido(toolArgs<Parameters<typeof proporEdicaoPedido>[0]>(args), userId)
+      const { pendingAction, summaryForModel } = await proporEdicaoPedido(toolArgs<Parameters<typeof proporEdicaoPedido>[0]>(args), userId, lastUserText)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_cliente': {
