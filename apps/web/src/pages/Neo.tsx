@@ -29,6 +29,18 @@ function renderInlineFormatting(text: string) {
   })
 }
 
+// Final comum aos dois formulários de pedido.
+const ORDER_TAIL = [
+  'Peso líquido (kg): ',
+  'Peso bruto (kg): ',
+  'Peso por unidade de cada item (kg): ',
+  'AWB: ',
+  'Pedido de compra: ',
+  'Data de expedição: ',
+  'Número e data da NF: ',
+  'O que eu deixei em branco pode ficar em branco.',
+]
+
 /**
  * Atalhos da tela inicial. Cada um já traz, em forma de formulário, tudo o que
  * o NEO perguntaria (os mesmos campos que o servidor exige) — preenchido de
@@ -38,21 +50,31 @@ function renderInlineFormatting(text: string) {
 const SUGGESTIONS = [
   {
     label: 'Consultar um produto',
-    prompt: ['Quero consultar um produto:', 'Produto: ', 'Preço em (BRL, USD, EUR ou USD distribuidor): '].join('\n'),
+    prompt: ['Quero ver os detalhes e os preços de um produto:', 'Produto: '].join('\n'),
   },
   {
     label: 'Buscar um cliente',
     prompt: ['Quero ver o cadastro de um cliente:', 'Nome ou instituição: '].join('\n'),
   },
   {
-    label: 'Montar um orçamento',
+    label: 'Orçamento nacional',
     prompt: [
-      'Monta um orçamento:',
+      'Monta um orçamento nacional:',
       'Cliente: ',
       'Itens (quantidade × produto): ',
-      'Nacional ou internacional: ',
-      'Moeda (só internacional: USD ou EUR): ',
-      'Idioma (só internacional: EN, ES ou PT): ',
+      'Descrição e componentes: padrão',
+      'Frete: ',
+      'Desconto: ',
+    ].join('\n'),
+  },
+  {
+    label: 'Orçamento internacional',
+    prompt: [
+      'Monta um orçamento internacional:',
+      'Cliente: ',
+      'Itens (quantidade × produto): ',
+      'Moeda (USD ou EUR): ',
+      'Idioma (EN, ES ou PT): ',
       'Tipo de preço (só USD: final ou distribuidor): ',
       'Descrição e componentes: padrão',
       'Frete: ',
@@ -60,26 +82,33 @@ const SUGGESTIONS = [
     ].join('\n'),
   },
   {
-    label: 'Criar um pedido',
+    label: 'Pedido nacional',
     prompt: [
-      'Gera o pedido do orçamento: ',
+      'Gera o pedido nacional do orçamento: ',
       'E-mail de quem pediu (em branco = do cadastro): ',
       'Endereço de cobrança (em branco = do cadastro): ',
       'Endereço de entrega (em branco = do cadastro): ',
       'Número de caixas: ',
       'O que vai em cada caixa: ',
-      'Pagamento (PayPal, transferência ou Pix): ',
+      'Pagamento (Pix ou transferência): ',
+      'Link de pagamento do cartão: ',
+      'Forma de envio (SEDEX, PAC, transportadora…): ',
+      ...ORDER_TAIL,
+    ].join('\n'),
+  },
+  {
+    label: 'Pedido internacional',
+    prompt: [
+      'Gera o pedido internacional do orçamento: ',
+      'E-mail de quem pediu (em branco = do cadastro): ',
+      'Endereço de cobrança (em branco = do cadastro): ',
+      'Endereço de entrega (em branco = do cadastro): ',
+      'Número de caixas: ',
+      'O que vai em cada caixa: ',
+      'Pagamento (PayPal ou transferência): ',
       'Taxa do PayPal (só PayPal): ',
-      'Link de pagamento do cartão (só nacional): ',
-      'Incoterms (internacional) ou forma de envio (nacional): ',
-      'Peso líquido (kg): ',
-      'Peso bruto (kg): ',
-      'Peso por unidade de cada item (kg): ',
-      'AWB: ',
-      'Pedido de compra: ',
-      'Data de expedição: ',
-      'Número e data da NF: ',
-      'O que eu deixei em branco pode ficar em branco.',
+      'Incoterms (EXW, DAP, DDP…): ',
+      ...ORDER_TAIL,
     ].join('\n'),
   },
 ]
@@ -224,7 +253,7 @@ export function Neo() {
               <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-600">
                 Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
               </p>
-              <div className="mt-5 grid w-full max-w-3xl grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="mt-5 grid w-full max-w-xl grid-cols-2 gap-2 sm:grid-cols-3">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
                     key={suggestion.label}
