@@ -176,6 +176,11 @@ function neoUnavailableError(err: unknown): HttpError {
   if (err instanceof ApiError && err.status === 429) {
     return new HttpError(503, 'O NEO atingiu o limite de uso por agora. Tenta de novo daqui a pouco.')
   }
+  // Crédito pré-pago do projeto no Google zerou: não passa sozinho, então
+  // "tenta de novo" seria enganoso — alguém precisa recarregar no AI Studio.
+  if (err instanceof ApiError && err.status === 402) {
+    return new HttpError(503, 'O NEO está sem créditos do Gemini. Avise o administrador para recarregar no Google AI Studio.')
+  }
   return new HttpError(502, 'O NEO não conseguiu responder agora. Tenta de novo em instantes.')
 }
 
@@ -487,6 +492,10 @@ const writeTools: FunctionDeclaration[] = [
         packageCount: { type: Type.NUMBER, description: 'Número de caixas' },
         prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'] },
         paypalFee: { type: Type.NUMBER, description: 'Taxa do PayPal. Só quando o pagamento é PayPal, e perguntada numa mensagem separada' },
+        creditCardPaymentLink: {
+          type: Type.STRING,
+          description: 'Só nacional: link de pagamento do cartão de crédito, se a pessoa mandar um. Opcional — não pergunte se ela não falar em cartão.',
+        },
         incoterms: { type: Type.STRING, description: 'Só internacional, ex. EXW, DAP, DDP' },
         shippingMethod: { type: Type.STRING, description: 'Só nacional, ex. SEDEX, PAC, transportadora' },
         netWeightKg: { type: Type.NUMBER },
@@ -512,6 +521,7 @@ const writeTools: FunctionDeclaration[] = [
         packageCount: { type: Type.NUMBER },
         prepaymentBy: { type: Type.STRING, enum: ['PAYPAL', 'WIRE_TRANSFER', 'PIX'] },
         paypalFee: { type: Type.NUMBER },
+        creditCardPaymentLink: { type: Type.STRING, description: 'Só nacional: link de pagamento do cartão. String vazia apaga.' },
         incoterms: { type: Type.STRING },
         shippingMethod: { type: Type.STRING },
         netWeightKg: { type: Type.NUMBER },

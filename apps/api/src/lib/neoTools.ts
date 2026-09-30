@@ -436,6 +436,9 @@ export async function buscarPedidos(args: { numero?: number; cliente?: string })
     prepaymentBy: o.prepaymentBy,
     incoterms: o.incoterms,
     shippingMethod: o.shippingMethod,
+    // Só internacional: número da pasta do cliente no arquivo da empresa.
+    clientFolderId: o.clientFolderId,
+    creditCardPaymentLink: o.creditCardPaymentLink,
     netWeightKg: o.netWeightKg?.toString() ?? null,
     grossWeightKg: o.grossWeightKg?.toString() ?? null,
   }))
@@ -585,6 +588,7 @@ const FIELD_LABEL: Record<string, string> = {
   nfNumber: 'Número da NF',
   nfDate: 'Data da NF',
   paypalFee: 'Taxa do PayPal',
+  creditCardPaymentLink: 'Link de pagamento do cartão',
 }
 
 function describeChanges(fields: Record<string, unknown>) {
@@ -796,6 +800,7 @@ export async function proporPedido(
     `Data de expedição: ${formatDate(data.shipDate)}`,
     `NF: ${data.nfNumber ?? '(em branco)'} — ${formatDate(data.nfDate)}`,
     ...(data.prepaymentBy === 'PAYPAL' ? [`Taxa do PayPal: ${money(quote.currency, data.paypalFee ?? 0)}`] : []),
+    ...(data.creditCardPaymentLink ? [`Link de pagamento do cartão: ${data.creditCardPaymentLink}`] : []),
     ...describeItemWeights(quoteItems, data.itemWeightsKg),
     ...describeBoxes(data.boxAssignments, avulsos),
   ].join('\n')
