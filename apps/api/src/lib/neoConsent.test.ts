@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { confirmedUpFront, saidYesToDefault } from './neoConsent.js'
+import { confirmedUpFront, isPlainYesToDefault, saidYesToDefault } from './neoConsent.js'
 
 describe('saidYesToDefault', () => {
   it('aceita um "sim" ao padrão', () => {
@@ -45,6 +45,26 @@ describe('confirmedUpFront', () => {
   it('não confunde confirmar outra coisa com autorizar a gravação', () => {
     for (const t of ['confirmo, é internacional', 'sim', 'pode usar o padrão', 'não confirmo a geração', 'monta um orçamento pra Ximena']) {
       assert.equal(confirmedUpFront(t), false, t)
+    }
+  })
+})
+
+describe('isPlainYesToDefault', () => {
+  it('aceita só a resposta "sim" à pergunta do padrão', () => {
+    for (const t of ['sim', 'Sim!', 'sim, padrão', 'pode usar o padrão', 'ok', 'sim, pode gravar direto', 'usa o padrão nos dois']) {
+      assert.equal(isPlainYesToDefault(t), t !== 'usa o padrão nos dois', t)
+    }
+  })
+
+  // Visto ao vivo: gravava o rascunho da conversa anterior.
+  it('recusa um pedido novo que só menciona o padrão', () => {
+    for (const t of [
+      'Faz um orçamento nacional pro Dr. Rafael Teste com 1 HOP difficult access, descrição e componentes padrão, pode gravar direto',
+      'sim, mas com 3 unidades',
+      'não',
+      'qual é a descrição?',
+    ]) {
+      assert.equal(isPlainYesToDefault(t), false, t)
     }
   })
 })

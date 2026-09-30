@@ -27,7 +27,7 @@ import {
   redactInternalIds,
   type PendingAction,
 } from '../lib/neoPendingActions.js'
-import { confirmedUpFront } from '../lib/neoConsent.js'
+import { confirmedUpFront, isPlainYesToDefault } from '../lib/neoConsent.js'
 import {
   buscarProdutos,
   listarClientes,
@@ -45,6 +45,7 @@ import {
   proporEdicaoCliente,
   buscarBiblioteca,
   proporRegistroBiblioteca,
+  DefaultDescriptionQuestion,
 } from '../lib/neoTools.js'
 import { toQuoteDTO, toClientDTO, toLibraryEntryDTO } from '../lib/dto.js'
 import { createQuoteRecord, updateQuoteRecord } from './quotes.routes.js'
@@ -449,7 +450,7 @@ const writeTools: FunctionDeclaration[] = [
   {
     name: 'propor_orcamento',
     description:
-      'Monta uma prévia de orçamento novo — NÃO grava nada. Antes, tenha confirmado com a pessoa: cliente, itens (productId real de buscar_produtos) e quantidades, se é nacional ou internacional e, se internacional, moeda, idioma e (em USD) preço final ou distribuidor. Pergunte também, por item, se usa a descrição e os componentes padrão do produto. Se a ferramenta devolver "erro", pergunte o que falta.',
+      'Monta uma prévia de orçamento novo — NÃO grava nada. Antes, tenha confirmado com a pessoa: cliente, itens (productId real de buscar_produtos) e quantidades, se é nacional ou internacional e, se internacional, moeda, idioma e (em USD) preço final ou distribuidor. NÃO pergunte sobre descrição e componentes padrão: chame direto, e o sistema pergunta se faltar. Se a ferramenta devolver "erro", pergunte o que falta.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -668,6 +669,33 @@ async function dispatchTool(
 }
 
 /**
+ * Orçamento que só esperava o "sim" pra descrição e componentes padrão, por
+ * pessoa. A pergunta sai do servidor (DefaultDescriptionQuestion) e, se a
+ * resposta seguinte for "sim", o cartão é montado daqui, sem ida ao Gemini —
+ * era uma rodada inteira (~6s) só pra o modelo rebuscar cliente e produto que
+ * ele já tinha achado. Em memória: vale só pra conversa em andamento.
+ */
+const DRAFT_TTL_MS = 30 * 60 * 1000
+const quoteDrafts = new Map<string, { question: string; draft: DefaultDescriptionQuestion['draft']; createdAt: number }>()
+
+const sameText = (a: string, b: string) => a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim()
+
+/**
+ * Texto de depois de montar a prévia. Era o modelo que escrevia, numa ida a
+ * mais ao Gemini (~1,5s), sempre dizendo a mesma coisa — o que importa está
+ * no cartão.
+ */
+const PREVIEW_REPLY: Record<PendingAction['kind'], string> = {
+  orcamento_criar: 'Montei a prévia do orçamento. Confira no cartão abaixo e clique em Confirmar para gerar.',
+  orcamento_editar: 'Montei a prévia da edição do orçamento. Confira no cartão abaixo e clique em Confirmar para aplicar.',
+  pedido_criar: 'Montei a prévia do pedido. Confira no cartão abaixo e clique em Confirmar para gerar.',
+  pedido_editar: 'Montei a prévia da edição do pedido. Confira no cartão abaixo e clique em Confirmar para aplicar.',
+  cliente_criar: 'Montei o cadastro do cliente. Confira no cartão abaixo e clique em Confirmar para gravar.',
+  cliente_editar: 'Montei a edição do cliente. Confira no cartão abaixo e clique em Confirmar para aplicar.',
+  biblioteca_criar: 'Montei a pergunta para a Biblioteca. Confira no cartão abaixo e clique em Confirmar para gravar.',
+}
+
+/**
  * Conversa com o NEO em streaming (NDJSON, um evento por linha): `status` diz
  * o que ele está fazendo, `delta` é texto novo da resposta, `reset` descarta
  * o texto mostrado até ali (ele ia chamar ferramenta, ou a tentativa falhou),
@@ -743,7 +771,55 @@ neoRouter.post(
       res.end()
     }
 
+    /** Fecha com um texto do próprio servidor, sem mais uma ida ao Gemini. */
+    function finishWith(text: string, detail: string) {
+      redactor.reset()
+      emit({ type: 'reset' })
+      emit({ type: 'delta', text })
+      console.info(`[neo] pedido concluído em ${Date.now() - requestStartedAt}ms (${detail})`)
+      emit({ type: 'done', reply: text, pendingAction, executed })
+      res.end()
+    }
+
+    /** Proposta pronta: vira cartão, ou é gravada direto se a pessoa já confirmou na mensagem. */
+    async function settle(action: PendingAction) {
+      if (!executeDirectly) {
+        pendingAction = toPublicPendingAction(action)
+        return PREVIEW_REPLY[action.kind]
+      }
+      emit({ type: 'status', text: 'Gravando…' })
+      const result = await executePendingAction(action, req.user!.id)
+      executed = { kind: action.kind, result }
+      return `Pronto, gravei o ${describeExecuted(result)}.`
+    }
+
     try {
+      // O rascunho só vale pra resposta logo seguinte à pergunta: qualquer
+      // outra mensagem o descarta.
+      const draft = quoteDrafts.get(req.user!.id)
+      quoteDrafts.delete(req.user!.id)
+      if (
+        draft &&
+        Date.now() - draft.createdAt < DRAFT_TTL_MS &&
+        sameText(lastModelText, draft.question) &&
+        isPlainYesToDefault(message)
+      ) {
+        emit({ type: 'status', text: 'Montando orçamento…' })
+        try {
+          const { pendingAction: action } = await proporOrcamento(
+            { ...draft.draft, padraoDescricaoComponentesAutorizado: true },
+            req.user!.id,
+            message,
+          )
+          finishWith(await settle(action), 'sim ao padrão, sem Gemini')
+          return
+        } catch (err) {
+          // O rascunho envelheceu (produto desativado, preço mudou de regra):
+          // segue pelo caminho normal, com o modelo.
+          if (!toolErrorForModel(err)) throw err
+        }
+      }
+
       emit({ type: 'status', text: 'Pensando…' })
       for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
         const { turn, modelUsed } = await generateNeoContent(
@@ -787,38 +863,46 @@ neoRouter.post(
               console.info(`[neo] ${call.name} levou ${Date.now() - toolStartedAt}ms`)
               return { call, result: dispatched.result, pendingAction: dispatched.pendingAction, failed: false }
             } catch (err) {
+              if (err instanceof DefaultDescriptionQuestion) {
+                return { call, result: { erro: err.message } as unknown, pendingAction: undefined, failed: false, question: err }
+              }
               const forModel = toolErrorForModel(err)
               if (!forModel) throw err
               return { call, result: forModel as unknown, pendingAction: undefined, failed: true }
             }
           }),
         )
+        // Só faltava o "sim" ao padrão: a pergunta sai pronta, sem o modelo.
+        const question = outcomes.find((o) => 'question' in o && o.question)
+        if (question && 'question' in question && question.question) {
+          quoteDrafts.set(req.user!.id, { question: question.question.question, draft: question.question.draft, createdAt: Date.now() })
+          finishWith(question.question.question, `${iteration + 1} chamada(s) ao Gemini, pergunta do padrão pelo servidor`)
+          return
+        }
         // Na ordem das chamadas, não na de término: se duas propostas saírem
         // juntas, fica valendo sempre a última que o modelo pediu.
+        let reply: string | undefined
         for (const outcome of outcomes) {
-          if (outcome.pendingAction && executeDirectly) {
-            emit({ type: 'status', text: 'Gravando…' })
+          if (outcome.pendingAction) {
             try {
-              const result = await executePendingAction(outcome.pendingAction, req.user!.id)
-              executed = { kind: outcome.pendingAction.kind, result }
-              pendingAction = undefined
-              outcome.result = {
-                gravado: `Já gravado, sem cartão — a pessoa confirmou na mensagem: ${describeExecuted(result)}.`,
-                resumo: outcome.result,
-                instrucao: 'Diga que está feito e o número/nome do que foi gravado. Não mencione cartão de confirmação.',
-              }
+              reply = await settle(outcome.pendingAction)
             } catch (err) {
               const forModel = toolErrorForModel(err)
               if (!forModel) throw err
               outcome.result = forModel
-              thinking = 'medium'
+              outcome.failed = true
+              reply = undefined
             }
-          } else if (outcome.pendingAction) {
-            pendingAction = toPublicPendingAction(outcome.pendingAction)
           }
           // Ferramenta recusou os dados (faltou algo, veio inválido): a
           // próxima tentativa precisa entender o que corrigir.
           if (outcome.failed) thinking = 'medium'
+        }
+        // Proposta montada (ou gravada) e nada recusado: a resposta é sempre
+        // a mesma, então sai do servidor em vez de mais uma ida ao Gemini.
+        if (reply && !outcomes.some((o) => o.failed)) {
+          finishWith(reply, `${iteration + 1} chamada(s) ao Gemini`)
+          return
         }
         contents.push({
           role: 'user',

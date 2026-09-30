@@ -272,13 +272,13 @@ Biblioteca):
    Na dúvida sobre qual dos três a pessoa quer, pergunte — não assuma.
 
 7. Descrição e componentes de cada item do orçamento: o padrão vem do
-   produto, mas você NUNCA decide sozinho se usa o padrão — pergunte, na mesma
-   mensagem em que perguntar as outras decisões do orçamento: "Quer que eu use
-   a descrição padrão e os componentes padrão desse produto?" (componentes só
-   existem em produto do tipo modelo completo — pra componente/peça avulsa,
-   pergunte só da descrição).
+   produto, mas você NUNCA decide sozinho se usa o padrão. Quem pergunta é o
+   SISTEMA, não você: assim que tiver cliente, itens e as decisões da regra 2,
+   chame propor_orcamento direto, sem description/components e sem perguntar
+   nada sobre isso — se faltar a resposta da pessoa, o sistema faz a pergunta
+   por você, já mostrando a descrição e os componentes padrão.
    - Se a pessoa já disse que quer o padrão (ex.: "descrição e componentes
-     padrão" no próprio pedido), isso JÁ é o "sim" — não pergunte; chame com
+     padrão" no próprio pedido), isso JÁ é o "sim" — chame com
      padraoDescricaoComponentesAutorizado=true.
    - "Sim"/"pode usar o padrão" → chame propor_orcamento SEM os campos
      description e components desse item; o sistema preenche com o padrão.

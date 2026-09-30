@@ -28,3 +28,27 @@ export function confirmedUpFront(userText: string) {
     /\bsem\s+(precisar\s+(de\s+)?)?(confirmar|confirmacao)\b/.test(t)
   )
 }
+
+// Só palavras de "sim" — qualquer outra (nome de cliente, produto, "orçamento")
+// indica mensagem nova, não resposta à pergunta.
+const PLAIN_YES_WORDS = new Set(
+  (
+    'sim s ss pode podes ok okay blz beleza claro isso exato certo perfeito fechado bora quero ' +
+    'usa use usar usando manter mantem mantenha mesmo o os a as e de do da dos das deste desse destes desses esse esses este estes ' +
+    'padrao padroes default descricao descricoes componente componentes com tudo por favor pfv pf ' +
+    'gera gerar gere cria criar crie grava gravar grave salva salvar salve direto confirmo confirma confirmar pode sem perguntar ja'
+  ).split(' '),
+)
+
+/**
+ * A mensagem é SÓ a resposta "sim" à pergunta do padrão ("sim", "pode usar o
+ * padrão", "sim, pode gravar direto")? É o que libera montar o cartão sem o
+ * modelo, a partir do rascunho guardado — e por isso é bem mais estrito que
+ * `saidYesToDefault`: visto ao vivo, "Faz um orçamento nacional pro Dr. X com
+ * 1 HOP, descrição e componentes padrão" tem "padrão" e "pode", e gravava o
+ * rascunho da conversa ANTERIOR no lugar do orçamento novo.
+ */
+export function isPlainYesToDefault(userText: string) {
+  const words = plain(userText).split(/[^a-z0-9]+/).filter(Boolean)
+  return words.length > 0 && words.length <= 12 && words.every((w) => PLAIN_YES_WORDS.has(w)) && saidYesToDefault(userText)
+}

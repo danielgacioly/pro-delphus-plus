@@ -78,6 +78,10 @@ async function resolveSectorNames(inputs: string[]) {
 
 const PRODUCT_LIMIT = 30
 
+function searchWords(texto: string | undefined) {
+  return (texto ?? '').split(/[\s()[\],/]+/).filter(Boolean)
+}
+
 // "Qual o mais caro?", "tem versão mais barata pra essa área?", "o que cabe em
 // até 5 mil?" — perguntas de tabela de preço que, sem ordenação/filtro no
 // banco, o modelo só conseguiria responder lendo o catálogo inteiro (e erraria,
@@ -132,15 +136,18 @@ export async function buscarProdutos(args: BuscarProdutosArgs) {
     active: true,
     AND: [
       ...semTexto,
-      texto
-        ? {
-            OR: [
-              { name: { contains: texto, mode: 'insensitive' as const } },
-              { description: { contains: texto, mode: 'insensitive' as const } },
-              { descriptionPt: { contains: texto, mode: 'insensitive' as const } },
-            ],
-          }
-        : {},
+      // Palavra por palavra, em qualquer ordem: "HOP easy access" tem que
+      // achar "HOP (easy access)" — buscando o texto inteiro, os parênteses
+      // quebravam a busca e o modelo gastava mais uma ida ao Gemini tentando
+      // de novo só com "HOP".
+      ...searchWords(texto).map((word) => ({
+        OR: [
+          { name: { contains: word, mode: 'insensitive' as const } },
+          { sku: { contains: word, mode: 'insensitive' as const } },
+          { description: { contains: word, mode: 'insensitive' as const } },
+          { descriptionPt: { contains: word, mode: 'insensitive' as const } },
+        ],
+      })),
     ],
   }
   // `total` é a contagem real, sem o corte de `limite` — sem isto, "quantos
@@ -494,36 +501,64 @@ async function describeQuote(data: CreateQuoteInput, userId: string) {
   return [`Cliente: ${data.clientName}`, scope, ...lines, ...extras, `Total: ${money(currency, resolved.total)}`].join('\n')
 }
 
+/**
+ * Falta só a decisão de descrição/componentes — todo o resto do orçamento já
+ * foi validado. Em vez de devolver a recusa pro modelo (mais uma ida ao
+ * Gemini só pra ele reescrever a pergunta), o servidor faz a pergunta pronta,
+ * já mostrando o padrão, e guarda os dados: se a resposta for "sim", o cartão
+ * sai na hora, sem passar pelo modelo (ver neo.routes.ts).
+ */
+export class DefaultDescriptionQuestion extends HttpError {
+  constructor(
+    readonly question: string,
+    readonly draft: CreateQuoteInput,
+  ) {
+    super(400, 'Falta perguntar à pessoa se usa a descrição e os componentes padrão.')
+  }
+}
+
 // Mesma ideia de `missingQuoteDecisions`: o modelo lite escorrega em "assumir o
 // padrão" quando a regra só está no prompt. Então deixar descrição ou
-// componentes de fora só passa se a pessoa autorizou o padrão — senão a
-// recusa volta pro modelo como instrução de perguntar.
+// componentes de fora só passa se a pessoa autorizou o padrão.
 async function missingDescriptionDecisions(
-  items: CreateQuoteInput['items'],
+  args: CreateQuoteInput,
   padraoAutorizado: boolean | undefined,
   lastUserText: string,
 ) {
   if (padraoAutorizado && saidYesToDefault(lastUserText)) return
   const products = await prisma.product.findMany({
-    where: { id: { in: items.map((i) => i.productId) } },
-    select: { id: true, name: true, kind: true },
+    where: { id: { in: args.items.map((i) => i.productId) } },
+    select: { id: true, name: true, kind: true, description: true, descriptionPt: true, components: true, componentsPt: true },
   })
   const byId = new Map(products.map((p) => [p.id, p]))
-  const pendentes = items.flatMap((item) => {
+  const pt = args.language === 'PT' || args.exportScope === 'NATIONAL'
+  const pendentes = args.items.flatMap((item) => {
     const product = byId.get(item.productId)
     if (!product) return []
-    const faltando = [
-      !item.description?.trim() && 'descrição',
-      product.kind === 'COMPLETE_MODEL' && item.components === undefined && 'componentes',
-    ].filter(Boolean)
-    return faltando.length > 0 ? [`${product.name} (${faltando.join(' e ')})`] : []
+    const semDescricao = !item.description?.trim()
+    const semComponentes = product.kind === 'COMPLETE_MODEL' && item.components === undefined
+    if (!semDescricao && !semComponentes) return []
+    const descricao = (pt ? product.descriptionPt || product.description : product.description)?.trim()
+    const componentes = (pt ? product.componentsPt || product.components : product.components)?.trim()
+    return [
+      [
+        `**${product.name}**`,
+        semDescricao ? `• Descrição padrão: ${descricao || '(nenhuma cadastrada)'}` : null,
+        semComponentes ? `• Componentes padrão: ${componentes || '(nenhum cadastrado)'}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    ]
   })
-  if (pendentes.length > 0) {
-    throw new HttpError(
-      400,
-      `Não proponha ainda — pergunte à pessoa: "Quer que eu use a descrição padrão e os componentes padrão do produto?" para ${pendentes.join('; ')}. Se ela disser sim, chame de novo com padraoDescricaoComponentesAutorizado=true; se disser não, pergunte como ela quer a descrição e os componentes e preencha description e components (components vazio = sem componentes).`,
-    )
-  }
+  if (pendentes.length === 0) return
+  const question = [
+    pendentes.length === 1
+      ? 'Quer que eu use a descrição padrão e os componentes padrão deste produto?'
+      : 'Quer que eu use a descrição padrão e os componentes padrão destes produtos?',
+    ...pendentes,
+    'Se não, me diga como quer a descrição e os componentes.',
+  ].join('\n\n')
+  throw new DefaultDescriptionQuestion(question, args)
 }
 
 export async function proporOrcamento(
@@ -532,8 +567,11 @@ export async function proporOrcamento(
   lastUserText: string,
 ) {
   missingQuoteDecisions(args)
-  await missingDescriptionDecisions(args.items, args.padraoDescricaoComponentesAutorizado, lastUserText)
-  const data = createQuoteSchema.parse(args)
+  const { padraoDescricaoComponentesAutorizado, ...quoteArgs } = args
+  // Valida antes de perguntar: o rascunho guardado com a pergunta tem que
+  // estar pronto pra virar cartão só com o "sim".
+  const data = createQuoteSchema.parse(quoteArgs)
+  await missingDescriptionDecisions(data, padraoDescricaoComponentesAutorizado, lastUserText)
   const summary = await describeQuote(data, userId)
   const pendingAction = createPendingAction('orcamento_criar', summary, data, userId)
   return { pendingAction, summaryForModel: summary }
