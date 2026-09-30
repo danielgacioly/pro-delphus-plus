@@ -1,9 +1,14 @@
 import type { CatalogLanguage, SectorDTO } from '@prodelphusplus/shared'
 
-/** Versão em português do campo quando o idioma é PT e existe tradução; senão, o valor em inglês. */
+/**
+ * O campo no idioma do catálogo, caindo no outro idioma quando só um foi
+ * cadastrado. Antes só caía de PT pra EN: produto com descrição só em
+ * português aparecia como "Sem descrição cadastrada" pra quem vê em inglês.
+ */
 export function localize(en: string | null, pt: string | null | undefined, lang: CatalogLanguage): string | null {
-  if (lang === 'PT' && pt) return pt
-  return en
+  const english = en?.trim() || null
+  const portuguese = pt?.trim() || null
+  return lang === 'PT' ? (portuguese ?? english) : (english ?? portuguese)
 }
 
 /** Traduz o nome do setor (como está em Product.sectors) pelo `namePt` do cadastro de setores, caindo no nome original. */
