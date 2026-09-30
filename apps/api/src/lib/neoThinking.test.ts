@@ -32,6 +32,12 @@ describe('quanto o NEO raciocina', () => {
     assert.equal(neoThinkingFor('caixa 1 com 2 Thor e caixa 2 com o LAB-COR'), 'medium')
   })
 
+  it('ignora campo em branco dos modelos de atalho, mas não campo preenchido', () => {
+    const modelo = 'Monta um orçamento:\nCliente: Carlos\nItens (quantidade × produto): 1 Thor\nFrete: \nDesconto: '
+    assert.equal(neoThinkingFor(modelo), 'low')
+    assert.equal(neoThinkingFor(modelo.replace('Desconto: ', 'Desconto: 10%')), 'medium')
+  })
+
   it('não confunde palavra parecida com campo do pedido', () => {
     assert.equal(neoThinkingFor('qual a especialidade do Dr. Nunes?'), 'low')
   })

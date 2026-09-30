@@ -39,7 +39,13 @@ const DICTATED_TEXT = /descricao|componente/
  * "orçamento" e "descrição" o tempo todo, e subiria o nível de toda resposta.
  */
 export function neoThinkingFor(message: string): NeoThinking {
-  const text = normalize(message)
+  // Campo deixado em branco nos modelos de atalho ("Desconto: ") é só o
+  // rótulo, não um pedido — não pode subir o nível.
+  const filled = message
+    .split('\n')
+    .filter((line) => !/^[^:]{1,120}:\s*$/.test(line))
+    .join('\n')
+  const text = normalize(filled)
   if (CAREFUL_PATTERNS.some((pattern) => pattern.test(text))) return 'medium'
   if (DICTATED_TEXT.test(text) && !/padr/.test(text)) return 'medium'
   return 'low'

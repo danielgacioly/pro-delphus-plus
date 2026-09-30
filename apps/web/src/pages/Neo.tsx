@@ -29,6 +29,61 @@ function renderInlineFormatting(text: string) {
   })
 }
 
+/**
+ * Atalhos da tela inicial. Cada um já traz, em forma de formulário, tudo o que
+ * o NEO perguntaria (os mesmos campos que o servidor exige) — preenchido de
+ * uma vez, ele vai direto pra prévia em vez de gastar idas e voltas (e
+ * tokens) perguntando campo a campo. Campo em branco é ignorado.
+ */
+const SUGGESTIONS = [
+  {
+    label: 'Consultar um produto',
+    prompt: ['Quero consultar um produto:', 'Produto: ', 'Preço em (BRL, USD, EUR ou USD distribuidor): '].join('\n'),
+  },
+  {
+    label: 'Buscar um cliente',
+    prompt: ['Quero ver o cadastro de um cliente:', 'Nome ou instituição: '].join('\n'),
+  },
+  {
+    label: 'Montar um orçamento',
+    prompt: [
+      'Monta um orçamento:',
+      'Cliente: ',
+      'Itens (quantidade × produto): ',
+      'Nacional ou internacional: ',
+      'Moeda (só internacional: USD ou EUR): ',
+      'Idioma (só internacional: EN, ES ou PT): ',
+      'Tipo de preço (só USD: final ou distribuidor): ',
+      'Descrição e componentes: padrão',
+      'Frete: ',
+      'Desconto: ',
+    ].join('\n'),
+  },
+  {
+    label: 'Criar um pedido',
+    prompt: [
+      'Gera o pedido do orçamento: ',
+      'E-mail de quem pediu (em branco = do cadastro): ',
+      'Endereço de cobrança (em branco = do cadastro): ',
+      'Endereço de entrega (em branco = do cadastro): ',
+      'Número de caixas: ',
+      'O que vai em cada caixa: ',
+      'Pagamento (PayPal, transferência ou Pix): ',
+      'Taxa do PayPal (só PayPal): ',
+      'Link de pagamento do cartão (só nacional): ',
+      'Incoterms (internacional) ou forma de envio (nacional): ',
+      'Peso líquido (kg): ',
+      'Peso bruto (kg): ',
+      'Peso por unidade de cada item (kg): ',
+      'AWB: ',
+      'Pedido de compra: ',
+      'Data de expedição: ',
+      'Número e data da NF: ',
+      'O que eu deixei em branco pode ficar em branco.',
+    ].join('\n'),
+  },
+]
+
 export function Neo() {
   // A conversa e a chamada em andamento vivem no provider (acima das rotas):
   // sair desta página não interrompe o NEO.
@@ -85,16 +140,44 @@ export function Neo() {
     void send(text)
   }
 
+  // Cursor no primeiro campo vazio, pra já sair digitando.
+  function fillTemplate(prompt: string) {
+    setInput(prompt)
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      const firstBlank = prompt.search(/: (\n|$)/)
+      const position = firstBlank === -1 ? prompt.length : firstBlank + 2
+      el.setSelectionRange(position, position)
+      el.scrollTop = 0
+    })
+  }
+
   function handleNewChat() {
     newChat()
     setInput('')
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+    if (e.key !== 'Enter' || e.shiftKey) return
+    e.preventDefault()
+    // Num formulário de atalho, Enter leva ao próximo campo em branco — sem
+    // isto, quem apertava Enter pra "ir pra linha de baixo" enviava o
+    // formulário pela metade. Sem campo em branco à frente (ou com ⌘/Ctrl),
+    // envia.
+    const el = e.currentTarget
+    if (!e.metaKey && !e.ctrlKey && input.includes('\n')) {
+      const rest = input.slice(el.selectionEnd)
+      const lineEnd = rest.indexOf('\n')
+      const nextBlank = lineEnd === -1 ? -1 : rest.slice(lineEnd).search(/: (\n|$)/)
+      if (nextBlank !== -1) {
+        const position = el.selectionEnd + lineEnd + nextBlank + 2
+        el.setSelectionRange(position, position)
+        return
+      }
     }
+    handleSend()
   }
 
   return (
@@ -142,19 +225,11 @@ export function Neo() {
                 Pergunte sobre produtos, setores ou clientes — ou peça pra eu montar um orçamento ou pedido pra você.
               </p>
               <div className="mt-5 grid w-full max-w-3xl grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  { label: 'Consultar um produto', prompt: 'Quero consultar um produto.' },
-                  { label: 'Buscar um cliente', prompt: 'Quero buscar um cliente.' },
-                  { label: 'Montar um orçamento', prompt: 'Quero montar um orçamento.' },
-                  { label: 'Criar um pedido', prompt: 'Quero criar um pedido.' },
-                ].map((suggestion) => (
+                {SUGGESTIONS.map((suggestion) => (
                   <button
                     key={suggestion.label}
                     type="button"
-                    onClick={() => {
-                      setInput(suggestion.prompt)
-                      textareaRef.current?.focus()
-                    }}
+                    onClick={() => fillTemplate(suggestion.prompt)}
                     className={buttonClasses({ size: 'sm', className: 'w-full justify-center' })}
                   >
                     {suggestion.label}
@@ -256,7 +331,7 @@ export function Neo() {
               aria-busy={speech.recording || undefined}
               placeholder={speech.recording ? 'Ouvindo…' : 'Pergunte alguma coisa ao NEO…'}
               className={cn(
-                'max-h-32 flex-1 resize-none overflow-y-auto border-0 px-2.5 py-1.5 text-[14px] leading-relaxed shadow-none [scrollbar-width:none] hover:border-0 focus:border-0 focus:ring-0',
+                'max-h-[45vh] flex-1 resize-none overflow-y-auto border-0 px-2.5 py-1.5 text-[14px] leading-relaxed shadow-none [scrollbar-width:none] hover:border-0 focus:border-0 focus:ring-0',
                 speech.recording ? 'skeleton' : 'bg-transparent',
               )}
             />
@@ -295,6 +370,11 @@ export function Neo() {
               <IconArrowUp className="h-4 w-4" strokeWidth={2.2} />
             </button>
           </div>
+          {input.includes('\n') && /: (\n|$)/.test(input) && (
+            <p className="mt-1.5 px-3 text-[12px] text-neutral-500">
+              Enter vai pro próximo campo em branco · ⌘/Ctrl + Enter envia do jeito que está
+            </p>
+          )}
         </div>
       </div>
     </div>
