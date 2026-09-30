@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { confirmedUpFront, isPlainYesToDefault, saidYesToDefault } from './neoConsent.js'
+import { confirmedUpFront, declaredExportScope, isPlainYesToDefault, saidYesToDefault } from './neoConsent.js'
 
 describe('saidYesToDefault', () => {
   it('aceita um "sim" ao padrão', () => {
@@ -84,5 +84,18 @@ describe('isPlainYesToDefault', () => {
     ]) {
       assert.equal(isPlainYesToDefault(t), false, t)
     }
+  })
+})
+
+describe('declaredExportScope', () => {
+  it('lê o tipo que a pessoa disse para o pedido', () => {
+    assert.equal(declaredExportScope('Gera o pedido internacional do orçamento: 260930-09'), 'INTERNATIONAL')
+    assert.equal(declaredExportScope('gera o pedido nacional do 260915-01'), 'NATIONAL')
+    assert.equal(declaredExportScope('pedido pro exterior do orçamento 260930-01'), 'INTERNATIONAL')
+  })
+
+  it('não decide sem tipo, ou com os dois', () => {
+    assert.equal(declaredExportScope('gera o pedido do orçamento 260930-09'), undefined)
+    assert.equal(declaredExportScope('é nacional ou internacional?'), undefined)
   })
 })

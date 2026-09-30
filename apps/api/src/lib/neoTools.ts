@@ -9,7 +9,7 @@ import { libraryEntrySchema, searchLibraryEntries } from '../routes/library.rout
 import { createPendingAction } from './neoPendingActions.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { normalize, bestMatches } from './fuzzyMatch.js'
-import { saidYesToDefault } from './neoConsent.js'
+import { declaredExportScope, saidYesToDefault } from './neoConsent.js'
 
 /**
  * O catálogo separa o que é um simulador inteiro do que é peça de reposição.
@@ -743,9 +743,12 @@ function buildBoxAssignments(
   return { boxAssignments, avulsos }
 }
 
+const SCOPE_LABEL = { NATIONAL: 'nacional', INTERNATIONAL: 'internacional' } as const
+
 export async function proporPedido(
-  args: Partial<OrderFieldsInput> & { quoteId: string } & NeoOrderExtras,
+  args: Partial<OrderFieldsInput> & { quoteId: string; tipoPedido?: 'NATIONAL' | 'INTERNATIONAL' } & NeoOrderExtras,
   userId: string,
+  lastUserText = '',
 ) {
   // billToText/shipToText/orderedByEmail vêm do cadastro do cliente vinculado
   // ao orçamento quando existirem — isso é dado real, não "chute" (ver
@@ -759,7 +762,19 @@ export async function proporPedido(
   })
   if (!quote) throw new HttpError(404, 'Orçamento não encontrado')
 
-  const { pesosPorItem, caixas, pessoaAutorizouPadrao, ...orderArgs } = args
+  // Pedido "internacional" de um orçamento nacional (ou o contrário) é quase
+  // sempre o orçamento errado — o tipo do pedido vem do orçamento, então
+  // montar assim geraria documentos do tipo que a pessoa NÃO pediu. O que ela
+  // digitou vale mais que o que o modelo declarou.
+  const declared = declaredExportScope(lastUserText) ?? args.tipoPedido
+  if (declared && declared !== quote.exportScope) {
+    throw new HttpError(
+      409,
+      `Não monte o pedido: o orçamento ${quote.quoteNumber} (${quote.clientName}) é ${SCOPE_LABEL[quote.exportScope]}, mas a pessoa pediu um pedido ${SCOPE_LABEL[declared]}. Avise a pessoa dessa divergência e pergunte qual é o orçamento certo.`,
+    )
+  }
+
+  const { pesosPorItem, caixas, pessoaAutorizouPadrao, tipoPedido: _tipo, ...orderArgs } = args
   const quoteItems: QuoteItemRef[] = quote.items.map((i) => ({
     sku: i.sku,
     title: i.title,

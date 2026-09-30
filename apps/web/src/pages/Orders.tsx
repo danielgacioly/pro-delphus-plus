@@ -80,6 +80,7 @@ export function Orders() {
 
   const [scope, setScope] = useState<'all' | 'mine'>('all')
   const [status, setStatus] = useState<'all' | 'PENDING' | 'COMPLETED'>('all')
+  const [exportScope, setExportScope] = useState<'all' | 'NATIONAL' | 'INTERNATIONAL'>('all')
   const [yearFilter, setYearFilter] = useState('all')
   const [search, setSearch] = useState('')
 
@@ -95,10 +96,11 @@ export function Orders() {
       if (yearFilter !== 'all' && date.getFullYear() !== Number(yearFilter)) return false
       if (scope === 'mine' && o.createdBy.id !== user?.id) return false
       if (status !== 'all' && o.status !== status) return false
+      if (exportScope !== 'all' && o.quote.exportScope !== exportScope) return false
       if (term && !`${o.orderNumber} ${o.quote.clientName} ${o.quoteNumber}`.toLowerCase().includes(term)) return false
       return true
     })
-  }, [orders, yearFilter, scope, status, user?.id, search])
+  }, [orders, yearFilter, scope, status, exportScope, user?.id, search])
 
   return (
     <Page
@@ -123,6 +125,16 @@ export function Orders() {
             { value: 'all', label: 'Qualquer status' },
             { value: 'PENDING', label: 'Pendentes' },
             { value: 'COMPLETED', label: 'Concluídos' },
+          ]}
+        />
+        <SegmentedControl
+          aria-label="Tipo"
+          value={exportScope}
+          onChange={setExportScope}
+          options={[
+            { value: 'all', label: 'Qualquer tipo' },
+            { value: 'NATIONAL', label: 'Nacionais' },
+            { value: 'INTERNATIONAL', label: 'Internacionais' },
           ]}
         />
         <Select

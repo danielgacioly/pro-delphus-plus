@@ -53,3 +53,16 @@ export function isPlainYesToDefault(userText: string) {
   if (t.split(/\s+/).filter(Boolean).length > 20) return false
   return saidYesToDefault(userText)
 }
+
+/**
+ * Se a pessoa disse, no que digitou, que o pedido é nacional ou internacional
+ * ("gera o pedido internacional do orçamento X"). Só vale quando fala de um
+ * dos dois — citar os dois (ou nenhum) não decide nada.
+ */
+export function declaredExportScope(userText: string): 'NATIONAL' | 'INTERNATIONAL' | undefined {
+  const t = plain(userText)
+  const international = /\b(internaciona(l|is)|exterior|exportacao)\b/.test(t)
+  const national = /\bnaciona(l|is)\b/.test(t)
+  if (international === national) return undefined
+  return international ? 'INTERNATIONAL' : 'NATIONAL'
+}

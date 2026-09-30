@@ -487,6 +487,11 @@ const writeTools: FunctionDeclaration[] = [
       type: Type.OBJECT,
       properties: {
         quoteId: { type: Type.STRING },
+        tipoPedido: {
+          type: Type.STRING,
+          enum: ['NATIONAL', 'INTERNATIONAL'],
+          description: 'Se a pessoa disse (nesta ou em mensagem anterior) que o pedido é nacional ou internacional. Omita se ela não disse.',
+        },
         orderedByEmail: { type: Type.STRING },
         billToText: { type: Type.STRING, description: 'Endereço de cobrança completo' },
         shipToText: { type: Type.STRING, description: 'Endereço de entrega completo' },
@@ -648,7 +653,7 @@ async function dispatchTool(
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_pedido': {
-      const { pendingAction, summaryForModel } = await proporPedido(toolArgs<Parameters<typeof proporPedido>[0]>(args), userId)
+      const { pendingAction, summaryForModel } = await proporPedido(toolArgs<Parameters<typeof proporPedido>[0]>(args), userId, lastUserText)
       return { result: summaryForModel, pendingAction }
     }
     case 'propor_edicao_pedido': {
