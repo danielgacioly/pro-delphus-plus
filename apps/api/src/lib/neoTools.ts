@@ -806,11 +806,13 @@ export async function proporPedido(
     ? []
     : [
         orderArgs.packageCount === undefined && 'número de caixas',
-        !orderArgs.prepaymentBy && 'forma de pagamento (PayPal, transferência ou Pix)',
+        // As mesmas opções da tela de Novo pedido: Pix só nacional, PayPal só
+        // internacional (sem a lista, o modelo chegou a oferecer "boleto").
+        !orderArgs.prepaymentBy && (isNational ? 'forma de pagamento (Pix ou transferência)' : 'forma de pagamento (PayPal ou transferência)'),
         orderArgs.netWeightKg === undefined && 'peso líquido (kg)',
         orderArgs.grossWeightKg === undefined && 'peso bruto (kg)',
         isNational ? !orderArgs.shippingMethod && 'forma de envio' : !orderArgs.incoterms && 'Incoterms',
-        !orderArgs.awbNumber && 'AWB',
+        !isNational && !orderArgs.awbNumber && 'AWB',
         !orderArgs.purchaseOrder && 'pedido de compra',
         !orderArgs.shipDate && 'data de expedição',
         !pesosPorItem?.length && 'peso por unidade de cada item (Kg/Un)',
@@ -851,7 +853,8 @@ export async function proporPedido(
     isNational ? `Envio: ${data.shippingMethod ?? '(em branco)'}` : `Incoterms: ${data.incoterms ?? '(em branco)'}`,
     `Peso líquido: ${data.netWeightKg !== undefined ? `${data.netWeightKg} kg` : '(em branco)'}`,
     `Peso bruto: ${data.grossWeightKg !== undefined ? `${data.grossWeightKg} kg` : '(em branco)'}`,
-    `AWB: ${data.awbNumber ?? '(em branco)'}`,
+    // AWB é do envio aéreo internacional; no nacional só aparece se veio.
+    ...(!isNational || data.awbNumber ? [`AWB: ${data.awbNumber ?? '(em branco)'}`] : []),
     `Pedido de compra: ${data.purchaseOrder ?? '(em branco)'}`,
     `Data de expedição: ${formatDate(data.shipDate)}`,
     `NF: ${data.nfNumber ?? '(em branco)'} — ${formatDate(data.nfDate)}`,

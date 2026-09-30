@@ -29,12 +29,14 @@ function renderInlineFormatting(text: string) {
   })
 }
 
-// Final comum aos dois formulários de pedido.
-const ORDER_TAIL = [
+// Final dos formulários de pedido. AWB só existe no internacional (é o
+// conhecimento aéreo do DHL) — a tela de Novo pedido também o esconde no
+// nacional.
+const orderTail = (international: boolean) => [
   'Peso líquido (kg): ',
   'Peso bruto (kg): ',
   'Peso por unidade de cada item (kg): ',
-  'AWB: ',
+  ...(international ? ['AWB: '] : []),
   'Pedido de compra: ',
   'Data de expedição: ',
   'Número e data da NF: ',
@@ -93,7 +95,7 @@ const SUGGESTIONS = [
       'Pagamento (Pix ou transferência): ',
       'Link de pagamento do cartão: ',
       'Forma de envio (SEDEX, PAC, transportadora…): ',
-      ...ORDER_TAIL,
+      ...orderTail(false),
     ].join('\n'),
   },
   {
@@ -108,7 +110,7 @@ const SUGGESTIONS = [
       'Pagamento (PayPal ou transferência): ',
       'Taxa do PayPal (só PayPal): ',
       'Incoterms (EXW, DAP, DDP…): ',
-      ...ORDER_TAIL,
+      ...orderTail(true),
     ].join('\n'),
   },
 ]

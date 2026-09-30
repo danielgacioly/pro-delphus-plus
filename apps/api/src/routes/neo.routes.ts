@@ -482,7 +482,7 @@ const writeTools: FunctionDeclaration[] = [
   {
     name: 'propor_pedido',
     description:
-      'Monta uma prévia de pedido novo a partir de um orçamento (quoteId de buscar_orcamentos) — NÃO grava nada. orderedByEmail/billToText/shipToText vêm do cadastro do cliente vinculado quando existirem; só informe se faltarem ou a pessoa pedir outro valor. Todo o resto você PERGUNTA numa mensagem só (caixas, pagamento, pesos, incoterms ou forma de envio, AWB, pedido de compra, data de expedição, Kg/Un, NF e data da NF, e o que vai em cada caixa); pessoaAutorizouPadrao=true só se a pessoa disser explicitamente que pode deixar em branco/usar o padrão. A taxa do PayPal é exceção: pergunte numa mensagem separada, depois de ela dizer que o pagamento é PayPal.',
+      'Monta uma prévia de pedido novo a partir de um orçamento (quoteId de buscar_orcamentos) — NÃO grava nada. orderedByEmail/billToText/shipToText vêm do cadastro do cliente vinculado quando existirem; só informe se faltarem ou a pessoa pedir outro valor. Todo o resto você PERGUNTA numa mensagem só (caixas, pagamento, pesos, incoterms ou forma de envio, AWB (só internacional), pedido de compra, data de expedição, Kg/Un, NF e data da NF, e o que vai em cada caixa); pessoaAutorizouPadrao=true só se a pessoa disser explicitamente que pode deixar em branco/usar o padrão. A taxa do PayPal é exceção: pergunte numa mensagem separada, depois de ela dizer que o pagamento é PayPal.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -506,7 +506,7 @@ const writeTools: FunctionDeclaration[] = [
         shippingMethod: { type: Type.STRING, description: 'Só nacional, ex. SEDEX, PAC, transportadora' },
         netWeightKg: { type: Type.NUMBER },
         grossWeightKg: { type: Type.NUMBER },
-        awbNumber: { type: Type.STRING, description: 'AWB do envio' },
+        awbNumber: { type: Type.STRING, description: 'AWB do envio — só pedido internacional' },
         purchaseOrder: { type: Type.STRING, description: 'Pedido de compra do cliente' },
         shipDate: { type: Type.STRING, description: 'Data de expedição, formato AAAA-MM-DD' },
         nfNumber: { type: Type.STRING, description: 'Número da nota fiscal' },
