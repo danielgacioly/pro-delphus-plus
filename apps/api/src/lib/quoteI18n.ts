@@ -96,18 +96,10 @@ export function componentsLine(language: QuoteLanguage, components: string | nul
   return `(${alreadyLabeled ? text : `${label}: ${text}`})`
 }
 
-/** "(Cod. ABC-123)" — fecha o texto de cada item do orçamento. Vazio sem SKU. */
+/** "Cod. ABC-123" — linha própria no fim de cada item do orçamento. Vazio sem SKU. */
 export function skuLine(sku: string | null | undefined) {
   const text = sku?.trim() ?? ''
-  return text ? `(Cod. ${text})` : ''
-}
-
-/** Corpo do item após o título: descrição, componentes e, por último, o código. */
-export function itemBody(language: QuoteLanguage, item: { description: string; components: string; sku: string }) {
-  const body = [item.description.trim(), componentsLine(language, item.components)].filter(Boolean).join('\n')
-  const code = skuLine(item.sku)
-  if (!code) return body
-  return body ? `${body} ${code}` : code
+  return text ? `Cod. ${text}` : ''
 }
 
 export function formatMoney(value: number, currency: string, language: QuoteLanguage) {
