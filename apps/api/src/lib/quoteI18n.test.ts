@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { componentsLine } from './quoteI18n.js'
+import { componentsLine, itemBody } from './quoteI18n.js'
 
 describe('componentsLine', () => {
   it('põe o rótulo no idioma do orçamento e envolve em parênteses', () => {
@@ -24,5 +24,21 @@ describe('componentsLine', () => {
     assert.equal(componentsLine('EN', '  '), '')
     assert.equal(componentsLine('EN', null), '')
     assert.equal(componentsLine('EN', '()'), '')
+  })
+})
+
+describe('itemBody', () => {
+  it('fecha o texto do item com o código do produto', () => {
+    assert.equal(itemBody('PT', { description: 'Simulador', components: '', sku: 'MMT 01' }), 'Simulador (Cod. MMT 01)')
+    assert.equal(
+      itemBody('EN', { description: 'Simulator', components: 'A, B', sku: 'X1' }),
+      'Simulator\n(Components: A, B) (Cod. X1)',
+    )
+    assert.equal(itemBody('PT', { description: '', components: '', sku: 'X1' }), '(Cod. X1)')
+  })
+
+  it('não põe nada quando o produto não tem SKU', () => {
+    assert.equal(itemBody('PT', { description: 'Simulador', components: '', sku: '' }), 'Simulador')
+    assert.equal(itemBody('PT', { description: 'Simulador', components: '', sku: '   ' }), 'Simulador')
   })
 })

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ExcelJS from 'exceljs'
 import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
-import { LABELS, componentsLine, type QuoteLanguage } from './quoteI18n.js'
+import { LABELS, itemBody, type QuoteLanguage } from './quoteI18n.js'
 import { COMPANY } from './pdf.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -13,6 +13,7 @@ export interface QuoteXlsxItem {
   title: string
   description: string
   components: string
+  sku: string
   quantity: number
   /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
   listPrice: number | null
@@ -168,11 +169,12 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
       ...(showSpecial ? [hasSpecialPrice(item) || item.listPrice === null ? item.unitPrice : '—'] : []),
       { formula: `${priceRef}*B${rowIndex}` },
     ]
-    const description = [item.description.trim(), componentsLine(data.language, item.components)].filter(Boolean).join('\n')
+    const description = itemBody(data.language, item)
+    const separator = item.description.trim() || item.components.trim() ? ' - ' : ' '
     row.getCell(3).value = {
       richText: [
         { text: item.title, font: { bold: true, color: { argb: INK } } },
-        ...(description ? [{ text: ` - ${description}`, font: { color: { argb: INK } } }] : []),
+        ...(description ? [{ text: `${separator}${description}`, font: { color: { argb: INK } } }] : []),
       ],
     }
     row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }

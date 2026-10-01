@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
 import { renderPdf } from './browser.js'
-import { LABELS, componentsLine, formatMoney, type QuoteLanguage } from './quoteI18n.js'
+import { LABELS, formatMoney, itemBody, type QuoteLanguage } from './quoteI18n.js'
 import { escapeHtml } from './html.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -24,6 +24,8 @@ export interface QuotePdfItem {
   description: string
   /** Componentes (só modelo completo) — saem colados à descrição. */
   components: string
+  /** Código do produto — sai como "(Cod. …)" no fim do texto do item. */
+  sku: string
   quantity: number
   /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
   listPrice: number | null
@@ -124,8 +126,9 @@ export interface QuotePdfData {
 
 function renderItemDescription(item: QuotePdfItem, language: QuoteLanguage) {
   const title = `<strong>${escapeHtml(item.title)}</strong>`
-  const body = [item.description.trim(), componentsLine(language, item.components)].filter(Boolean).join('\n')
+  const body = itemBody(language, item)
   if (!body) return title
+  if (!item.description.trim() && !item.components.trim()) return `${title} ${escapeHtml(body)}`
   return `${title} - ${escapeHtml(body).replace(/\n/g, '<br />')}`
 }
 
