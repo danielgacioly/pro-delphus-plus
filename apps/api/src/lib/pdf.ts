@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
 import { renderPdf } from './browser.js'
-import { LABELS, componentsLine, formatMoney, type QuoteLanguage } from './quoteI18n.js'
+import { LABELS, componentsLine, formatMoney, skuLine, type QuoteLanguage } from './quoteI18n.js'
 import { escapeHtml } from './html.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -24,6 +24,8 @@ export interface QuotePdfItem {
   description: string
   /** Componentes (só modelo completo) — saem colados à descrição. */
   components: string
+  /** Código do produto — sai como "Cod. …" numa linha própria no fim do item. */
+  sku: string
   quantity: number
   /** Preço de catálogo. Null quando o produto não tinha preço na moeda do orçamento. */
   listPrice: number | null
@@ -125,8 +127,9 @@ export interface QuotePdfData {
 function renderItemDescription(item: QuotePdfItem, language: QuoteLanguage) {
   const title = `<strong>${escapeHtml(item.title)}</strong>`
   const body = [item.description.trim(), componentsLine(language, item.components)].filter(Boolean).join('\n')
-  if (!body) return title
-  return `${title} - ${escapeHtml(body).replace(/\n/g, '<br />')}`
+  const text = body ? `${title} - ${escapeHtml(body).replace(/\n/g, '<br />')}` : title
+  const code = skuLine(item.sku)
+  return code ? `${text}<br /><span class="sku">${escapeHtml(code)}</span>` : text
 }
 
 function renderHtml(data: QuotePdfData) {
@@ -211,6 +214,7 @@ function renderHtml(data: QuotePdfData) {
   table.items .num { text-align: center; white-space: nowrap; }
   table.items .total-cell { color: #ef1818; font-weight: 700; text-align: right; }
   table.items .special-cell { color: #ef1818; font-weight: 700; }
+  table.items .sku { font-size: 10.5px; color: #8a8a8a; }
   table.items .struck { color: #8a8a8a; text-decoration: line-through; }
   .photo-cell { text-align: center; width: 64px; }
   .photo-cell img { max-width: 56px; max-height: 56px; object-fit: contain; }

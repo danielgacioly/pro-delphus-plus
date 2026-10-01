@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { componentsLine } from './quoteI18n.js'
+import { componentsLine, skuLine } from './quoteI18n.js'
 
 describe('componentsLine', () => {
   it('põe o rótulo no idioma do orçamento e envolve em parênteses', () => {
@@ -24,5 +24,18 @@ describe('componentsLine', () => {
     assert.equal(componentsLine('EN', '  '), '')
     assert.equal(componentsLine('EN', null), '')
     assert.equal(componentsLine('EN', '()'), '')
+  })
+})
+
+describe('skuLine', () => {
+  it('mostra o código sem parênteses', () => {
+    assert.equal(skuLine('MMT 01'), 'Cod. MMT 01')
+    assert.equal(skuLine('  X1 '), 'Cod. X1')
+  })
+
+  it('devolve vazio quando o produto não tem SKU', () => {
+    assert.equal(skuLine(''), '')
+    assert.equal(skuLine('   '), '')
+    assert.equal(skuLine(null), '')
   })
 })

@@ -96,6 +96,12 @@ export function componentsLine(language: QuoteLanguage, components: string | nul
   return `(${alreadyLabeled ? text : `${label}: ${text}`})`
 }
 
+/** "Cod. ABC-123" — linha própria no fim de cada item do orçamento. Vazio sem SKU. */
+export function skuLine(sku: string | null | undefined) {
+  const text = sku?.trim() ?? ''
+  return text ? `Cod. ${text}` : ''
+}
+
 export function formatMoney(value: number, currency: string, language: QuoteLanguage) {
   return new Intl.NumberFormat(LOCALE_BY_LANGUAGE[language], { style: 'currency', currency }).format(value)
 }
