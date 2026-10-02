@@ -826,13 +826,15 @@ export async function proporPedido(
   // de ir descobrindo campo a campo em várias idas e voltas.
   const isNational = quote.exportScope === 'NATIONAL'
   const neverDefault = [
-    !merged.orderedByEmail && 'e-mail de quem fez o pedido',
     !merged.billToText && 'endereço de cobrança (o cliente não tem no cadastro)',
     !merged.shipToText && 'endereço de entrega (o cliente não tem no cadastro)',
   ]
   const defaultable = pessoaAutorizouPadrao
     ? []
     : [
+        // E-mail é opcional no pedido, mas o cadastro pode não ter: pergunta
+        // uma vez, junto com o resto que dá pra deixar em branco.
+        !merged.orderedByEmail && 'e-mail de quem fez o pedido (opcional)',
         orderArgs.packageCount === undefined && 'número de caixas',
         // As mesmas opções da tela de Novo pedido: Pix só nacional, PayPal só
         // internacional (sem a lista, o modelo chegou a oferecer "boleto").
@@ -853,7 +855,7 @@ export async function proporPedido(
     throw new HttpError(
       400,
       `Não proponha ainda — pergunte à pessoa, numa mensagem só e com estes nomes em português: ${missing.join('; ')}. ` +
-        'pessoaAutorizouPadrao=true só se ela disser explicitamente que pode deixar em branco/usar o padrão (não vale pros endereços e e-mail).',
+        'pessoaAutorizouPadrao=true só se ela disser explicitamente que pode deixar em branco/usar o padrão (não vale pros endereços).',
     )
   }
   // A taxa do PayPal entra no total do invoice, então é perguntada sozinha,
@@ -874,7 +876,7 @@ export async function proporPedido(
     clientValues[field] && data[field] === clientValues[field] ? ' (do cadastro do cliente)' : ''
   const summary = [
     `Pedido a partir do orçamento ${quote.quoteNumber} — ${quote.clientName}`,
-    `E-mail do pedido: ${data.orderedByEmail}${fromClient('orderedByEmail')}`,
+    `E-mail do pedido: ${data.orderedByEmail || '— (sem e-mail)'}${fromClient('orderedByEmail')}`,
     `Cobrança: ${data.billToText}${fromClient('billToText')}`,
     `Entrega: ${data.shipToText}${fromClient('shipToText')}`,
     ...(data.shipToNote ? [`Observação de entrega: ${data.shipToNote}`] : []),
