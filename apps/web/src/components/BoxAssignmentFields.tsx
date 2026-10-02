@@ -1,5 +1,5 @@
 import type { BoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
-import { Button, Field, Input, Select, Table, TBody, Td, THead, Th, Tr } from './ui'
+import { Button, DecimalInput, Field, Input, Select, Table, TBody, Td, THead, Th, Tr } from './ui'
 import { IconPlus } from './icons'
 
 interface ItemLike {
@@ -146,13 +146,12 @@ export function BoxAssignmentFields({ editor, items }: { editor: BoxAssignmentEd
                 {item.productName}
                 {item.description && <span className="text-neutral-500"> — {item.description}</span>}
               </span>
-              <Input
-                type="number"
-                step="0.001"
+              <DecimalInput
+                decimals={2}
                 placeholder="kg/un."
                 aria-label={`Peso de ${item.productName}`}
                 value={editor.itemWeights[index] ?? ''}
-                onChange={(e) => editor.updateItemWeight(index, e.target.value)}
+                onValueChange={(weight) => editor.updateItemWeight(index, weight)}
                 className="tabular h-9 w-28 shrink-0 text-[13px]"
               />
             </div>

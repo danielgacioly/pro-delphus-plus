@@ -1,4 +1,4 @@
-import { Field, Input, Textarea } from './ui'
+import { DecimalInput, Field, Input, Textarea } from './ui'
 
 export interface BuyerFieldsValue {
   purchaseOrder: string
@@ -108,21 +108,19 @@ export function WeightFields({
   return (
     <>
       <Field label="Peso líquido (kg)">
-        <Input
-          type="number"
-          step="0.001"
+        <DecimalInput
+          decimals={2}
           className="tabular"
           value={value.netWeightKg}
-          onChange={(e) => onChange({ netWeightKg: e.target.value })}
+          onValueChange={(netWeightKg) => onChange({ netWeightKg })}
         />
       </Field>
       <Field label="Peso bruto (kg)">
-        <Input
-          type="number"
-          step="0.001"
+        <DecimalInput
+          decimals={2}
           className="tabular"
           value={value.grossWeightKg}
-          onChange={(e) => onChange({ grossWeightKg: e.target.value })}
+          onValueChange={(grossWeightKg) => onChange({ grossWeightKg })}
         />
       </Field>
     </>

@@ -22,6 +22,8 @@ export const LABELS: Record<QuoteLanguage, {
   /** Rótulo da lista de componentes, impressa junto da descrição do item. */
   components: string
   photo: string
+  /** Texto cinza na célula da foto quando o produto não tem imagem cadastrada. */
+  noPhoto: string
   unitPrice: string
   specialPrice: string
   total: string
@@ -39,6 +41,7 @@ export const LABELS: Record<QuoteLanguage, {
     description: 'Descrição',
     components: 'Componentes',
     photo: 'Foto',
+    noPhoto: 'Foto indisponível no momento',
     unitPrice: 'Preço unit.',
     specialPrice: 'Preço especial',
     total: 'Total',
@@ -55,6 +58,7 @@ export const LABELS: Record<QuoteLanguage, {
     description: 'Description',
     components: 'Components',
     photo: 'Photo',
+    noPhoto: 'Photo not available at the moment',
     unitPrice: 'Unit Price',
     specialPrice: 'Special Price',
     total: 'Total',
@@ -71,6 +75,7 @@ export const LABELS: Record<QuoteLanguage, {
     description: 'Descripción',
     components: 'Componentes',
     photo: 'Foto',
+    noPhoto: 'Foto no disponible por el momento',
     unitPrice: 'Precio unit.',
     specialPrice: 'Precio especial',
     total: 'Total',
