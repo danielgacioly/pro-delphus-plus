@@ -26,7 +26,7 @@ import {
   Toolbar,
   Tr,
 } from '../components/ui'
-import { IconPlus, IconQuote, IconPencil, IconTrash } from '../components/icons'
+import { IconCopy, IconPlus, IconQuote, IconPencil, IconTrash } from '../components/icons'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -216,6 +216,14 @@ export function Quotes() {
                           className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'px-2 text-neutral-600 hover:text-ink-900' })}
                         >
                           <IconPencil className="h-3.5 w-3.5" />
+                        </Link>
+                        <Link
+                          to={`/orcamentos/novo?duplicateFrom=${q.id}`}
+                          title="Duplicar orçamento"
+                          aria-label={`Duplicar orçamento ${q.quoteNumber}`}
+                          className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'px-2 text-neutral-600 hover:text-ink-900' })}
+                        >
+                          <IconCopy className="h-3.5 w-3.5" />
                         </Link>
                         {isAdmin && (
                           <Button

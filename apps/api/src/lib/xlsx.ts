@@ -209,6 +209,11 @@ export async function generateQuoteXlsx(data: QuoteXlsxData): Promise<Buffer> {
         tl: { col: 3.13, row: rowIndex - 1 + 0.12 },
         ext: { width: 40, height: 40 },
       })
+    } else {
+      const photoCell = row.getCell(4)
+      photoCell.value = t.noPhoto
+      photoCell.font = { size: 8, color: { argb: 'FF8A8A8A' } }
+      photoCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     }
   })
 

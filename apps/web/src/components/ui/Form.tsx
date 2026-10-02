@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
+import { finalizeDecimal, sanitizeDecimal } from '../../lib/decimalField'
 import { IconChevronDown } from '../icons'
 
 /** Aparência compartilhada por todos os campos, para altura e foco consistentes. */
@@ -53,8 +54,53 @@ function widthClass(className?: string) {
   return /(^|\s)(w-|flex-1|min-w-)/.test(className ?? '') ? undefined : 'w-full'
 }
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(control, 'h-9 px-3', widthClass(className), className)} {...props} />
+export function Input({ className, onWheel, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={cn(control, 'h-9 px-3', widthClass(className), className)}
+      // Campo numérico com foco muda de valor quando a pessoa rola a página
+      // com o mouse em cima dele — tira o foco antes, e a rolagem segue normal.
+      onWheel={(e) => {
+        if (props.type === 'number') e.currentTarget.blur()
+        onWheel?.(e)
+      }}
+      {...props}
+    />
+  )
+}
+
+/**
+ * Valor com casas decimais fixas — preço (2), peso (2), câmbio (4). Campo de
+ * texto, não `type="number"`: sem setinha nem rodinha do mouse mexendo no
+ * valor sem querer, aceita vírgula, e não deixa digitar além de `decimals`
+ * casas. Ver lib/decimalField.ts.
+ */
+export function DecimalInput({
+  value,
+  onValueChange,
+  decimals,
+  onBlur,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'> & {
+  value: string
+  onValueChange: (value: string) => void
+  decimals: number
+}) {
+  return (
+    <Input
+      {...props}
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      value={value}
+      onChange={(e) => onValueChange(sanitizeDecimal(e.target.value, decimals))}
+      onBlur={(e) => {
+        const final = finalizeDecimal(value)
+        if (final !== value) onValueChange(final)
+        onBlur?.(e)
+      }}
+    />
+  )
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(

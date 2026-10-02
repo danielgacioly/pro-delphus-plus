@@ -3,11 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formatAmount, formatOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
+import { clearDraft, loadDraft, RESUME_DRAFT_PARAM, saveDraft } from '../lib/formDraft'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { useBoxAssignmentEditor } from '../hooks/useBoxAssignmentEditor'
+import { useBoxAssignmentEditor, type BoxAssignmentState } from '../hooks/useBoxAssignmentEditor'
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { AddressFields, BuyerFields, InvoiceFields, WeightFields } from '../components/OrderFormFields'
-import { Alert, Button, Card, Field, FormSection, Input, Page, Select } from '../components/ui'
+import { Alert, Button, Card, DecimalInput, Field, FormSection, Input, Page, Select } from '../components/ui'
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -45,6 +47,12 @@ const emptyForm = {
   exchangeRate: '',
 }
 
+/** O que fica guardado no rascunho de um pedido novo (ver lib/formDraft). */
+interface OrderDraft {
+  form: typeof emptyForm
+  box: BoxAssignmentState
+}
+
 /**
  * Criar e editar pedido são a mesma tela — como em NewQuote. Editar um pedido
  * é preencher os mesmos campos com outros valores; ter um formulário à parte
@@ -61,8 +69,14 @@ export function NewOrder() {
   // Duplicar e editar partem do mesmo lugar: um pedido que já existe. A
   // diferença é o quanto se copia dele (ver o efeito de pré-preenchimento).
   const sourceOrderId = editId ?? duplicateFrom
-  const [form, setForm] = useState(emptyForm)
-  const boxEditor = useBoxAssignmentEditor()
+  const { user } = useAuth()
+  // Só volta do rascunho a pedido ("Continuar" no aviso, ver DraftReminder);
+  // "Novo pedido" começa em branco e descarta o anterior (mesma regra de NewQuote).
+  const [initialDraft] = useState(() =>
+    !isEditing && searchParams.get(RESUME_DRAFT_PARAM) === '1' ? loadDraft<OrderDraft>('order', user?.id) : null,
+  )
+  const [form, setForm] = useState(() => initialDraft?.form ?? emptyForm)
+  const boxEditor = useBoxAssignmentEditor(initialDraft?.box)
   const [error, setError] = useState<string | null>(null)
   const prefilled = useRef(false)
 
@@ -145,6 +159,20 @@ export function NewOrder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceOrder, quotes])
 
+  // Guarda o pedido novo em andamento a cada mudança. Duplicando, só depois
+  // que a cópia carregou. Sem orçamento escolhido ainda não é rascunho.
+  const { itemWeights, packageCount, boxLines } = boxEditor
+  const selectedQuoteNumber = selectedQuote?.quoteNumber
+  useEffect(() => {
+    if (isEditing || (duplicateFrom && !prefilled.current)) return
+    if (!form.quoteId) {
+      clearDraft('order', user?.id)
+      return
+    }
+    const label = selectedQuoteNumber ? `A partir do orçamento ${selectedQuoteNumber}` : 'Orçamento já escolhido'
+    saveDraft<OrderDraft>('order', user?.id, { form, box: { itemWeights, packageCount, boxLines } }, label)
+  }, [isEditing, duplicateFrom, user?.id, form, itemWeights, packageCount, boxLines, selectedQuoteNumber])
+
   function update(patch: Partial<typeof form>) {
     setForm((s) => ({ ...s, ...patch }))
   }
@@ -209,6 +237,7 @@ export function NewOrder() {
       return data.order
     },
     onSuccess: (order) => {
+      if (!isEditing) clearDraft('order', user?.id)
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       if (isEditing) {
         queryClient.invalidateQueries({ queryKey: ['order', editId] })
@@ -329,12 +358,11 @@ export function NewOrder() {
                   </Field>
                   {form.prepaymentBy === 'PAYPAL' && (
                     <Field label="Taxa do PayPal">
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <DecimalInput
+                        decimals={2}
                         className="tabular"
                         value={form.paypalFee}
-                        onChange={(e) => update({ paypalFee: e.target.value })}
+                        onValueChange={(paypalFee) => update({ paypalFee })}
                       />
                     </Field>
                   )}
@@ -349,13 +377,12 @@ export function NewOrder() {
                   )}
                   {!isNational && (
                     <Field label={`Câmbio ${rateCurrency}/BRL`} hint={liveRate ? `Hoje: ${liveRate}` : undefined}>
-                      <Input
-                        type="number"
-                        step="0.0001"
+                      <DecimalInput
+                        decimals={4}
                         required
                         className="tabular"
                         value={form.exchangeRate}
-                        onChange={(e) => update({ exchangeRate: e.target.value })}
+                        onValueChange={(exchangeRate) => update({ exchangeRate })}
                       />
                     </Field>
                   )}
@@ -418,9 +445,16 @@ export function NewOrder() {
                       ? 'Salvar e regenerar documentos'
                       : 'Criar pedido e gerar documentos'}
                 </Button>
-                <Button type="button" onClick={() => navigate(isEditing ? `/pedidos/${editId}` : '/pedidos')}>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (!isEditing) clearDraft('order', user?.id)
+                    navigate(isEditing ? `/pedidos/${editId}` : '/pedidos')
+                  }}
+                >
                   Cancelar
                 </Button>
+
               </div>
           </Card>
         </div>

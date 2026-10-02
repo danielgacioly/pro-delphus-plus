@@ -146,7 +146,7 @@ function renderHtml(data: QuotePdfData) {
           <td class="num">${item.quantity}</td>
           <td>${renderItemDescription(item, data.language)}</td>
           <td class="photo-cell">${
-            item.photoDataUri ? `<img src="${item.photoDataUri}" alt="" />` : ''
+            item.photoDataUri ? `<img src="${item.photoDataUri}" alt="" />` : `<span class="no-photo">${escapeHtml(t.noPhoto)}</span>`
           }</td>
           <td class="num${hasSpecialPrice(item) ? ' struck' : ''}">${
             item.listPrice === null ? '—' : money(hasSpecialPrice(item) ? item.listPrice : item.unitPrice)
@@ -217,6 +217,7 @@ function renderHtml(data: QuotePdfData) {
   table.items .sku { font-size: 10.5px; color: #8a8a8a; }
   table.items .struck { color: #8a8a8a; text-decoration: line-through; }
   .photo-cell { text-align: center; width: 64px; }
+  .photo-cell .no-photo { font-size: 9px; line-height: 1.3; color: #8a8a8a; }
   .photo-cell img { max-width: 56px; max-height: 56px; object-fit: contain; }
   /* Frete/Total são linhas da própria tabela de itens (mesmo grid, mesmas
      bordas de célula) — assim a célula do valor fica do exato tamanho da

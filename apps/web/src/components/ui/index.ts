@@ -1,7 +1,7 @@
 export { Button, ButtonLink } from './Button'
 export { buttonClasses } from './buttonStyles'
 export { Card, InteractiveCard } from './Card'
-export { Field, Input, Textarea, Select, FormSection, control } from './Form'
+export { DecimalInput, Field, Input, Textarea, Select, FormSection, control } from './Form'
 export { SegmentedControl, SearchField, Toolbar, type SegmentedOption } from './Controls'
 export { TableShell, Table, THead, TBody, Th, Td, Tr } from './Table'
 export { Badge, EmptyState, Skeleton, SkeletonRows, Spinner } from './Feedback'

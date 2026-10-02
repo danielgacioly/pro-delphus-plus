@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ProductKind } from '@prodelphusplus/shared'
-import { Field, FormSection, Input, Select } from './ui'
+import { DecimalInput, Field, FormSection, Input, Select } from './ui'
 import type { ProductFormState } from './productForm.model'
 
 const spanClass = {
@@ -72,12 +72,7 @@ export function ProductFieldSet({
           <Input required value={value.name} onChange={(e) => onChange({ name: e.target.value })} />
         </Field>
         <Field label="Peso (kg, opcional)">
-          <Input
-            type="number"
-            step="0.001"
-            value={value.weightKg}
-            onChange={(e) => onChange({ weightKg: e.target.value })}
-          />
+          <DecimalInput decimals={2} value={value.weightKg} onValueChange={(weightKg) => onChange({ weightKg })} />
         </Field>
         <Field label="Tipo">
           <Select value={value.kind} onChange={(e) => onChange({ kind: e.target.value as ProductKind })}>
@@ -197,20 +192,19 @@ export function ProductFieldSet({
       >
         <div className={fieldGrid}>
           <Field label="Preço final BRL">
-            <Input type="number" step="0.01" value={value.priceBRL} onChange={(e) => onChange({ priceBRL: e.target.value })} />
+            <DecimalInput decimals={2} value={value.priceBRL} onValueChange={(priceBRL) => onChange({ priceBRL })} />
           </Field>
           <Field label="Preço final USD">
-            <Input type="number" step="0.01" value={value.priceUSD} onChange={(e) => onChange({ priceUSD: e.target.value })} />
+            <DecimalInput decimals={2} value={value.priceUSD} onValueChange={(priceUSD) => onChange({ priceUSD })} />
           </Field>
           <Field label="Preço final EUR">
-            <Input type="number" step="0.01" value={value.priceEUR} onChange={(e) => onChange({ priceEUR: e.target.value })} />
+            <DecimalInput decimals={2} value={value.priceEUR} onValueChange={(priceEUR) => onChange({ priceEUR })} />
           </Field>
           <Field label="Preço distribuidor USD">
-            <Input
-              type="number"
-              step="0.01"
+            <DecimalInput
+              decimals={2}
               value={value.priceUSDDistributor}
-              onChange={(e) => onChange({ priceUSDDistributor: e.target.value })}
+              onValueChange={(priceUSDDistributor) => onChange({ priceUSDDistributor })}
             />
           </Field>
         </div>

@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Fragment, type ReactNode } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
@@ -22,6 +23,16 @@ import { AdminPanel } from './pages/admin/AdminPanel'
 import { AdminSectors } from './pages/admin/Sectors'
 import { NewSector } from './pages/admin/NewSector'
 
+/**
+ * Remonta a tela a cada navegação, mesmo para a mesma URL: clicar em "Novo
+ * orçamento" estando num orçamento novo (ou num rascunho retomado) precisa
+ * começar em branco, e sem isso o React reaproveitaria o estado da tela.
+ */
+function RemountOnNavigate({ children }: { children: ReactNode }) {
+  const { key } = useLocation()
+  return <Fragment key={key}>{children}</Fragment>
+}
+
 function App() {
   return (
     <Routes>
@@ -36,10 +47,10 @@ function App() {
           <Route path="/clientes" element={<Clients />} />
           <Route path="/clientes/:id" element={<ClientDetail />} />
           <Route path="/orcamentos" element={<Quotes />} />
-          <Route path="/orcamentos/novo" element={<NewQuote />} />
+          <Route path="/orcamentos/novo" element={<RemountOnNavigate><NewQuote /></RemountOnNavigate>} />
           <Route path="/orcamentos/:id/editar" element={<NewQuote />} />
           <Route path="/pedidos" element={<Orders />} />
-          <Route path="/pedidos/novo" element={<NewOrder />} />
+          <Route path="/pedidos/novo" element={<RemountOnNavigate><NewOrder /></RemountOnNavigate>} />
           <Route path="/pedidos/:id" element={<OrderDetail />} />
           <Route path="/pedidos/:id/editar" element={<NewOrder />} />
           <Route path="/minha-conta" element={<Account />} />

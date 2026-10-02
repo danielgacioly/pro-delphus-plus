@@ -1,5 +1,6 @@
 import { useState, type ComponentType, type SVGProps } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { DraftReminder } from './DraftReminder'
 import { useAuth } from '../context/AuthContext'
 import { useNeoChat } from '../context/NeoChatContext'
 import { cn } from '../lib/cn'
@@ -213,6 +214,7 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+      <DraftReminder />
     </div>
   )
 }

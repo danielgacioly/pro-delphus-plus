@@ -15,6 +15,13 @@ interface ItemLike {
   quantity: number
 }
 
+/** Estado editável cru — o que o rascunho de pedido novo guarda e devolve. */
+export interface BoxAssignmentState {
+  itemWeights: string[]
+  packageCount: string
+  boxLines: BoxLine[]
+}
+
 export interface BoxAssignmentPayload {
   itemWeightsKg?: (number | null)[]
   packageCount: number
@@ -26,10 +33,10 @@ export interface BoxAssignmentPayload {
  * na criação (NewOrder) quanto na edição (OrderDetail) de pedidos, para os
  * dois nunca divergirem sobre como "dividir" ou renumerar caixas funciona.
  */
-export function useBoxAssignmentEditor() {
-  const [itemWeights, setItemWeights] = useState<string[]>([])
-  const [packageCount, setPackageCount] = useState('1')
-  const [boxLines, setBoxLines] = useState<BoxLine[]>([])
+export function useBoxAssignmentEditor(initial?: BoxAssignmentState | null) {
+  const [itemWeights, setItemWeights] = useState<string[]>(initial?.itemWeights ?? [])
+  const [packageCount, setPackageCount] = useState(initial?.packageCount ?? '1')
+  const [boxLines, setBoxLines] = useState<BoxLine[]>(initial?.boxLines ?? [])
 
   // Um item por caixa (a caixa 1), como ponto de partida de um orçamento
   // recém-selecionado — nunca junta itens numa caixa sem o usuário decidir.
