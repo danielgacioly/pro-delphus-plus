@@ -24,10 +24,9 @@ export function BuyerFields({
       <Field label="Pedido de compra (opcional)" hint="Se vazio, usa o número do orçamento.">
         <Input value={value.purchaseOrder} onChange={(e) => onChange({ purchaseOrder: e.target.value })} />
       </Field>
-      <Field label="E-mail do comprador">
+      <Field label="E-mail do comprador (opcional)">
         <Input
           type="email"
-          required
           value={value.orderedByEmail}
           onChange={(e) => onChange({ orderedByEmail: e.target.value })}
         />

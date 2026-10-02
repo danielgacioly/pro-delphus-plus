@@ -259,7 +259,10 @@ const dateOnlySchema = z
 export const orderFieldsSchema = z.object({
   quoteId: z.string().min(1),
   purchaseOrder: z.string().optional(),
-  orderedByEmail: z.string().email(),
+  // Opcional: nem todo pedido chega por e-mail. Vazio fica gravado como '' e
+  // some do Invoice. Sem `.default('')` de propósito — no PATCH (partial) o
+  // default sobrescreveria o e-mail salvo quando o campo nem foi enviado.
+  orderedByEmail: z.union([z.literal(''), z.string().trim().email()]).optional(),
   shipDate: dateOnlySchema.optional(),
   billToText: z.string().min(1),
   shipToText: z.string().min(1),
@@ -487,7 +490,7 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
           clientFolderId,
           quoteId: data.quoteId,
           purchaseOrder: data.purchaseOrder ?? null,
-          orderedByEmail: data.orderedByEmail,
+          orderedByEmail: data.orderedByEmail ?? '',
           shipDate: data.shipDate ?? null,
           billToText: data.billToText,
           shipToText: data.shipToText,
@@ -522,7 +525,7 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
   const orderForDocs = {
     orderNumber,
     purchaseOrder: data.purchaseOrder ?? null,
-    orderedByEmail: data.orderedByEmail,
+    orderedByEmail: data.orderedByEmail ?? '',
     invoiceDate: order.invoiceDate,
     billToText: data.billToText,
     shipToText: data.shipToText,

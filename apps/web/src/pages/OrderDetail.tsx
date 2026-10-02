@@ -359,7 +359,7 @@ export function OrderDetail() {
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
             <ReadField label="Pedido de compra" value={order.purchaseOrder ?? order.quoteNumber} />
-            <ReadField label="E-mail do comprador" value={order.orderedByEmail} />
+            <ReadField label="E-mail do comprador" value={order.orderedByEmail || null} />
             <ReadField
               label="Data de expedição"
               value={order.shipDate ? new Date(order.shipDate).toLocaleDateString('pt-BR') : null}

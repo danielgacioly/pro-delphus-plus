@@ -338,7 +338,7 @@ function renderInvoiceLikeHtml(data: OrderDocData, mode: 'invoice' | 'packing-li
     <div class="doc-meta">
       <div class="row"><span class="row-label">${t.date}</span><span class="row-value">${escapeHtml(fmtDate(data.invoiceDate, data.isNational))}</span></div>
       <div class="row"><span class="row-label">${t.po}</span><span class="row-value">${escapeHtml(data.purchaseOrder)}</span></div>
-      <div class="row"><span class="row-label">${t.orderedBy}</span><span class="row-value">${escapeHtml(data.orderedByEmail)}</span></div>
+      ${data.orderedByEmail ? `<div class="row"><span class="row-label">${t.orderedBy}</span><span class="row-value">${escapeHtml(data.orderedByEmail)}</span></div>` : ''}
     </div>
   </header>
 
