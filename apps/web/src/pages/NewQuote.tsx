@@ -18,7 +18,7 @@ import {
   type QuoteLanguage,
 } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
-import { clearDraft, loadDraft, saveDraft } from '../lib/formDraft'
+import { clearDraft, loadDraft, RESUME_DRAFT_PARAM, saveDraft } from '../lib/formDraft'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import {
@@ -161,18 +161,14 @@ export function NewQuote() {
   const duplicateFrom = searchParams.get('duplicateFrom')
   const sourceQuoteId = editId ?? duplicateFrom
   const { user } = useAuth()
-  // Orçamento novo volta do rascunho, se houver — a não ser que a pessoa tenha
-  // começado outro de propósito (duplicar, "novo orçamento" de um cliente):
-  // aí o rascunho anterior é descartado, sobrescrito pelo novo.
+  // Só volta do rascunho quando a pessoa pediu (botão "Continuar" do aviso de
+  // rascunho, ver DraftReminder). "Novo orçamento" começa em branco, e o
+  // primeiro salvamento abaixo já descarta o rascunho anterior.
   const [initialDraft] = useState(() =>
-    isEditing || duplicateFrom || preselectId ? null : loadDraft<QuoteDraft>('quote', user?.id),
+    !isEditing && searchParams.get(RESUME_DRAFT_PARAM) === '1' ? loadDraft<QuoteDraft>('quote', user?.id) : null,
   )
-  // Número do orçamento de origem, para o aviso de "copiado de…" — guardado à
-  // parte porque o ?duplicateFrom sai da URL assim que a cópia é carregada.
+  // Número do orçamento de origem, para o aviso de "copiado de…".
   const [duplicatedFrom, setDuplicatedFrom] = useState<string | null>(null)
-  // Muda em "começar do zero" para remontar o ClientPicker, que guarda o
-  // cliente escolhido no próprio estado.
-  const [resetCount, setResetCount] = useState(0)
 
   // Nacional/Internacional é a escolha primária — decide moeda e idioma do
   // documento, e se o pedido gerado a partir daqui vai ter câmbio, packing
@@ -218,12 +214,7 @@ export function NewQuote() {
   useEffect(() => {
     if (!existingQuote || prefilled.current) return
     prefilled.current = true
-    if (!isEditing) {
-      setDuplicatedFrom(existingQuote.quoteNumber)
-      // Tira o ?duplicateFrom da URL: voltar a esta tela pelo histórico deve
-      // reabrir o rascunho com o que foi mudado, não copiar a origem de novo.
-      navigate('/orcamentos/novo', { replace: true })
-    }
+    if (!isEditing) setDuplicatedFrom(existingQuote.quoteNumber)
     setExportScope(existingQuote.exportScope)
     setLanguage(existingQuote.language)
     setCurrency(existingQuote.currency)
@@ -271,7 +262,7 @@ export function NewQuote() {
         }
       }),
     )
-  }, [existingQuote, isEditing, navigate])
+  }, [existingQuote, isEditing])
 
   const activeQuery = activeIndex !== null ? items[activeIndex].query.trim() : ''
   const { data: suggestions } = useQuery({
@@ -446,9 +437,16 @@ export function NewQuote() {
   }, [language, currency, exportScope, notesEdited])
 
   // Guarda o orçamento novo em andamento a cada mudança. Duplicando, só depois
-  // que a cópia carregou — antes disso o form ainda está com o padrão.
+  // que a cópia carregou — antes disso o form ainda está com o padrão. Form
+  // ainda em branco não é rascunho: apaga o que houver.
   useEffect(() => {
     if (isEditing || (duplicateFrom && !prefilled.current)) return
+    const filledItems = items.filter((i) => i.productId).length
+    if (!clientName.trim() && filledItems === 0) {
+      clearDraft('quote', user?.id)
+      return
+    }
+    const label = `${clientName.trim() || 'Sem cliente'} · ${filledItems} ${filledItems === 1 ? 'item' : 'itens'}`
     saveDraft<QuoteDraft>('quote', user?.id, {
       exportScope,
       language,
@@ -463,30 +461,8 @@ export function NewQuote() {
       items,
       freight,
       discount,
-    })
+    }, label)
   }, [isEditing, duplicateFrom, user?.id, exportScope, language, currency, priceTier, clientPrefix, clientName, clientId, clientCountry, notes, notesEdited, items, freight, discount])
-
-  function startOver() {
-    clearDraft('quote', user?.id)
-    setExportScope('INTERNATIONAL')
-    setLanguage('EN')
-    setCurrency('USD')
-    setPriceTier('FINAL')
-    setClientPrefix('NONE')
-    setClientName('')
-    setClientId(null)
-    setClientCountry(null)
-    setNotes(defaultQuoteNotes('EN', 'USD', 'INTERNATIONAL'))
-    setNotesEdited(false)
-    setItems([{ ...emptyItem }])
-    setFreight('')
-    setDiscount('0')
-    setDuplicatedFrom(null)
-    setError(null)
-    setActiveIndex(null)
-    setInfoIndex(null)
-    setResetCount((n) => n + 1)
-  }
 
   // `loadingQuote` vira false assim que a resposta chega, mas só nesse mesmo
   // render — o efeito que aplica os dados no formulário (exportScope, idioma,
@@ -611,7 +587,6 @@ export function NewQuote() {
                 hint="Escolha um cliente do cadastro, crie na hora ou digite só o nome."
               >
                 <ClientPicker
-                  key={resetCount}
                   clientId={clientId}
                   clientName={clientName}
                   preselectId={preselectId}
@@ -902,11 +877,7 @@ export function NewQuote() {
                 >
                   Cancelar
                 </Button>
-                {!isEditing && (
-                  <Button type="button" variant="ghost" size="sm" onClick={startOver}>
-                    Limpar e começar do zero
-                  </Button>
-                )}
+
               </div>
           </Card>
         </div>

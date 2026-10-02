@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formatAmount, formatOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
-import { clearDraft, loadDraft, saveDraft } from '../lib/formDraft'
+import { clearDraft, loadDraft, RESUME_DRAFT_PARAM, saveDraft } from '../lib/formDraft'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useBoxAssignmentEditor, type BoxAssignmentState } from '../hooks/useBoxAssignmentEditor'
@@ -70,10 +70,10 @@ export function NewOrder() {
   // diferença é o quanto se copia dele (ver o efeito de pré-preenchimento).
   const sourceOrderId = editId ?? duplicateFrom
   const { user } = useAuth()
-  // Pedido novo volta do rascunho, se houver; duplicar começa outro e
-  // sobrescreve o rascunho anterior (mesma regra de NewQuote).
+  // Só volta do rascunho a pedido ("Continuar" no aviso, ver DraftReminder);
+  // "Novo pedido" começa em branco e descarta o anterior (mesma regra de NewQuote).
   const [initialDraft] = useState(() =>
-    isEditing || duplicateFrom ? null : loadDraft<OrderDraft>('order', user?.id),
+    !isEditing && searchParams.get(RESUME_DRAFT_PARAM) === '1' ? loadDraft<OrderDraft>('order', user?.id) : null,
   )
   const [form, setForm] = useState(() => initialDraft?.form ?? emptyForm)
   const boxEditor = useBoxAssignmentEditor(initialDraft?.box)
@@ -160,19 +160,18 @@ export function NewOrder() {
   }, [sourceOrder, quotes])
 
   // Guarda o pedido novo em andamento a cada mudança. Duplicando, só depois
-  // que a cópia carregou — antes disso o form ainda está em branco.
+  // que a cópia carregou. Sem orçamento escolhido ainda não é rascunho.
   const { itemWeights, packageCount, boxLines } = boxEditor
+  const selectedQuoteNumber = selectedQuote?.quoteNumber
   useEffect(() => {
     if (isEditing || (duplicateFrom && !prefilled.current)) return
-    saveDraft<OrderDraft>('order', user?.id, { form, box: { itemWeights, packageCount, boxLines } })
-  }, [isEditing, duplicateFrom, user?.id, form, itemWeights, packageCount, boxLines])
-
-  function startOver() {
-    clearDraft('order', user?.id)
-    setForm(emptyForm)
-    boxEditor.resetFromItems(undefined)
-    setError(null)
-  }
+    if (!form.quoteId) {
+      clearDraft('order', user?.id)
+      return
+    }
+    const label = selectedQuoteNumber ? `A partir do orçamento ${selectedQuoteNumber}` : 'Orçamento já escolhido'
+    saveDraft<OrderDraft>('order', user?.id, { form, box: { itemWeights, packageCount, boxLines } }, label)
+  }, [isEditing, duplicateFrom, user?.id, form, itemWeights, packageCount, boxLines, selectedQuoteNumber])
 
   function update(patch: Partial<typeof form>) {
     setForm((s) => ({ ...s, ...patch }))
@@ -455,11 +454,7 @@ export function NewOrder() {
                 >
                   Cancelar
                 </Button>
-                {!isEditing && (
-                  <Button type="button" variant="ghost" size="sm" onClick={startOver}>
-                    Limpar e começar do zero
-                  </Button>
-                )}
+
               </div>
           </Card>
         </div>
