@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatAmount, formatOrderNumber, type OrderDTO, type OrderStatus } from '@prodelphusplus/shared'
+import { formatAmount, displayOrderNumber, type OrderDTO, type OrderStatus } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
@@ -23,7 +23,8 @@ import {
   Tr,
   buttonClasses,
 } from '../components/ui'
-import { IconAlert, IconPlus, IconTruck } from '../components/icons'
+import { IconAlert, IconPencil, IconPlus, IconTruck } from '../components/icons'
+import { EditInvoiceNumberModal } from '../components/EditInvoiceNumberModal'
 
 async function fetchOrders() {
   const { data } = await api.get<{ orders: OrderDTO[] }>('/orders')
@@ -82,6 +83,7 @@ export function Orders() {
   const [exportScope, setExportScope] = useState<'all' | 'NATIONAL' | 'INTERNATIONAL'>('all')
   const [yearFilter, setYearFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [editingNumberOf, setEditingNumberOf] = useState<OrderDTO | null>(null)
 
   const availableYears = useMemo(() => {
     const years = new Set((orders ?? []).map((o) => new Date(o.createdAt).getFullYear()))
@@ -95,7 +97,7 @@ export function Orders() {
       if (yearFilter !== 'all' && date.getFullYear() !== Number(yearFilter)) return false
       if (scope === 'mine' && o.createdBy.id !== user?.id) return false
       if (exportScope !== 'all' && o.quote.exportScope !== exportScope) return false
-      if (term && !`${o.orderNumber} ${o.quote.clientName} ${o.quoteNumber}`.toLowerCase().includes(term)) return false
+      if (term && !`${o.orderNumber} ${o.invoiceNumber ?? ""} ${o.quote.clientName} ${o.quoteNumber}`.toLowerCase().includes(term)) return false
       return true
     })
   }, [orders, yearFilter, scope, exportScope, user?.id, search])
@@ -186,8 +188,20 @@ export function Orders() {
                         to={`/pedidos/${o.id}`}
                         className="tabular font-semibold text-ink-900 transition-colors hover:text-brand-600"
                       >
-                        #{formatOrderNumber(o.orderNumber)}
+                        #{displayOrderNumber(o)}
                       </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingNumberOf(o)
+                        }}
+                        title="Trocar número do pedido"
+                        aria-label={`Trocar número do pedido #${displayOrderNumber(o)}`}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-black/[0.05] hover:text-ink-900"
+                      >
+                        <IconPencil className="h-3 w-3" />
+                      </button>
                       {/* O mesmo aviso que o detalhe do pedido mostra por extenso,
                           reduzido ao sinal: quem edita um orçamento já virado
                           pedido precisa enxergar daqui qual linha ficou para trás. */}
@@ -244,6 +258,7 @@ export function Orders() {
           />
         )}
       </TableShell>
+      {editingNumberOf && <EditInvoiceNumberModal order={editingNumberOf} onClose={() => setEditingNumberOf(null)} />}
     </Page>
   )
 }

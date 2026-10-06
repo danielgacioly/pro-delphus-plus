@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  formatOrderNumber,
+  displayOrderNumber,
   type OrderDTO,
   type PersonalBoardColumnDTO,
   type PersonalTaskDTO,
@@ -179,7 +179,7 @@ export function EditTaskModal({
               <option value="">—</option>
               {myOrders.map((o) => (
                 <option key={o.id} value={o.id}>
-                  #{formatOrderNumber(o.orderNumber)} — {o.quote.clientName}
+                  #{displayOrderNumber(o)} — {o.quote.clientName}
                 </option>
               ))}
             </Select>

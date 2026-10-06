@@ -100,7 +100,7 @@ ordersRouter.get(
     const order = await prisma.order.findUnique({ where: { id: req.params.id } })
     if (!order) throw new HttpError(404, 'Pedido não encontrado')
 
-    const orderNumber = formatOrderNumber(order.orderNumber)
+    const orderNumber = formatOrderNumber(order.invoiceNumber ?? order.orderNumber)
     const docs = [
       order.invoicePdfUrl && { url: order.invoicePdfUrl, filename: `Order-${orderNumber}-Invoice.pdf` },
       order.packingListPdfUrl && { url: order.packingListPdfUrl, filename: `Order-${orderNumber}-PackingList.pdf` },
@@ -258,6 +258,9 @@ const dateOnlySchema = z
 
 export const orderFieldsSchema = z.object({
   quoteId: z.string().min(1),
+  // Número do Invoice editado à mão (lápis ao lado do número). null volta ao
+  // da sequência. Só vale na edição — pedido novo sempre sai da sequência.
+  invoiceNumber: z.number().int().min(0).max(99999999).nullable().optional(),
   purchaseOrder: z.string().optional(),
   // Opcional: nem todo pedido chega por e-mail. Vazio fica gravado como '' e
   // some do Invoice. Sem `.default('')` de propósito — no PATCH (partial) o
@@ -582,8 +585,11 @@ export async function updateOrderRecord(existingId: string, data: Partial<Omit<O
   const existing = await prisma.order.findUnique({ where: { id: existingId }, include: { quote: { include: quoteInclude } } })
   if (!existing) throw new HttpError(404, 'Pedido não encontrado')
 
+  const invoiceNumber = data.invoiceNumber !== undefined ? data.invoiceNumber : existing.invoiceNumber
   const merged = {
-    orderNumber: existing.orderNumber,
+    // O número que sai nos documentos e nos nomes de arquivo. A sequência
+    // (`orderNumber` no banco) não é tocada aqui.
+    orderNumber: invoiceNumber ?? existing.orderNumber,
     purchaseOrder: data.purchaseOrder !== undefined ? data.purchaseOrder || null : existing.purchaseOrder,
     orderedByEmail: data.orderedByEmail ?? existing.orderedByEmail,
     invoiceDate: existing.invoiceDate,
@@ -618,6 +624,7 @@ export async function updateOrderRecord(existingId: string, data: Partial<Omit<O
   const order = await prisma.order.update({
     where: { id: existing.id },
     data: {
+      invoiceNumber,
       purchaseOrder: merged.purchaseOrder,
       orderedByEmail: merged.orderedByEmail,
       shipDate: data.shipDate !== undefined ? (data.shipDate ?? null) : existing.shipDate,

@@ -162,7 +162,7 @@ tasksRouter.delete(
   }),
 )
 
-const taskInclude = { quote: { select: { quoteNumber: true } }, order: { select: { orderNumber: true } } } as const
+const taskInclude = { quote: { select: { quoteNumber: true } }, order: { select: { orderNumber: true, invoiceNumber: true } } } as const
 
 tasksRouter.get(
   '/',

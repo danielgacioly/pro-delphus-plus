@@ -199,7 +199,10 @@ export interface CreateOrderInput {
 
 export interface OrderDTO {
   id: string
+  /** Número da sequência — nunca muda. Para exibir, use displayOrderNumber. */
   orderNumber: number
+  /** Número editado à mão para o Invoice; null = usa `orderNumber`. */
+  invoiceNumber: number | null
   /** "ID da pasta do cliente" — só pedido internacional, contador próprio. */
   clientFolderId: number | null
   quoteId: string

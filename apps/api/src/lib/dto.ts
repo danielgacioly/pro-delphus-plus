@@ -137,6 +137,7 @@ export function toOrderDTO(
   return {
     id: order.id,
     orderNumber: order.orderNumber,
+    invoiceNumber: order.invoiceNumber,
     clientFolderId: order.clientFolderId,
     quoteId: order.quoteId,
     quoteNumber: order.quote.quoteNumber,
@@ -183,7 +184,7 @@ export function toOrderDTO(
 }
 
 export function toPersonalTaskDTO(
-  task: PersonalTask & { quote?: Pick<Quote, 'quoteNumber'> | null; order?: Pick<Order, 'orderNumber'> | null },
+  task: PersonalTask & { quote?: Pick<Quote, 'quoteNumber'> | null; order?: Pick<Order, 'orderNumber' | 'invoiceNumber'> | null },
 ) {
   return {
     id: task.id,
@@ -197,7 +198,8 @@ export function toPersonalTaskDTO(
     quoteId: task.quoteId,
     quoteNumber: task.quote?.quoteNumber ?? null,
     orderId: task.orderId,
-    orderNumber: task.order?.orderNumber ?? null,
+    // O número que a pessoa vê no pedido — o editado à mão, se houver.
+    orderNumber: task.order ? (task.order.invoiceNumber ?? task.order.orderNumber) : null,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
   }
