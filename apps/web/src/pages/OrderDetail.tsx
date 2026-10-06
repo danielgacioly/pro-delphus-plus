@@ -387,7 +387,6 @@ export function OrderDetail() {
               <>
                 <ReadField label="Incoterms" value={order.incoterms} />
                 <ReadField label="AWB #" value={order.awbNumber} />
-                <ReadField label="ID da pasta do cliente" value={order.clientFolderId != null ? String(order.clientFolderId) : null} />
               </>
             )}
             <ReadField

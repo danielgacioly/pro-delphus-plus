@@ -59,8 +59,12 @@ const envSchema = z.object({
 
   /** Piso do número do próximo pedido — o próximo é sempre max(maior existente + 1, este valor), nunca menor. */
   ORDER_NUMBER_START: z.coerce.number().int().min(0).default(0),
-  /** Piso do próximo "ID da pasta do cliente" (só pedido internacional) — mesma regra de piso do ORDER_NUMBER_START. */
-  CLIENT_FOLDER_ID_START: z.coerce.number().int().min(0).default(1),
+  /**
+   * Onde começa a sequência própria dos pedidos internacionais (2812, 2813…).
+   * Os nacionais seguem a contagem antiga, abaixo deste número — ver
+   * nextSequentialNumber em orders.routes.ts.
+   */
+  INTERNATIONAL_ORDER_NUMBER_START: z.coerce.number().int().min(1).default(2812),
 
   ADMIN_SEED_NAME: z.string().default('Administrador'),
   ADMIN_SEED_EMAIL: z.string().email().default('admin@prodelphus.com'),

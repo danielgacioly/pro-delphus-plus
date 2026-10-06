@@ -190,6 +190,11 @@ export interface CreateOrderInput {
   nfNumber?: string
   nfDate?: string
   exchangeRate?: number
+  /**
+   * Só na criação: número aceito pela pessoa quando o da sequência já estava
+   * em uso por outro pedido ("criar como o próximo livre").
+   */
+  orderNumber?: number
   /** Peso em kg por item, alinhado por índice com os itens do orçamento de origem — alimenta o Documento de Exportação. */
   itemWeightsKg?: (number | null)[]
   /** Quantidade de caixas físicas — define quantas páginas o Packing List Box tem. */
@@ -203,8 +208,6 @@ export interface OrderDTO {
   orderNumber: number
   /** Número editado à mão para o Invoice; null = usa `orderNumber`. */
   invoiceNumber: number | null
-  /** "ID da pasta do cliente" — só pedido internacional, contador próprio. */
-  clientFolderId: number | null
   quoteId: string
   quoteNumber: string
   purchaseOrder: string | null

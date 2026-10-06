@@ -301,12 +301,12 @@ model Order {
   /// Número impresso no Invoice quando alguém o trocou à mão (lápis ao lado
   /// do número). Só substitui na exibição e nos documentos: a sequência
   /// continua saindo de `orderNumber`, então o próximo pedido segue normal.
-  /// Nulo = usa o próprio `orderNumber`. Sem unique de propósito — é escolha
-  /// livre da pessoa, inclusive repetir um número.
+  /// Nulo = usa o próprio `orderNumber`. Sem unique no banco (convive com o
+  /// orderNumber de outros pedidos); quem impede número repetido na tela é a
+  /// API — ver findNumberHolder em orders.routes.ts.
   invoiceNumber  Int?
-  /// "ID da pasta do cliente" — só pra pedido internacional, contador próprio
-  /// (não tem relação com orderNumber). Nulo em pedido nacional; único
-  /// quando presente (Postgres não conta NULL como colisão de unique).
+  /// Antigo "ID da pasta do cliente" (só internacional). Não é mais gerado
+  /// nem exibido; a coluna fica só para não apagar o histórico.
   clientFolderId Int?   @unique
 
   quoteId String
