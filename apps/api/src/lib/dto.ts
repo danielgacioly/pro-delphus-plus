@@ -138,7 +138,6 @@ export function toOrderDTO(
     id: order.id,
     orderNumber: order.orderNumber,
     invoiceNumber: order.invoiceNumber,
-    clientFolderId: order.clientFolderId,
     quoteId: order.quoteId,
     quoteNumber: order.quote.quoteNumber,
     purchaseOrder: order.purchaseOrder,

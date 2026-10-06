@@ -11,7 +11,16 @@ import { Alert, Button, Field, Input } from './ui'
  * impresso (`invoiceNumber`): a sequência continua em `orderNumber`, e o
  * próximo pedido criado segue dela normalmente. Salvar regenera os documentos.
  */
-export function EditInvoiceNumberModal({ order, onClose }: { order: OrderDTO; onClose: () => void }) {
+export function EditInvoiceNumberModal({
+  order,
+  onClose,
+  onSaved,
+}: {
+  order: OrderDTO
+  onClose: () => void
+  /** Depois de salvar — ex.: Novo pedido tenta criar de novo com o número que ficou livre. */
+  onSaved?: () => void
+}) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [value, setValue] = useState(String(order.invoiceNumber ?? order.orderNumber))
@@ -27,6 +36,7 @@ export function EditInvoiceNumberModal({ order, onClose }: { order: OrderDTO; on
       queryClient.invalidateQueries({ queryKey: ['order', order.id] })
       toast.success(`Número do pedido agora é #${formatOrderNumber(updated.invoiceNumber ?? updated.orderNumber)}.`)
       onClose()
+      onSaved?.()
     },
     onError: (err: unknown) => setError(getErrorMessage(err, 'Não foi possível trocar o número.')),
   })
@@ -53,8 +63,8 @@ export function EditInvoiceNumberModal({ order, onClose }: { order: OrderDTO; on
       >
         <h2 className="text-base font-semibold text-ink-900">Número do pedido</h2>
         <p className="mt-1 text-sm text-neutral-600">
-          Sai no Invoice, na Packing List e nos nomes dos arquivos. A sequência não muda: o próximo pedido continua
-          a partir de #{formatOrderNumber(order.orderNumber)}.
+          Sai no Invoice, na Packing List e nos nomes dos arquivos. A sequência não muda, e o número não pode ser
+          um que outro pedido já usa.
         </p>
 
         {error && (

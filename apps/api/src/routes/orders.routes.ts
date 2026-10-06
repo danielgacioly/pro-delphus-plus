@@ -14,7 +14,7 @@ import { generateExportDocXlsx } from '../lib/orderXlsx.js'
 import { fetchExchangeRate } from '../lib/exchangeRate.js'
 import { upload, publicUrlFor, deleteStoredFile, storageFilename, versionedUrlFor } from '../storage/local.js'
 import { env } from '../lib/env.js'
-import { reservationBackoff } from '../lib/numbering.js'
+import { firstFreeNumber, reservationBackoff } from '../lib/numbering.js'
 import { componentsLine } from '../lib/quoteI18n.js'
 import { formatOrderNumber, invoiceTotal, type BoxAssignments, type PrepaymentMethod } from '@prodelphusplus/shared'
 import { boxAssignmentsFit, buildBoxPages, formatPackageCountLabel } from '../domain/packaging.js'
@@ -220,26 +220,71 @@ async function moveOrderTasksToDone(orderId: string) {
   }
 }
 
-// `ORDER_NUMBER_START` é um piso, não só um valor inicial: o próximo número é
-// sempre o maior entre "último + 1" e o piso configurado. Isso permite subir
-// o piso a qualquer momento (ex.: retomar a contagem de onde parou fora da
-// plataforma) mesmo com pedidos já existentes, sem nunca colidir com um
-// número já usado nem andar pra trás.
-async function nextOrderNumber() {
-  const last = await prisma.order.findFirst({ orderBy: { orderNumber: 'desc' } })
-  return Math.max(last ? last.orderNumber + 1 : 0, env.ORDER_NUMBER_START)
+// Duas sequências. Internacional tem a própria, a partir de
+// INTERNATIONAL_ORDER_NUMBER_START (2812, 2813…). Nacional segue a contagem
+// antiga — o maior número abaixo desse início, + 1 — com `ORDER_NUMBER_START`
+// como piso (pode subir a qualquer momento, nunca anda pra trás). Os pedidos
+// internacionais antigos, de antes da separação, continuam contando na
+// sequência nacional: são números já usados, e ela segue depois deles.
+async function nextSequentialNumber(isNational: boolean) {
+  const intlStart = env.INTERNATIONAL_ORDER_NUMBER_START
+  if (isNational) {
+    const last = await prisma.order.findFirst({
+      where: { orderNumber: { lt: intlStart } },
+      orderBy: { orderNumber: 'desc' },
+    })
+    return Math.max(last ? last.orderNumber + 1 : 0, env.ORDER_NUMBER_START)
+  }
+  const last = await prisma.order.findFirst({
+    where: { orderNumber: { gte: intlStart }, quote: { exportScope: 'INTERNATIONAL' } },
+    orderBy: { orderNumber: 'desc' },
+  })
+  return last ? last.orderNumber + 1 : intlStart
 }
 
-// Mesma regra de piso do `nextOrderNumber`, mas só entre pedidos
-// internacionais (nacional fica com `clientFolderId` nulo, fora da contagem).
-async function nextClientFolderId() {
-  const last = await prisma.order.findFirst({ where: { clientFolderId: { not: null } }, orderBy: { clientFolderId: 'desc' } })
-  return Math.max(last?.clientFolderId ? last.clientFolderId + 1 : 0, env.CLIENT_FOLDER_ID_START)
+/**
+ * Pedido que já usa `number` — pelo número da sequência ou pelo editado à
+ * mão (lápis). Um número não pode aparecer em dois pedidos.
+ *
+ * `displayedOnly` (edição pelo lápis) olha só o número que cada pedido
+ * mostra: um pedido renomeado libera o número da sequência dele para outro
+ * exibir. Na criação não dá — `orderNumber` é único no banco.
+ */
+async function findNumberHolder(number: number, options: { excludeOrderId?: string; displayedOnly?: boolean } = {}) {
+  return prisma.order.findFirst({
+    where: {
+      ...(options.excludeOrderId ? { id: { not: options.excludeOrderId } } : {}),
+      OR: [
+        { invoiceNumber: number },
+        options.displayedOnly ? { orderNumber: number, invoiceNumber: null } : { orderNumber: number },
+      ],
+    },
+    select: { id: true, orderNumber: true, invoiceNumber: true, quote: { select: { clientName: true } } },
+  })
 }
 
-// `orderNumber` e `clientFolderId` são os únicos campos únicos de Order além
-// de `id` (gerados pelo servidor, que na prática nunca colidem), então
-// qualquer P2002 aqui é disputa por um desses números. O `meta.target` do
+/** Primeiro número a partir de `start` que nenhum pedido usa (nem sequência, nem editado). */
+async function nextFreeNumber(start: number) {
+  // Janela folgada: na prática há no máximo um punhado de números editados à frente.
+  const window = 500
+  const used = await prisma.order.findMany({
+    where: {
+      OR: [
+        { orderNumber: { gte: start, lt: start + window } },
+        { invoiceNumber: { gte: start, lt: start + window } },
+      ],
+    },
+    select: { orderNumber: true, invoiceNumber: true },
+  })
+  return firstFreeNumber(
+    start,
+    used.flatMap((o) => [o.orderNumber, ...(o.invoiceNumber !== null ? [o.invoiceNumber] : [])]),
+  )
+}
+
+// `orderNumber` é o único campo único de Order além de `id` (gerado pelo
+// servidor, que na prática nunca colide), então qualquer P2002 aqui é disputa
+// pelo número. O `meta.target` do
 // adaptador do Prisma 7 não traz o nome do campo de forma confiável —
 // conferido num P2002 real antes de depender dele.
 function isOrderNumberConflict(err: unknown): boolean {
@@ -261,6 +306,9 @@ export const orderFieldsSchema = z.object({
   // Número do Invoice editado à mão (lápis ao lado do número). null volta ao
   // da sequência. Só vale na edição — pedido novo sempre sai da sequência.
   invoiceNumber: z.number().int().min(0).max(99999999).nullable().optional(),
+  // Só na criação: número que a pessoa aceitou ao ver que o da sequência já
+  // estava em uso ("usar o próximo livre"). Conferido de novo no servidor.
+  orderNumber: z.number().int().min(0).max(99999999).optional(),
   purchaseOrder: z.string().optional(),
   // Opcional: nem todo pedido chega por e-mail. Vazio fica gravado como '' e
   // some do Invoice. Sem `.default('')` de propósito — no PATCH (partial) o
@@ -484,13 +532,31 @@ export async function createOrderRecord(data: OrderFieldsInput, requesterId: str
   let orderNumber = 0
   for (let attempt = 0; attempt < 12; attempt++) {
     if (attempt > 0) await reservationBackoff(attempt)
-    orderNumber = await nextOrderNumber()
-    const clientFolderId = isNational ? null : await nextClientFolderId()
+    orderNumber = data.orderNumber ?? (await nextSequentialNumber(isNational))
+    // Número já em uso por outro pedido (alguém editou um número pra este, ou
+    // a pessoa escolheu um "próximo livre" que acabou de ser pego): não cria —
+    // devolve o conflito para a tela perguntar o que fazer.
+    const holder = await findNumberHolder(orderNumber)
+    if (holder) {
+      const nextFree = await nextFreeNumber(orderNumber + 1)
+      throw new HttpError(
+        409,
+        `O número #${formatOrderNumber(orderNumber)} já está em uso pelo pedido de ${holder.quote.clientName}. ` +
+          `Troque o número daquele pedido ou crie este como #${formatOrderNumber(nextFree)}.`,
+        {
+          numberTaken: {
+            number: orderNumber,
+            nextFree,
+            holderId: holder.id,
+            holderClientName: holder.quote.clientName,
+          },
+        },
+      )
+    }
     try {
       order = await prisma.order.create({
         data: {
           orderNumber,
-          clientFolderId,
           quoteId: data.quoteId,
           purchaseOrder: data.purchaseOrder ?? null,
           orderedByEmail: data.orderedByEmail ?? '',
@@ -586,6 +652,16 @@ export async function updateOrderRecord(existingId: string, data: Partial<Omit<O
   if (!existing) throw new HttpError(404, 'Pedido não encontrado')
 
   const invoiceNumber = data.invoiceNumber !== undefined ? data.invoiceNumber : existing.invoiceNumber
+  if (data.invoiceNumber !== undefined) {
+    const shown = invoiceNumber ?? existing.orderNumber
+    const holder = await findNumberHolder(shown, { excludeOrderId: existing.id, displayedOnly: true })
+    if (holder) {
+      throw new HttpError(
+        409,
+        `O número #${formatOrderNumber(shown)} já está em uso pelo pedido de ${holder.quote.clientName}. Escolha outro.`,
+      )
+    }
+  }
   const merged = {
     // O número que sai nos documentos e nos nomes de arquivo. A sequência
     // (`orderNumber` no banco) não é tocada aqui.

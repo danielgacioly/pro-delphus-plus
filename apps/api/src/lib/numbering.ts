@@ -11,3 +11,15 @@ export function reservationBackoff(attempt: number) {
   const base = 25 * 2 ** attempt
   return new Promise<void>((resolve) => setTimeout(resolve, base + Math.random() * base))
 }
+
+/**
+ * Menor número a partir de `start` (inclusive) que não está em `taken`.
+ * Usado para "pular para o próximo livre" quando o número da sequência já
+ * está sendo usado por outro pedido (ver orders.routes.ts).
+ */
+export function firstFreeNumber(start: number, taken: Iterable<number>): number {
+  const used = new Set(taken)
+  let n = start
+  while (used.has(n)) n++
+  return n
+}

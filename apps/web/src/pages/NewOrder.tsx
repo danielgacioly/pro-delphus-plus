@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { formatAmount, displayOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
+import { formatAmount, formatOrderNumber, displayOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
 import { clearDraft, loadDraft, RESUME_DRAFT_PARAM, saveDraft } from '../lib/formDraft'
 import { useAuth } from '../context/AuthContext'
@@ -10,6 +10,16 @@ import { useBoxAssignmentEditor, type BoxAssignmentState } from '../hooks/useBox
 import { BoxAssignmentFields } from '../components/BoxAssignmentFields'
 import { AddressFields, BuyerFields, InvoiceFields, WeightFields } from '../components/OrderFormFields'
 import { Alert, Button, Card, DecimalInput, Field, FormSection, Input, Page, Select } from '../components/ui'
+import { Modal } from '../components/Modal'
+import { EditInvoiceNumberModal } from '../components/EditInvoiceNumberModal'
+
+/** O que a API devolve quando o número da sequência já está em uso (409). */
+interface NumberTaken {
+  number: number
+  nextFree: number
+  holderId: string
+  holderClientName: string
+}
 
 async function fetchQuotes() {
   const { data } = await api.get<{ quotes: QuoteDTO[] }>('/quotes')
@@ -78,6 +88,13 @@ export function NewOrder() {
   const [form, setForm] = useState(() => initialDraft?.form ?? emptyForm)
   const boxEditor = useBoxAssignmentEditor(initialDraft?.box)
   const [error, setError] = useState<string | null>(null)
+  // Número da sequência já usado por outro pedido: abre o aviso com as
+  // opções (trocar o número do outro, ou criar este com o próximo livre).
+  const [numberTaken, setNumberTaken] = useState<NumberTaken | null>(null)
+  const [holderToRename, setHolderToRename] = useState<OrderDTO | null>(null)
+  const [loadingHolder, setLoadingHolder] = useState(false)
+  // Número aceito em "criar como #…" — vai no próximo POST.
+  const acceptedNumber = useRef<number | undefined>(undefined)
   const prefilled = useRef(false)
 
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: fetchQuotes })
@@ -233,7 +250,7 @@ export function NewOrder() {
         const { data } = await api.patch<{ order: OrderDTO }>(`/orders/${editId}`, patch)
         return data.order
       }
-      const { data } = await api.post<{ order: OrderDTO }>('/orders', payload)
+      const { data } = await api.post<{ order: OrderDTO }>('/orders', { ...payload, orderNumber: acceptedNumber.current })
       return data.order
     },
     onSuccess: (order) => {
@@ -248,9 +265,29 @@ export function NewOrder() {
       navigate(`/pedidos/${order.id}`)
     },
     onError: (err: unknown) => {
+      acceptedNumber.current = undefined
+      const taken = (err as { response?: { data?: { numberTaken?: NumberTaken } } })?.response?.data?.numberTaken
+      if (taken && !isEditing) {
+        setNumberTaken(taken)
+        return
+      }
       setError(getErrorMessage(err, isEditing ? 'Não foi possível salvar o pedido.' : 'Não foi possível criar o pedido.'))
     },
   })
+
+  async function renameHolder() {
+    if (!numberTaken) return
+    setLoadingHolder(true)
+    try {
+      setHolderToRename(await fetchOrder(numberTaken.holderId))
+      setNumberTaken(null)
+    } catch (err) {
+      setNumberTaken(null)
+      setError(getErrorMessage(err, 'Não foi possível abrir o outro pedido.'))
+    } finally {
+      setLoadingHolder(false)
+    }
+  }
 
   const documentsNote = isNational
     ? 'Salvar regenera automaticamente a Packing List Box.'
@@ -459,6 +496,48 @@ export function NewOrder() {
           </Card>
         </div>
       </form>
+      {numberTaken && (
+        <Modal onClose={() => setNumberTaken(null)} dismissOnBackdrop>
+          <div className="animate-scale-in w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
+            <h2 className="text-base font-semibold text-ink-900">
+              O número #{formatOrderNumber(numberTaken.number)} já está em uso
+            </h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              O pedido de {numberTaken.holderClientName} está com este número. Troque o número daquele pedido para
+              este ficar com o #{formatOrderNumber(numberTaken.number)}, ou crie este já como o próximo livre.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" onClick={() => setNumberTaken(null)}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={renameHolder} disabled={loadingHolder}>
+                {loadingHolder ? 'Abrindo…' : 'Mudar o número do outro'}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={saveOrder.isPending}
+                onClick={() => {
+                  acceptedNumber.current = numberTaken.nextFree
+                  setNumberTaken(null)
+                  saveOrder.mutate()
+                }}
+              >
+                Criar como #{formatOrderNumber(numberTaken.nextFree)}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {holderToRename && (
+        <EditInvoiceNumberModal
+          order={holderToRename}
+          onClose={() => setHolderToRename(null)}
+          // Número liberado: tenta criar de novo, agora com o da sequência.
+          onSaved={() => saveOrder.mutate()}
+        />
+      )}
     </Page>
   )
 }
