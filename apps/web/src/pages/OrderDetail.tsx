@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { formatAmount, formatOrderNumber, invoiceTotal, type OrderDTO } from '@prodelphusplus/shared'
+import { formatAmount, displayOrderNumber, invoiceTotal, type OrderDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { triggerBlobDownload } from '../lib/download'
 import { useToast } from '../context/ToastContext'
 import { DropZone } from '../components/DropZone'
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
+import { EditInvoiceNumberModal } from '../components/EditInvoiceNumberModal'
 import {
   Alert,
   Button,
@@ -116,6 +117,7 @@ export function OrderDetail() {
   })
 
   const [deleting, setDeleting] = useState(false)
+  const [editingNumber, setEditingNumber] = useState(false)
   const [downloadingAll, setDownloadingAll] = useState(false)
 
   const invalidate = () => {
@@ -197,7 +199,7 @@ export function OrderDetail() {
       // gesto do usuário a cada um — só o primeiro saía, o resto sumia sem
       // erro. O servidor agora empacota tudo num único .zip.
       const { data } = await api.get<Blob>(`/orders/${order.id}/documents.zip`, { responseType: 'blob' })
-      triggerBlobDownload(data, `Order-${formatOrderNumber(order.orderNumber)}-Documents.zip`)
+      triggerBlobDownload(data, `Order-${displayOrderNumber(order)}-Documents.zip`)
     } catch {
       toast.error('Não foi possível baixar os documentos.')
     } finally {
@@ -241,7 +243,18 @@ export function OrderDetail() {
   return (
     <Page
       back={{ to: '/pedidos', label: 'Pedidos' }}
-      title={`Pedido #${formatOrderNumber(order.orderNumber)}`}
+      title={`Pedido #${displayOrderNumber(order)}`}
+      titleAddon={
+        <button
+          type="button"
+          onClick={() => setEditingNumber(true)}
+          title="Trocar número do pedido"
+          aria-label="Trocar número do pedido"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-black/[0.05] hover:text-ink-900"
+        >
+          <IconPencil className="h-4 w-4" />
+        </button>
+      }
       description={`A partir do orçamento ${order.quoteNumber} — ${order.quote.clientName}`}
     >
 
@@ -466,9 +479,11 @@ export function OrderDetail() {
         </TableShell>
       </Section>
 
+      {editingNumber && <EditInvoiceNumberModal order={order} onClose={() => setEditingNumber(false)} />}
+
       {deleting && (
         <ConfirmDeleteModal
-          title={`Excluir pedido #${formatOrderNumber(order.orderNumber)}?`}
+          title={`Excluir pedido #${displayOrderNumber(order)}?`}
           description="O pedido e os documentos gerados (Invoice, Packing List, etc.) serão removidos definitivamente. O orçamento de origem não é afetado."
           isPending={deleteOrder.isPending}
           onConfirm={() => deleteOrder.mutate()}

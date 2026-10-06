@@ -1030,7 +1030,7 @@ function describeExecuted(result: ExecutedAction) {
     case 'quote':
       return `orçamento ${result.quote.quoteNumber}`
     case 'order':
-      return `pedido ${result.order.orderNumber}`
+      return `pedido ${result.order.invoiceNumber ?? result.order.orderNumber}`
     case 'client':
       return `cliente ${result.client.name}`
     case 'library':

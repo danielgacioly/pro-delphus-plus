@@ -298,6 +298,12 @@ model QuoteItem {
 model Order {
   id             String @id @default(uuid())
   orderNumber    Int    @unique
+  /// Número impresso no Invoice quando alguém o trocou à mão (lápis ao lado
+  /// do número). Só substitui na exibição e nos documentos: a sequência
+  /// continua saindo de `orderNumber`, então o próximo pedido segue normal.
+  /// Nulo = usa o próprio `orderNumber`. Sem unique de propósito — é escolha
+  /// livre da pessoa, inclusive repetir um número.
+  invoiceNumber  Int?
   /// "ID da pasta do cliente" — só pra pedido internacional, contador próprio
   /// (não tem relação com orderNumber). Nulo em pedido nacional; único
   /// quando presente (Postgres não conta NULL como colisão de unique).

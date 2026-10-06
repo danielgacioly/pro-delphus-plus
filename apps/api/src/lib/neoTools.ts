@@ -248,6 +248,7 @@ export async function verificarPendencias() {
     where: { status: 'PENDING' },
     select: {
       orderNumber: true,
+      invoiceNumber: true,
       awbNumber: true,
       nfNumber: true,
       quote: { select: { quoteNumber: true, clientName: true, exportScope: true } },
@@ -256,7 +257,7 @@ export async function verificarPendencias() {
   })
   const pedidosComPendencia = pendingOrders
     .map((o) => ({
-      orderNumber: o.orderNumber,
+      orderNumber: o.invoiceNumber ?? o.orderNumber,
       quoteNumber: o.quote.quoteNumber,
       clientName: o.quote.clientName,
       falta: missingPostOrderDocs({ status: 'PENDING', awbNumber: o.awbNumber, nfNumber: o.nfNumber }, o.quote.exportScope),
@@ -422,7 +423,7 @@ export async function buscarPedidos(args: { numero?: number; cliente?: string })
   const orders = await prisma.order.findMany({
     where: {
       AND: [
-        args.numero !== undefined ? { orderNumber: args.numero } : {},
+        args.numero !== undefined ? { OR: [{ orderNumber: args.numero }, { invoiceNumber: args.numero }] } : {},
         args.cliente ? { quote: { clientName: { contains: args.cliente, mode: 'insensitive' } } } : {},
       ],
     },
@@ -432,7 +433,7 @@ export async function buscarPedidos(args: { numero?: number; cliente?: string })
   })
   return orders.map((o) => ({
     id: o.id,
-    orderNumber: o.orderNumber,
+    orderNumber: o.invoiceNumber ?? o.orderNumber,
     status: o.status,
     quoteId: o.quoteId,
     quoteNumber: o.quote.quoteNumber,
@@ -910,6 +911,7 @@ export async function proporEdicaoPedido(
     where: { id: pedidoId },
     select: {
       orderNumber: true,
+      invoiceNumber: true,
       packageCount: true,
       boxAssignments: true,
       quote: { select: { exportScope: true, items: { include: { product: { select: { name: true } } } } } },
@@ -941,7 +943,7 @@ export async function proporEdicaoPedido(
     ...describeItemWeights(quoteItems, data.itemWeightsKg),
     ...describeBoxes(data.boxAssignments, avulsos),
   ]
-  const summary = [`Edição do pedido ${order.orderNumber}`, ...(changes.length ? changes : ['(nenhum campo alterado)'])].join('\n')
+  const summary = [`Edição do pedido ${order.invoiceNumber ?? order.orderNumber}`, ...(changes.length ? changes : ['(nenhum campo alterado)'])].join('\n')
   const pendingAction = createPendingAction('pedido_editar', summary, { pedidoId, data }, userId)
   return { pendingAction, summaryForModel: summary }
 }

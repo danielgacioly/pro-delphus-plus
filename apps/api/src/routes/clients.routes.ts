@@ -123,6 +123,7 @@ clientsRouter.get(
       select: {
         id: true,
         orderNumber: true,
+        invoiceNumber: true,
         status: true,
         createdAt: true,
         quote: { select: { quoteNumber: true, total: true, currency: true } },
@@ -136,7 +137,7 @@ clientsRouter.get(
       quotes: quotes.map(toQuoteDTO),
       orders: orders.map((o) => ({
         id: o.id,
-        orderNumber: o.orderNumber,
+        orderNumber: o.invoiceNumber ?? o.orderNumber,
         status: o.status,
         createdAt: o.createdAt.toISOString(),
         quoteNumber: o.quote.quoteNumber,

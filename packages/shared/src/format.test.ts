@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { formatAmount, formatOrderNumber } from './format.js'
+import { displayOrderNumber, formatAmount, formatOrderNumber } from './format.js'
 
 describe('formatAmount', () => {
   it('sempre mostra duas casas, com separador de milhar', () => {
@@ -28,5 +28,16 @@ describe('formatOrderNumber', () => {
 
   it('não trunca número acima de quatro dígitos', () => {
     assert.equal(formatOrderNumber(12_345), '12345')
+  })
+})
+
+describe('displayOrderNumber', () => {
+  it('usa o número editado à mão quando houver', () => {
+    assert.equal(displayOrderNumber({ orderNumber: 451, invoiceNumber: 9 }), '0009')
+  })
+
+  it('cai no número da sequência sem edição', () => {
+    assert.equal(displayOrderNumber({ orderNumber: 451, invoiceNumber: null }), '0451')
+    assert.equal(displayOrderNumber({ orderNumber: 451 }), '0451')
   })
 })

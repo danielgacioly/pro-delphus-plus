@@ -9,3 +9,11 @@ export function formatOrderNumber(orderNumber: number): string {
   return String(orderNumber).padStart(4, '0')
 }
 
+/**
+ * Número que vale para o pedido: o editado à mão (`invoiceNumber`) quando
+ * houver, senão o da sequência. Já formatado com quatro dígitos.
+ */
+export function displayOrderNumber(order: { orderNumber: number; invoiceNumber?: number | null }): string {
+  return formatOrderNumber(order.invoiceNumber ?? order.orderNumber)
+}
+

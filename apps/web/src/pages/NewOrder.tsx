@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { formatAmount, formatOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
+import { formatAmount, displayOrderNumber, type CreateOrderInput, type OrderDTO, type PrepaymentMethod, type QuoteDTO } from '@prodelphusplus/shared'
 import { api, getErrorMessage } from '../lib/api'
 import { clearDraft, loadDraft, RESUME_DRAFT_PARAM, saveDraft } from '../lib/formDraft'
 import { useAuth } from '../context/AuthContext'
@@ -267,7 +267,7 @@ export function NewOrder() {
   return (
     <Page
       back={isEditing ? { to: `/pedidos/${editId}`, label: 'Pedido' } : { to: '/pedidos', label: 'Pedidos' }}
-      title={isEditing ? `Editar pedido #${sourceOrder ? formatOrderNumber(sourceOrder.orderNumber) : ''}` : 'Novo pedido'}
+      title={isEditing ? `Editar pedido #${sourceOrder ? displayOrderNumber(sourceOrder) : ''}` : 'Novo pedido'}
       description={
         isEditing
           ? 'Altera os dados do pedido e regenera os documentos automaticamente.'
@@ -281,7 +281,7 @@ export function NewOrder() {
         <div className="mb-4">
           <Alert tone="warning">
             {sourceOrder
-              ? `Campos preenchidos a partir do pedido #${formatOrderNumber(sourceOrder.orderNumber)}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
+              ? `Campos preenchidos a partir do pedido #${displayOrderNumber(sourceOrder)}. Purchase Order, data de expedição, AWB, NF e câmbio ficaram em branco — revise antes de criar.`
               : 'Carregando dados do pedido a duplicar…'}
           </Alert>
         </div>

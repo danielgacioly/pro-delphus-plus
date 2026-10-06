@@ -44,11 +44,14 @@ export function Page({
   title,
   description,
   actions,
+  titleAddon,
   back,
   children,
   width = 'wide',
 }: {
   title: string
+  /** Controle pequeno colado ao título (ex.: lápis para editar o número do pedido). */
+  titleAddon?: ReactNode
   description?: ReactNode
   actions?: ReactNode
   /** Link de volta, mostrado acima do título (navegação, não conteúdo). */
@@ -101,6 +104,7 @@ export function Page({
               </Link>
             )}
             <h1 className="min-w-0 truncate text-display text-ink-900">{title}</h1>
+            {titleAddon}
           </div>
           {description && <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-neutral-600">{description}</p>}
         </div>

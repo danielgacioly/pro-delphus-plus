@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { formatAmount, formatOrderNumber, type OrderDTO, type QuoteDTO } from '@prodelphusplus/shared'
+import { formatAmount, displayOrderNumber, type OrderDTO, type QuoteDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -535,7 +535,7 @@ export function Home() {
                   <ActivityRow
                     key={o.id}
                     to={`/pedidos/${o.id}`}
-                    title={`#${formatOrderNumber(o.orderNumber)}`}
+                    title={`#${displayOrderNumber(o)}`}
                     subtitle={o.quote.clientName}
                     status={
                       <Badge tone={o.status === 'COMPLETED' ? 'success' : 'warning'} dot>
