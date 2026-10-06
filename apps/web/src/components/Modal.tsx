@@ -35,7 +35,9 @@ export function Modal({ children, onClose, dismissOnBackdrop }: ModalProps) {
 
   return createPortal(
     <div
-      onClick={dismissOnBackdrop ? onClose : undefined}
+      // Só o clique no próprio fundo fecha — clique dentro do conteúdo
+      // (campo, botão) também sobe até aqui e fecharia o modal no meio do uso.
+      onClick={dismissOnBackdrop ? (e) => e.target === e.currentTarget && onClose?.() : undefined}
       className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-4"
     >
       {children}
