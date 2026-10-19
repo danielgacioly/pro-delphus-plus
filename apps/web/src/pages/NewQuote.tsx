@@ -431,10 +431,16 @@ export function NewQuote() {
 
   // Mesma ideia para os Comentários: acompanha idioma/moeda/tipo enquanto a
   // pessoa não editar o texto à mão.
+  //
+  // Editando ou duplicando, nunca: o texto salvo é o que vale. Com o
+  // orçamento já em cache, este efeito rodava no mesmo ciclo do
+  // pré-preenchimento, ainda com o idioma inicial (EN) e notesEdited=false,
+  // e sobrescrevia os comentários em português com o padrão em inglês — que
+  // ia junto ao salvar.
   useEffect(() => {
-    if (notesEdited) return
+    if (notesEdited || sourceQuoteId) return
     setNotes(defaultQuoteNotes(language, currency, exportScope))
-  }, [language, currency, exportScope, notesEdited])
+  }, [language, currency, exportScope, notesEdited, sourceQuoteId])
 
   // Guarda o orçamento novo em andamento a cada mudança. Duplicando, só depois
   // que a cópia carregou — antes disso o form ainda está com o padrão. Form
