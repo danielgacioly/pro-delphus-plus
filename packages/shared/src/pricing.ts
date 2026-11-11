@@ -16,6 +16,30 @@ export interface CatalogPrices {
   priceEUR: unknown
 }
 
+/** Os preços da tabela anterior, um por moeda. Qualquer um pode estar vazio. */
+export interface OldPrices {
+  oldPriceUSD: unknown
+  oldPriceEUR: unknown
+  oldPriceBRL: unknown
+}
+
+/**
+ * O preço antigo na moeda do orçamento — o valor riscado da promoção com
+ * preço antigo. É o antigo do preço FINAL; a promoção não existe na tabela
+ * de distribuidor (ver `oldPricePromoAllowed`).
+ */
+export function oldPriceFor(product: OldPrices, currency: Currency): number | null {
+  const raw = currency === 'BRL' ? product.oldPriceBRL : currency === 'EUR' ? product.oldPriceEUR : product.oldPriceUSD
+  if (raw === null || raw === undefined || raw === '') return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+/** Promoção com preço antigo só existe na tabela final — distribuidor não tem preço antigo. */
+export function oldPricePromoAllowed(tier: PriceTier): boolean {
+  return tier === 'FINAL'
+}
+
 /**
  * Todas as tabelas de preço do catálogo — fonte única pro reajuste de preços
  * (Painel do ADM): a tela lista daqui, o servidor valida e acha a coluna

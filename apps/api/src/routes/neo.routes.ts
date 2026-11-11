@@ -365,6 +365,10 @@ const editItemSchema = {
       type: Type.STRING,
       description: 'Repita os components atuais do item (de buscar_orcamentos), ou os novos se a pessoa pediu pra mudar. Sem repassar, voltam pro padrão do produto. String vazia = sem componentes.',
     },
+    oldPricePromo: {
+      type: Type.BOOLEAN,
+      description: 'Repita o oldPricePromo atual do item (de buscar_orcamentos). Sem repassar, a promoção com preço antigo do item se perde.',
+    },
   },
   required: ['productId', 'quantity'],
 }

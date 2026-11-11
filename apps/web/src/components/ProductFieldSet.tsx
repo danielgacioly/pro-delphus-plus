@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { ProductKind } from '@prodelphusplus/shared'
 import { DecimalInput, Field, FormSection, Input, Select } from './ui'
+import { useAuth } from '../context/AuthContext'
+import { oldPriceLabel } from '../lib/catalogTranslation'
 import type { ProductFormState } from './productForm.model'
 
 const spanClass = {
@@ -21,6 +23,8 @@ export function ProductFieldSet({
   onChange: (patch: Partial<ProductFormState>) => void
   sectors: string[]
 }) {
+  const { user } = useAuth()
+  const lang = user?.catalogLanguage ?? 'EN'
   const [sectorDraft, setSectorDraft] = useState('')
   const [sectorError, setSectorError] = useState('')
   const [videoDraft, setVideoDraft] = useState('')
@@ -206,6 +210,23 @@ export function ProductFieldSet({
               value={value.priceUSDDistributor}
               onValueChange={(priceUSDDistributor) => onChange({ priceUSDDistributor })}
             />
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Preços antigos"
+        description="Tabela anterior, só para uso interno: aparecem na coluna Preços antigos da Tabela de Preços e viram o valor riscado na promoção do orçamento (só na tabela final, nunca na de distribuidor). O reajuste de preços não mexe neles."
+      >
+        <div className={fieldGrid}>
+          <Field label={oldPriceLabel('BRL', lang)}>
+            <DecimalInput decimals={2} value={value.oldPriceBRL} onValueChange={(oldPriceBRL) => onChange({ oldPriceBRL })} />
+          </Field>
+          <Field label={oldPriceLabel('USD', lang)}>
+            <DecimalInput decimals={2} value={value.oldPriceUSD} onValueChange={(oldPriceUSD) => onChange({ oldPriceUSD })} />
+          </Field>
+          <Field label={oldPriceLabel('EUR', lang)}>
+            <DecimalInput decimals={2} value={value.oldPriceEUR} onValueChange={(oldPriceEUR) => onChange({ oldPriceEUR })} />
           </Field>
         </div>
       </FormSection>

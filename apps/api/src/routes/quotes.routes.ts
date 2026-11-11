@@ -14,6 +14,8 @@ import { defaultQuoteNotes, formatMoney } from '../lib/quoteI18n.js'
 import { reservationBackoff } from '../lib/numbering.js'
 import {
   catalogPriceFor,
+  oldPriceFor,
+  oldPricePromoAllowed,
   priceTierLabel,
   resolvePriceTier,
   resolveQuoteLocale,
@@ -140,6 +142,9 @@ export const createQuoteSchema = z.object({
         // vazia) = o que a pessoa deixou no campo, inclusive "nenhum".
         components: z.string().optional(),
         unitPrice: z.coerce.number().positive().optional(),
+        // Promoção com preço antigo — o preço antigo vira o riscado do
+        // documento. Só vale se o produto tiver preço antigo na moeda.
+        oldPricePromo: z.boolean().optional(),
       }),
     )
     .min(1),
@@ -191,16 +196,29 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
     throw new HttpError(400, `Item(ns) sem preço em ${tierLabel} ou produto cadastrado: ${labels.join(', ')}`)
   }
 
+  if (data.items.some((item) => item.oldPricePromo) && !oldPricePromoAllowed(priceTier)) {
+    throw new HttpError(400, 'Promoção com preço antigo só vale na tabela final, não na de distribuidor.')
+  }
+  const withoutOldPrice = data.items.filter(
+    (item) => item.oldPricePromo && oldPriceFor(productById.get(item.productId)!, currency) === null,
+  )
+  if (withoutOldPrice.length > 0) {
+    const labels = withoutOldPrice.map((item) => productById.get(item.productId)!.sku || productById.get(item.productId)!.name)
+    throw new HttpError(400, `Item(ns) sem preço antigo em ${currency} para a promoção: ${labels.join(', ')}`)
+  }
+
   const lineItems = await Promise.all(
     data.items.map(async (item) => {
       const product = productById.get(item.productId)!
       // O preço de tabela é guardado ao lado do cobrado. Quando os dois
       // diferem, o documento passa a mostrar a coluna de preço especial — daí
       // não bastar sobrescrever `unitPrice` e perder a referência.
+      const oldPricePromo = item.oldPricePromo === true
       const { listPrice, unitPrice, lineTotal } = quoteLineAmounts({
         catalogPrice: priceOf(product),
         typedUnitPrice: item.unitPrice,
         quantity: item.quantity,
+        promoOldPrice: oldPricePromo ? oldPriceFor(product, currency) : null,
       })
       // O título (nome/código do produto) sai em negrito; a descrição vem logo depois.
       // Both accept a per-item override: o nome digitado no orçamento é
@@ -228,6 +246,7 @@ export async function resolveQuoteData(data: CreateQuoteInput, requesterId: stri
         titleOverride,
         quantity: item.quantity,
         listPrice,
+        oldPricePromo,
         unitPrice,
         lineTotal,
         description,
@@ -384,6 +403,7 @@ export async function createQuoteRecord(data: CreateQuoteInput, requesterId: str
               title: i.titleOverride,
               quantity: i.quantity,
               listPrice: i.listPrice,
+              oldPricePromo: i.oldPricePromo,
               unitPrice: i.unitPrice,
               lineTotal: i.lineTotal,
               description: i.description,
@@ -451,6 +471,7 @@ export async function updateQuoteRecord(existingId: string, data: CreateQuoteInp
             title: i.titleOverride,
             quantity: i.quantity,
             listPrice: i.listPrice,
+            oldPricePromo: i.oldPricePromo,
             unitPrice: i.unitPrice,
             lineTotal: i.lineTotal,
             description: i.description,

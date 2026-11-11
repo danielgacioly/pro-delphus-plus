@@ -23,10 +23,17 @@ export function quoteLineAmounts(input: {
   catalogPrice: unknown
   typedUnitPrice: number | undefined
   quantity: number
+  /**
+   * Promoção com preço antigo: o preço antigo toma o lugar do de tabela como
+   * referência (o riscado do documento), e o cobrado continua sendo o de
+   * tabela até alguém digitar outro.
+   */
+  promoOldPrice?: number | null
 }): { listPrice: number | null; unitPrice: number; lineTotal: number } {
-  const listPrice =
+  const catalogPrice =
     input.catalogPrice === null || input.catalogPrice === undefined ? null : Number(input.catalogPrice)
-  const unitPrice = input.typedUnitPrice ?? (listPrice as number)
+  const listPrice = input.promoOldPrice ?? catalogPrice
+  const unitPrice = input.typedUnitPrice ?? (catalogPrice as number)
   return { listPrice, unitPrice, lineTotal: unitPrice * input.quantity }
 }
 

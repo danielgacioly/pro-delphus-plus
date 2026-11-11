@@ -55,6 +55,9 @@ export function toProductDTO(
     priceUSD: product.priceUSD?.toString() ?? null,
     priceUSDDistributor: product.priceUSDDistributor?.toString() ?? null,
     priceEUR: product.priceEUR?.toString() ?? null,
+    oldPriceUSD: product.oldPriceUSD?.toString() ?? null,
+    oldPriceEUR: product.oldPriceEUR?.toString() ?? null,
+    oldPriceBRL: product.oldPriceBRL?.toString() ?? null,
     active: product.active,
     updatedAt: product.updatedAt.toISOString(),
     media: product.media
@@ -103,6 +106,7 @@ export function toQuoteDTO(
       sku: item.sku,
       quantity: item.quantity,
       listPrice: item.listPrice?.toString() ?? null,
+      oldPricePromo: item.oldPricePromo,
       unitPrice: item.unitPrice.toString(),
       lineTotal: item.lineTotal.toString(),
       // `productName` é o que vai impresso (nome editado no orçamento vence o

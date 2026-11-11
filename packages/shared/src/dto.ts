@@ -72,6 +72,10 @@ export interface ProductDTO {
   priceUSD: string | null
   priceUSDDistributor: string | null
   priceEUR: string | null
+  /** Preços da tabela anterior — só uso interno (Tabela de Preços e promoção do orçamento). */
+  oldPriceUSD: string | null
+  oldPriceEUR: string | null
+  oldPriceBRL: string | null
   active: boolean
   updatedAt: string
   media: ProductMediaDTO[]
@@ -92,6 +96,8 @@ export interface QuoteItemInput {
   description?: string
   /** Preço negociado. Em branco, vale o preço de catálogo da moeda e tabela do orçamento. */
   unitPrice?: number
+  /** Promoção com preço antigo: o riscado do documento passa a ser o preço antigo. */
+  oldPricePromo?: boolean
 }
 
 export interface ClientDTO {
@@ -153,6 +159,8 @@ export interface QuoteDTO {
     listPrice: string | null
     /** Preço cobrado. Diferente de `listPrice` = preço especial negociado. */
     unitPrice: string
+    /** Promoção com preço antigo: aqui `listPrice` é o preço antigo, não o de tabela. */
+    oldPricePromo: boolean
     lineTotal: string
     /** Nome impresso no documento: o customizado, se houver, senão o do catálogo. */
     productName: string

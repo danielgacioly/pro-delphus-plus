@@ -137,6 +137,13 @@ model Product {
   priceUSD            Decimal?    @db.Decimal(12, 2)
   priceUSDDistributor Decimal?    @db.Decimal(12, 2)
   priceEUR            Decimal?    @db.Decimal(12, 2)
+  /// Preços da tabela anterior (planilha 2025: OLD USD, OLD EURO, REAL ANTIGO).
+  /// Só uso interno: coluna "Preços antigos" da Tabela de Preços e a promoção
+  /// do orçamento, que usa o preço antigo como o valor riscado do documento.
+  /// Ficam fora do reajuste de preços (não entram em PRICE_TABLES).
+  oldPriceUSD         Decimal?    @db.Decimal(12, 2)
+  oldPriceEUR         Decimal?    @db.Decimal(12, 2)
+  oldPriceBRL         Decimal?    @db.Decimal(12, 2)
   active              Boolean     @default(true)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -269,28 +276,32 @@ model Quote {
 }
 
 model QuoteItem {
-  id          String   @id @default(uuid())
-  quoteId     String
-  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  sku         String
+  id            String   @id @default(uuid())
+  quoteId       String
+  quote         Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  sku           String
   /// Nome impresso no documento. Null = usar o nome do produto no catálogo.
   /// Preenchido quando o vendedor edita o nome dentro do orçamento — aí o
   /// texto precisa sobreviver a renomeações posteriores do catálogo.
-  title       String?
-  description String
+  title         String?
+  description   String
   /// Componentes listados junto da descrição no documento (só modelo completo).
   /// Null/vazio = nenhum. Guardado como texto final, no idioma do orçamento.
-  components  String?
-  quantity    Int
+  components    String?
+  quantity      Int
   /// Preço de catálogo na moeda/tabela do orçamento, congelado na emissão.
   /// Null quando o produto não tinha preço e o vendedor digitou um valor à mão.
   /// Quando difere de `unitPrice`, o documento ganha a coluna de preço especial.
-  listPrice   Decimal? @db.Decimal(12, 2)
+  listPrice     Decimal? @db.Decimal(12, 2)
+  /// Promoção com preço antigo: `listPrice` guarda o preço antigo do produto
+  /// (na moeda do orçamento) em vez do de tabela. O documento não sabe disso —
+  /// só vê o riscado e o preço especial, como em qualquer negociação.
+  oldPricePromo Boolean  @default(false)
   /// Preço efetivamente cobrado — é ele que vai para o total e para o invoice.
-  unitPrice   Decimal  @db.Decimal(12, 2)
-  lineTotal   Decimal  @db.Decimal(12, 2)
+  unitPrice     Decimal  @db.Decimal(12, 2)
+  lineTotal     Decimal  @db.Decimal(12, 2)
 
   @@map("quote_items")
 }
