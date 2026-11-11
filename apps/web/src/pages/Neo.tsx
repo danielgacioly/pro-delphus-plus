@@ -45,6 +45,7 @@ const quoteTemplate = (international: boolean) =>
     international ? 'Prefixo (Mr. ou Ms.; em branco = nenhum): ' : 'Prefixo (Sr. ou Sra.; em branco = nenhum): ',
     'Cliente: ',
     'Itens (quantidade × produto; preço ou nome especial, se houver): ',
+    'Promoção com preços antigos (itens ou "todos"; em branco = nenhuma): ',
     'Descrição e componentes: padrão',
     'Frete: ',
     'Desconto: ',

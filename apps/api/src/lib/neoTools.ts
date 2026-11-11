@@ -8,7 +8,7 @@ import { ensureColumns } from '../routes/tasks.routes.js'
 import { libraryEntrySchema, searchLibraryEntries } from '../routes/library.routes.js'
 import { createPendingAction } from './neoPendingActions.js'
 import { defaultQuoteNotes } from './quoteI18n.js'
-import { clientPrefixLabel } from '@prodelphusplus/shared'
+import { clientPrefixLabel, hasSpecialPrice } from '@prodelphusplus/shared'
 import { HttpError } from '../middleware/errorHandler.js'
 import { normalize, bestMatches } from './fuzzyMatch.js'
 import { declaredExportScope, declaredPrepayment, saidYesToDefault } from './neoConsent.js'
@@ -34,6 +34,9 @@ function productSummary(p: {
   priceUSD: unknown
   priceUSDDistributor: unknown
   priceEUR: unknown
+  oldPriceUSD?: unknown
+  oldPriceEUR?: unknown
+  oldPriceBRL?: unknown
   description?: string | null
   descriptionPt?: string | null
   components?: string | null
@@ -49,6 +52,13 @@ function productSummary(p: {
     priceUSD: p.priceUSD?.toString() ?? null,
     priceUSDDistributor: p.priceUSDDistributor?.toString() ?? null,
     priceEUR: p.priceEUR?.toString() ?? null,
+    // Preço antigo (tabela anterior) — o riscado da promoção com preços
+    // antigos. Uso interno: nunca é o preço a cobrar.
+    precoAntigo: {
+      USD: p.oldPriceUSD?.toString() ?? null,
+      EUR: p.oldPriceEUR?.toString() ?? null,
+      BRL: p.oldPriceBRL?.toString() ?? null,
+    },
     // Descrição e componentes padrão (a que o orçamento usa quando ninguém
     // customiza) — só em busca focada, pra não inchar uma lista de 30 produtos.
     ...(detalhes && {
@@ -496,6 +506,13 @@ async function describeQuote(data: CreateQuoteInput, userId: string) {
         i.description ? `   Descrição: ${i.description}` : null,
         // O cadastro às vezes já traz o rótulo ("Components: 1 THOR-0…").
         i.components ? `   Componentes: ${i.components.replace(/^\s*(componentes|components)\s*:\s*/i, '')}` : null,
+        // Interno, só no cartão: o documento mostra o riscado e o preço
+        // especial, sem dizer que é preço antigo.
+        i.oldPricePromo && i.listPrice !== null
+          ? hasSpecialPrice({ listPrice: i.listPrice, unitPrice: i.unitPrice })
+            ? `   Promoção preço antigo: de ${money(currency, i.listPrice)} (riscado) por ${money(currency, i.unitPrice)}`
+            : `   Promoção preço antigo: antigo ${money(currency, i.listPrice)} não é maior que o cobrado — sai sem riscado`
+          : null,
       ]
         .filter(Boolean)
         .join('\n'),
@@ -593,9 +610,19 @@ export async function proporOrcamento(
 
 export async function proporEdicaoOrcamento(args: { orcamentoId: string } & CreateQuoteInput, userId: string) {
   const { orcamentoId, ...rest } = args
-  const existing = await prisma.quote.findUnique({ where: { id: orcamentoId }, select: { quoteNumber: true } })
+  const existing = await prisma.quote.findUnique({ where: { id: orcamentoId }, select: { quoteNumber: true, clientId: true } })
   if (!existing) throw new HttpError(404, 'Orçamento não encontrado — use buscar_orcamentos pra achar o id certo.')
   missingQuoteDecisions(rest)
+
+  // Orçamento com cliente digitado à mão (clientId null) fazia o modelo
+  // preencher clientId com o id do próprio orçamento; o servidor recusava com
+  // "Cliente não encontrado" e o NEO saía caçando cliente até estourar o teto
+  // de chamadas. Id que não existe no cadastro não é troca de cliente — fica
+  // o vínculo que o orçamento já tem.
+  if (rest.clientId && rest.clientId !== existing.clientId) {
+    const client = await prisma.client.findUnique({ where: { id: rest.clientId }, select: { id: true } })
+    if (!client) rest.clientId = existing.clientId ?? undefined
+  }
 
   // O aviso de "pedido concluído vinculado" mora na rota PATCH /quotes/:id, e o
   // NEO chama `updateQuoteRecord` direto — sem isto ele editaria os valores de
