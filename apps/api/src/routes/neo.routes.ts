@@ -339,6 +339,11 @@ const itemSchema = {
       description:
         'Componentes do item, só de modelo completo ("1 MMT 0, 1 MMT 1"), sem o rótulo "Componentes:" — o sistema coloca. OMITA para usar os componentes padrão do produto; só preencha se a pessoa recusou o padrão e ditou os dela. String vazia = sem componentes.',
     },
+    oldPricePromo: {
+      type: Type.BOOLEAN,
+      description:
+        'true quando a pessoa pedir "promoção com preços antigos"/"preço antigo"/"old price" pra este item (ou pra todos os itens): o preço antigo vira o valor riscado do documento e o cobrado segue o de catálogo, ou o unitPrice se a pessoa der um. Só na tabela FINAL. OMITA quando a pessoa não pedir.',
+    },
   },
   required: ['productId', 'quantity'],
 }
@@ -367,7 +372,8 @@ const editItemSchema = {
     },
     oldPricePromo: {
       type: Type.BOOLEAN,
-      description: 'Repita o oldPricePromo atual do item (de buscar_orcamentos). Sem repassar, a promoção com preço antigo do item se perde.',
+      description:
+        'Repita o oldPricePromo atual do item (de buscar_orcamentos) — sem repassar, a promoção com preço antigo se perde. true/false só quando a pessoa pedir pra ligar/desligar a promoção com preços antigos nesse item. Só na tabela FINAL.',
     },
   },
   required: ['productId', 'quantity'],
