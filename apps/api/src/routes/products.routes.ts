@@ -136,6 +136,9 @@ const createProductSchema = z.object({
   priceUSD: z.coerce.number().positive().optional(),
   priceUSDDistributor: z.coerce.number().positive().optional(),
   priceEUR: z.coerce.number().positive().optional(),
+  oldPriceUSD: z.coerce.number().positive().optional(),
+  oldPriceEUR: z.coerce.number().positive().optional(),
+  oldPriceBRL: z.coerce.number().positive().optional(),
 })
 
 productsRouter.post(
@@ -166,6 +169,9 @@ const updateProductSchema = z.object({
   priceUSD: z.coerce.number().positive().optional().nullable(),
   priceUSDDistributor: z.coerce.number().positive().optional().nullable(),
   priceEUR: z.coerce.number().positive().optional().nullable(),
+  oldPriceUSD: z.coerce.number().positive().optional().nullable(),
+  oldPriceEUR: z.coerce.number().positive().optional().nullable(),
+  oldPriceBRL: z.coerce.number().positive().optional().nullable(),
   active: z.boolean().optional(),
 })
 

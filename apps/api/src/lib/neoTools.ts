@@ -411,6 +411,9 @@ export async function buscarOrcamentos(args: { numero?: string; cliente?: string
       // Diferente do listPrice = preço especial negociado; numa edição ele
       // precisa ser repassado, senão volta pro preço de catálogo.
       listPrice: i.listPrice?.toString() ?? null,
+      // Promoção com preço antigo: numa edição também precisa ser repassada,
+      // senão o riscado volta a ser o preço de tabela.
+      oldPricePromo: i.oldPricePromo,
       // Idem: numa edição, descrição e componentes têm que ser repassados,
       // senão voltam pro padrão do produto e perdem o que foi customizado.
       description: i.description,

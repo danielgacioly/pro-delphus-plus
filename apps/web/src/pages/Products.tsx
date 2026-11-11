@@ -144,6 +144,9 @@ export function Products() {
         priceUSD: payload.priceUSD ?? null,
         priceEUR: payload.priceEUR ?? null,
         priceUSDDistributor: payload.priceUSDDistributor ?? null,
+        oldPriceBRL: payload.oldPriceBRL ?? null,
+        oldPriceUSD: payload.oldPriceUSD ?? null,
+        oldPriceEUR: payload.oldPriceEUR ?? null,
       })
     },
     onSuccess: () => {
@@ -238,6 +241,9 @@ export function Products() {
       priceUSD: product.priceUSD ?? '',
       priceEUR: product.priceEUR ?? '',
       priceUSDDistributor: product.priceUSDDistributor ?? '',
+      oldPriceBRL: product.oldPriceBRL ?? '',
+      oldPriceUSD: product.oldPriceUSD ?? '',
+      oldPriceEUR: product.oldPriceEUR ?? '',
     })
   }
 

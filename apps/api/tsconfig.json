@@ -19,7 +19,8 @@
     "src",
     "generated",
     "prisma.config.ts",
-    "prisma/seed.ts"
+    "prisma/seed.ts",
+    "prisma/seed-old-prices.ts"
   ],
   "exclude": [
     "**/*.test.ts"

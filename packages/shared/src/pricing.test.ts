@@ -6,6 +6,8 @@ import {
   findPriceTable,
   PRICE_TABLES,
   hasSpecialPrice,
+  oldPriceFor,
+  oldPricePromoAllowed,
   priceTierLabel,
   resolvePriceTier,
   resolveQuoteLocale,
@@ -98,5 +100,26 @@ describe('reajuste de preço', () => {
     assert.equal(new Set(columns).size, columns.length)
     assert.equal(findPriceTable('USD_DISTRIBUTOR')?.column, 'priceUSDDistributor')
     assert.equal(findPriceTable('NAO_EXISTE'), undefined)
+  })
+})
+
+describe('oldPriceFor', () => {
+  const product = { oldPriceUSD: '5786.10', oldPriceEUR: '3971.46', oldPriceBRL: null }
+
+  it('pega o preço antigo da moeda do orçamento', () => {
+    assert.equal(oldPriceFor(product, 'USD'), 5786.1)
+    assert.equal(oldPriceFor(product, 'EUR'), 3971.46)
+  })
+
+  it('volta null quando não há preço antigo naquela moeda', () => {
+    assert.equal(oldPriceFor(product, 'BRL'), null)
+    assert.equal(oldPriceFor({ oldPriceUSD: '0', oldPriceEUR: undefined, oldPriceBRL: '' }, 'USD'), null)
+  })
+})
+
+describe('oldPricePromoAllowed', () => {
+  it('só libera a promoção na tabela final', () => {
+    assert.equal(oldPricePromoAllowed('FINAL'), true)
+    assert.equal(oldPricePromoAllowed('DISTRIBUTOR'), false)
   })
 })

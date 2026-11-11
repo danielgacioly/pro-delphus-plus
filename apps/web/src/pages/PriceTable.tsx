@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { formatAmount, type ProductDTO, type ProductKind, type SectorDTO } from '@prodelphusplus/shared'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { localize, localizeSector } from '../lib/catalogTranslation'
+import { localize, localizeSector, oldPriceLabel } from '../lib/catalogTranslation'
 import { useClickOutside } from '../lib/useClickOutside'
 import { Alert, Button, EmptyState, Page, SearchField, Skeleton, Toolbar, buttonClasses } from '../components/ui'
 import { IconSliders } from '../components/icons'
@@ -37,6 +37,8 @@ interface PriceColumns {
   usd: boolean
   eur: boolean
   usdDistributor: boolean
+  /** Preço da tabela anterior à esquerda de cada preço final — só na tela, nunca no PDF. */
+  oldPrices: boolean
 }
 
 const COLUMNS_STORAGE_KEY = 'price-table-columns'
@@ -48,6 +50,7 @@ const defaultColumns: PriceColumns = {
   usd: true,
   eur: true,
   usdDistributor: false,
+  oldPrices: false,
 }
 
 const columnOptions: { key: keyof PriceColumns; label: string }[] = [
@@ -57,6 +60,7 @@ const columnOptions: { key: keyof PriceColumns; label: string }[] = [
   { key: 'usd', label: 'Final USD' },
   { key: 'eur', label: 'Final EUR' },
   { key: 'usdDistributor', label: 'Distribuidor USD' },
+  { key: 'oldPrices', label: 'Preços antigos' },
 ]
 
 function loadStoredColumns(): PriceColumns {
@@ -99,6 +103,11 @@ function SkeletonGroup() {
 const priceHeadClass =
   'whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-right text-[12px] font-semibold text-neutral-600'
 const priceCellClass = 'tabular whitespace-nowrap px-4 py-2.5 text-right text-ink-900'
+// Preço antigo: tom vinho da marca sobre um fundo levíssimo, para nunca ser
+// lido como o preço que vale — mas ainda legível ao lado do final.
+const oldPriceHeadClass =
+  'whitespace-nowrap border-b border-neutral-200/70 bg-brand-50/60 px-4 py-2.5 text-right text-[12px] font-semibold text-brand-800/80'
+const oldPriceCellClass = 'tabular whitespace-nowrap bg-brand-50/60 px-4 py-2.5 text-right text-brand-800'
 
 export function PriceTable() {
   const { user } = useAuth()
@@ -151,6 +160,8 @@ export function PriceTable() {
     Number(columns.brl) + Number(columns.usd) + Number(columns.eur) + Number(columns.usdDistributor)
   const activeColumnCount = columnOptions.filter((c) => columns[c.key]).length
 
+  // O PDF exportado vai para cliente: nunca leva os preços antigos, mesmo com
+  // a coluna ligada na tela (o endpoint nem conhece essa opção).
   async function exportPdf() {
     setExporting(true)
     try {
@@ -287,8 +298,11 @@ export function PriceTable() {
                                     Componentes
                                   </th>
                                 )}
+                                {columns.brl && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('BRL', lang)}</th>}
                                 {columns.brl && <th className={priceHeadClass}>Final BRL</th>}
+                                {columns.usd && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('USD', lang)}</th>}
                                 {columns.usd && <th className={priceHeadClass}>Final USD</th>}
+                                {columns.eur && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('EUR', lang)}</th>}
                                 {columns.eur && <th className={priceHeadClass}>Final EUR</th>}
                                 {columns.usdDistributor && <th className={priceHeadClass}>Distrib. USD</th>}
                               </tr>
@@ -317,11 +331,20 @@ export function PriceTable() {
                                       {localize(product.components, product.componentsPt, lang) ?? '—'}
                                     </td>
                                   )}
+                                  {columns.brl && columns.oldPrices && (
+                                    <td className={oldPriceCellClass}>{formatPrice(product.oldPriceBRL, 'BRL')}</td>
+                                  )}
                                   {columns.brl && (
                                     <td className={priceCellClass}>{formatPrice(product.priceBRL, 'BRL')}</td>
                                   )}
+                                  {columns.usd && columns.oldPrices && (
+                                    <td className={oldPriceCellClass}>{formatPrice(product.oldPriceUSD, 'USD')}</td>
+                                  )}
                                   {columns.usd && (
                                     <td className={priceCellClass}>{formatPrice(product.priceUSD, 'USD')}</td>
+                                  )}
+                                  {columns.eur && columns.oldPrices && (
+                                    <td className={oldPriceCellClass}>{formatPrice(product.oldPriceEUR, 'EUR')}</td>
                                   )}
                                   {columns.eur && (
                                     <td className={priceCellClass}>{formatPrice(product.priceEUR, 'EUR')}</td>

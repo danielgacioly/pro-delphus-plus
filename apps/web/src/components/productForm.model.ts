@@ -21,6 +21,9 @@ export const emptyProductForm = {
   priceUSD: '',
   priceEUR: '',
   priceUSDDistributor: '',
+  oldPriceBRL: '',
+  oldPriceUSD: '',
+  oldPriceEUR: '',
 }
 
 export type ProductFormState = typeof emptyProductForm
@@ -41,6 +44,9 @@ export function productFormToPayload(form: ProductFormState) {
     priceUSD: form.priceUSD ? Number(form.priceUSD) : undefined,
     priceEUR: form.priceEUR ? Number(form.priceEUR) : undefined,
     priceUSDDistributor: form.priceUSDDistributor ? Number(form.priceUSDDistributor) : undefined,
+    oldPriceBRL: form.oldPriceBRL ? Number(form.oldPriceBRL) : undefined,
+    oldPriceUSD: form.oldPriceUSD ? Number(form.oldPriceUSD) : undefined,
+    oldPriceEUR: form.oldPriceEUR ? Number(form.oldPriceEUR) : undefined,
   }
 }
 

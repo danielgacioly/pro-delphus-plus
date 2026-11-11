@@ -25,6 +25,20 @@ describe('hasUsablePrice', () => {
 })
 
 describe('quoteLineAmounts', () => {
+  it('promoção com preço antigo: riscado é o antigo, cobrado segue o de tabela', () => {
+    assert.deepEqual(
+      quoteLineAmounts({ catalogPrice: 3500, typedUnitPrice: undefined, quantity: 2, promoOldPrice: 5786.1 }),
+      { listPrice: 5786.1, unitPrice: 3500, lineTotal: 7000 },
+    )
+  })
+
+  it('promoção com preço antigo e preço digitado: cobra o digitado', () => {
+    assert.deepEqual(
+      quoteLineAmounts({ catalogPrice: 3500, typedUnitPrice: 3200, quantity: 1, promoOldPrice: 5786.1 }),
+      { listPrice: 5786.1, unitPrice: 3200, lineTotal: 3200 },
+    )
+  })
+
   it('cobra o preço de tabela quando nada foi digitado', () => {
     assert.deepEqual(quoteLineAmounts({ catalogPrice: 3000, typedUnitPrice: undefined, quantity: 2 }), {
       listPrice: 3000,

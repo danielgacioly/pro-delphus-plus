@@ -7,10 +7,14 @@ import {
   defaultQuoteNotes,
   formatAmount,
   formatOrderNumber,
+  hasSpecialPrice,
+  oldPriceFor,
+  oldPricePromoAllowed,
   type CatalogPrices,
   type ClientPrefix,
   type Currency,
   type ExportScope,
+  type OldPrices,
   type PriceTier,
   type ProductDTO,
   type ProductKind,
@@ -73,6 +77,12 @@ interface DraftItem {
   // sozinho, igual antes acontecia com o campo vazio.
   catalogPrices: CatalogPrices | null
   priceEdited: boolean
+  // Promoção com preço antigo: o riscado do documento passa a ser o preço
+  // antigo do produto na moeda do orçamento, e o cobrado segue o de tabela
+  // (ou o digitado). `oldPrices` vem do produto — null até ser buscado
+  // (editando um orçamento existente, chega logo depois do carregamento).
+  oldPrices: OldPrices | null
+  oldPricePromo: boolean
   // Componentes (só modelo completo): já entram com os cadastrados no produto,
   // editáveis; mesma lógica de `description` para idioma e para o que vai ao
   // servidor (só manda o que foi editado).
@@ -89,6 +99,10 @@ function catalogDescriptionFor(item: DraftItem, language: QuoteLanguage) {
 
 function catalogComponentsFor(item: Pick<DraftItem, 'catalogComponents' | 'catalogComponentsPt'>, language: QuoteLanguage) {
   return language === 'PT' ? item.catalogComponentsPt || item.catalogComponents : item.catalogComponents
+}
+
+function oldPricesOf(product: ProductDTO): OldPrices {
+  return { oldPriceUSD: product.oldPriceUSD, oldPriceEUR: product.oldPriceEUR, oldPriceBRL: product.oldPriceBRL }
 }
 
 function priceForCatalog(catalogPrices: CatalogPrices | null, currency: Currency, priceTier: PriceTier): number | null {
@@ -126,6 +140,8 @@ const emptyItem: DraftItem = {
   unitPrice: '',
   catalogPrices: null,
   priceEdited: false,
+  oldPrices: null,
+  oldPricePromo: false,
   productKind: null,
   components: '',
   componentsEdited: false,
@@ -148,6 +164,69 @@ interface QuoteDraft {
   items: DraftItem[]
   freight: string
   discount: string
+}
+
+/**
+ * Fica no lugar da dica do "Preço customizado": o checkbox da promoção com
+ * preço antigo e, com ela ligada, o valor que sai riscado no documento. Tudo
+ * interno — o documento só vê o riscado e o preço especial, como em qualquer
+ * negociação.
+ */
+function PromoHint({
+  item,
+  currency,
+  priceTier,
+  onToggle,
+}: {
+  item: DraftItem
+  currency: Currency
+  priceTier: PriceTier
+  onToggle: (on: boolean) => void
+}) {
+  const tierAllowed = oldPricePromoAllowed(priceTier)
+  const oldPrice = item.oldPrices ? oldPriceFor(item.oldPrices, currency) : null
+  const available = tierAllowed && !!item.productId && oldPrice !== null
+  const struck = item.unitPrice !== '' && hasSpecialPrice({ listPrice: oldPrice, unitPrice: Number(item.unitPrice) })
+  const unavailableReason = !tierAllowed
+    ? 'Promoção só na tabela final, não na de distribuidor'
+    : !item.productId
+    ? 'Escolha um produto primeiro'
+    : item.oldPrices
+      ? `Este produto não tem preço antigo em ${currency}`
+      : 'Carregando preço antigo…'
+  return (
+    <span className="block">
+      <label
+        title={available ? undefined : unavailableReason}
+        className={`inline-flex items-center gap-1.5 ${available ? 'cursor-pointer text-neutral-700' : 'cursor-not-allowed text-neutral-400'}`}
+      >
+        <input
+          type="checkbox"
+          checked={item.oldPricePromo}
+          disabled={!available && !item.oldPricePromo}
+          onChange={(e) => onToggle(e.target.checked)}
+          className="h-3.5 w-3.5 accent-brand-600"
+        />
+        Promoção preço antigo
+      </label>
+      <span className="mt-1 block">
+        {item.oldPricePromo && oldPrice !== null ? (
+          <>
+            {/* Mesma regra do documento (hasSpecialPrice): só sai riscado
+                quando o antigo é maior que o cobrado. */}
+            {struck ? 'Riscado no documento: ' : 'Antigo não é maior que o cobrado, sai sem riscado: '}
+            <span
+              className={`tabular whitespace-nowrap font-medium text-brand-800 ${struck ? 'line-through decoration-brand-800/50' : ''}`}
+            >
+              {currencySymbol[currency]} {formatAmount(oldPrice)}
+            </span>
+          </>
+        ) : (
+          'Já vem com o preço de tabela — edite à vontade para sobrescrever só neste item'
+        )}
+      </span>
+    </span>
+  )
 }
 
 export function NewQuote() {
@@ -254,6 +333,8 @@ export function NewQuote() {
           unitPrice: String(unitPrice),
           catalogPrices: null,
           priceEdited: isCustomPrice,
+          oldPrices: null,
+          oldPricePromo: item.oldPricePromo,
           productKind: item.productKind,
           components: item.components ?? '',
           componentsEdited: true,
@@ -263,6 +344,29 @@ export function NewQuote() {
       }),
     )
   }, [existingQuote, isEditing])
+
+  // Editando: os preços antigos não vêm no orçamento, só no produto. Sem eles
+  // o checkbox de promoção não sabe se está disponível nem qual o riscado.
+  useEffect(() => {
+    if (!existingQuote) return
+    let cancelled = false
+    const ids = [...new Set(existingQuote.items.map((i) => i.productId))]
+    Promise.all(
+      ids.map((id) => queryClient.fetchQuery({ queryKey: ['product-detail', id], queryFn: () => fetchProduct(id) }).catch(() => null)),
+    ).then((products) => {
+      if (cancelled) return
+      const byId = new Map(products.filter((p): p is ProductDTO => p !== null).map((p) => [p.id, p]))
+      setItems((prev) =>
+        prev.map((item) => {
+          const product = byId.get(item.productId)
+          return product && !item.oldPrices ? { ...item, oldPrices: oldPricesOf(product) } : item
+        }),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [existingQuote, queryClient])
 
   const activeQuery = activeIndex !== null ? items[activeIndex].query.trim() : ''
   const { data: suggestions } = useQuery({
@@ -311,6 +415,7 @@ export function NewQuote() {
             description: i.descriptionEdited ? i.description || undefined : undefined,
             unitPrice: i.priceEdited && i.unitPrice ? Number(i.unitPrice) : undefined,
             components: i.productKind === 'COMPLETE_MODEL' && i.componentsEdited ? i.components.trim() : undefined,
+            oldPricePromo: i.oldPricePromo || undefined,
           })),
         freight: freight === '' ? undefined : Number(freight),
         discount: Number(discount),
@@ -382,6 +487,8 @@ export function NewQuote() {
       catalogPrices,
       unitPrice: catalogPrice === null ? '' : String(catalogPrice),
       priceEdited: false,
+      oldPrices: oldPricesOf(product),
+      oldPricePromo: false,
       productKind: product.kind,
       catalogComponents,
       catalogComponentsPt,
@@ -426,6 +533,20 @@ export function NewQuote() {
         const catalogPrice = priceForCatalog(item.catalogPrices, currency, effectivePriceTier)
         return { ...item, unitPrice: catalogPrice === null ? '' : String(catalogPrice) }
       }),
+    )
+  }, [currency, effectivePriceTier])
+
+  // Moeda nova sem preço antigo para o produto, ou troca para a tabela de
+  // distribuidor: a promoção cai sozinha, em vez de o servidor recusar o
+  // orçamento inteiro na hora de gerar.
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.oldPricePromo &&
+        (!oldPricePromoAllowed(effectivePriceTier) || (item.oldPrices && oldPriceFor(item.oldPrices, currency) === null))
+          ? { ...item, oldPricePromo: false }
+          : item,
+      ),
     )
   }, [currency, effectivePriceTier])
 
@@ -775,14 +896,21 @@ export function NewQuote() {
                       label={
                         <span className="inline-flex items-center gap-1.5">
                           Preço customizado
-                          {item.priceEdited && item.unitPrice && (
+                          {item.oldPricePromo ? (
                             <Badge tone="brand" dot>
-                              Ativo
+                              Promo
                             </Badge>
+                          ) : (
+                            item.priceEdited &&
+                            item.unitPrice && (
+                              <Badge tone="brand" dot>
+                                Ativo
+                              </Badge>
+                            )
                           )}
                         </span>
                       }
-                      hint="Já vem com o preço de tabela — edite à vontade para sobrescrever só neste item"
+                      hint={<PromoHint item={item} currency={currency} priceTier={effectivePriceTier} onToggle={(on) => updateItem(index, { oldPricePromo: on })} />}
                       className="w-44 shrink-0"
                     >
                       <DecimalInput

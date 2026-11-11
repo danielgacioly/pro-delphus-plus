@@ -17,3 +17,11 @@ export function localizeSector(name: string, sectors: SectorDTO[] | undefined, l
   const match = sectors?.find((s) => s.name === name)
   return match?.namePt || name
 }
+
+/**
+ * Rótulo da coluna de preço antigo no idioma do site: "Old USD" em inglês,
+ * "USD antigo" em português (mesmo nome da planilha de preços).
+ */
+export function oldPriceLabel(currency: 'BRL' | 'USD' | 'EUR', lang: CatalogLanguage): string {
+  return lang === 'PT' ? `${currency} antigo` : `Old ${currency}`
+}
