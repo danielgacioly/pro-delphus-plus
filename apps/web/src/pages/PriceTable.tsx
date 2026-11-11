@@ -255,6 +255,13 @@ export function PriceTable() {
         <div className="space-y-9">
           {grouped.map(([sector, groups], groupIndex) => {
             const total = groups.COMPLETE_MODEL.length + groups.COMPONENT.length
+            const showComponents = columns.components && groups.COMPLETE_MODEL.length > 0
+            const columnCount =
+              2 +
+              Number(columns.description) +
+              Number(showComponents) +
+              (Number(columns.brl) + Number(columns.usd) + Number(columns.eur)) * (columns.oldPrices ? 2 : 1) +
+              Number(columns.usdDistributor)
             return (
               <section
                 key={sector}
@@ -268,100 +275,109 @@ export function PriceTable() {
                   </span>
                 </div>
 
+                {/* Uma tabela só por setor, com modelos completos e peças em
+                    blocos (tbody) dela: as colunas de preço ficam alinhadas
+                    entre os dois grupos, coisa que duas tabelas separadas —
+                    cada uma medindo as próprias colunas — não garantem. */}
                 <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
-                  {(['COMPLETE_MODEL', 'COMPONENT'] as ProductKind[]).map((kind) => {
-                    const items = groups[kind]
-                    if (items.length === 0) return null
-                    const showComponents = columns.components && kind === 'COMPLETE_MODEL'
-                    return (
-                      <div key={kind} className="border-t border-neutral-200/70 first:border-t-0">
-                        <div className="bg-neutral-50/80 px-4 py-2">
-                          <h3 className="text-eyebrow text-neutral-600">{kindLabel[kind]}</h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-sm">
-                            <thead>
-                              <tr>
-                                <th className="whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
-                                  SKU
-                                </th>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      {(['COMPLETE_MODEL', 'COMPONENT'] as ProductKind[]).map((kind, kindIndex) => {
+                        const items = groups[kind]
+                        if (items.length === 0) return null
+                        // A coluna existe na tabela toda se houver modelo completo
+                        // no setor; nas linhas de peça ela fica vazia.
+                        const isModel = kind === 'COMPLETE_MODEL'
+                        const firstGroup = kindIndex === 0 || groups.COMPLETE_MODEL.length === 0
+                        return (
+                          <tbody key={kind}>
+                            <tr>
+                              <th
+                                colSpan={columnCount}
+                                scope="colgroup"
+                                className={`bg-neutral-50/80 px-4 py-2 text-left font-normal ${firstGroup ? '' : 'border-t border-neutral-200/70'}`}
+                              >
+                                <h3 className="text-eyebrow text-neutral-600">{kindLabel[kind]}</h3>
+                              </th>
+                            </tr>
+                            <tr>
+                              <th className="whitespace-nowrap border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
+                                SKU
+                              </th>
+                              <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
+                                Nome
+                              </th>
+                              {columns.description && (
                                 <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
-                                  Nome
+                                  Descrição
                                 </th>
+                              )}
+                              {showComponents && (
+                                <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
+                                  {isModel ? 'Componentes' : ''}
+                                </th>
+                              )}
+                              {columns.brl && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('BRL', lang)}</th>}
+                              {columns.brl && <th className={priceHeadClass}>Final BRL</th>}
+                              {columns.usd && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('USD', lang)}</th>}
+                              {columns.usd && <th className={priceHeadClass}>Final USD</th>}
+                              {columns.eur && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('EUR', lang)}</th>}
+                              {columns.eur && <th className={priceHeadClass}>Final EUR</th>}
+                              {columns.usdDistributor && <th className={priceHeadClass}>Distrib. USD</th>}
+                            </tr>
+                            {items.map((product, rowIndex) => (
+                              <tr
+                                key={product.id}
+                                onClick={() => navigate(`/produtos?highlight=${product.id}`)}
+                                title="Abrir no catálogo de produtos"
+                                className={`group cursor-pointer transition-colors duration-150 hover:bg-neutral-500/6 ${rowIndex > 0 ? 'border-t border-neutral-200/60' : ''}`}
+                              >
+                                <td className="tabular whitespace-nowrap px-4 py-2.5 font-medium text-neutral-600">
+                                  {product.sku}
+                                </td>
+                                <td className="px-4 py-2.5 font-medium text-ink-900 group-hover:text-brand-700">
+                                  {product.name}
+                                </td>
                                 {columns.description && (
-                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
-                                    Descrição
-                                  </th>
+                                  <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
+                                    {localize(product.description, product.descriptionPt, lang) ?? '—'}
+                                  </td>
                                 )}
                                 {showComponents && (
-                                  <th className="border-b border-neutral-200/70 px-4 py-2.5 text-left text-[12px] font-semibold text-neutral-600">
-                                    Componentes
-                                  </th>
+                                  <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
+                                    {isModel ? (localize(product.components, product.componentsPt, lang) ?? '—') : ''}
+                                  </td>
                                 )}
-                                {columns.brl && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('BRL', lang)}</th>}
-                                {columns.brl && <th className={priceHeadClass}>Final BRL</th>}
-                                {columns.usd && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('USD', lang)}</th>}
-                                {columns.usd && <th className={priceHeadClass}>Final USD</th>}
-                                {columns.eur && columns.oldPrices && <th className={oldPriceHeadClass}>{oldPriceLabel('EUR', lang)}</th>}
-                                {columns.eur && <th className={priceHeadClass}>Final EUR</th>}
-                                {columns.usdDistributor && <th className={priceHeadClass}>Distrib. USD</th>}
+                                {columns.brl && columns.oldPrices && (
+                                  <td className={oldPriceCellClass}>{formatPrice(product.oldPriceBRL, 'BRL')}</td>
+                                )}
+                                {columns.brl && (
+                                  <td className={priceCellClass}>{formatPrice(product.priceBRL, 'BRL')}</td>
+                                )}
+                                {columns.usd && columns.oldPrices && (
+                                  <td className={oldPriceCellClass}>{formatPrice(product.oldPriceUSD, 'USD')}</td>
+                                )}
+                                {columns.usd && (
+                                  <td className={priceCellClass}>{formatPrice(product.priceUSD, 'USD')}</td>
+                                )}
+                                {columns.eur && columns.oldPrices && (
+                                  <td className={oldPriceCellClass}>{formatPrice(product.oldPriceEUR, 'EUR')}</td>
+                                )}
+                                {columns.eur && (
+                                  <td className={priceCellClass}>{formatPrice(product.priceEUR, 'EUR')}</td>
+                                )}
+                                {columns.usdDistributor && (
+                                  <td className={priceCellClass}>
+                                    {formatPrice(product.priceUSDDistributor, 'USD')}
+                                  </td>
+                                )}
                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-neutral-200/60">
-                              {items.map((product) => (
-                                <tr
-                                  key={product.id}
-                                  onClick={() => navigate(`/produtos?highlight=${product.id}`)}
-                                  title="Abrir no catálogo de produtos"
-                                  className="group cursor-pointer transition-colors duration-150 hover:bg-neutral-500/6"
-                                >
-                                  <td className="tabular whitespace-nowrap px-4 py-2.5 font-medium text-neutral-600">
-                                    {product.sku}
-                                  </td>
-                                  <td className="px-4 py-2.5 font-medium text-ink-900 group-hover:text-brand-700">
-                                    {product.name}
-                                  </td>
-                                  {columns.description && (
-                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
-                                      {localize(product.description, product.descriptionPt, lang) ?? '—'}
-                                    </td>
-                                  )}
-                                  {showComponents && (
-                                    <td className="max-w-md px-4 py-2.5 text-[12.5px] leading-relaxed text-neutral-600">
-                                      {localize(product.components, product.componentsPt, lang) ?? '—'}
-                                    </td>
-                                  )}
-                                  {columns.brl && columns.oldPrices && (
-                                    <td className={oldPriceCellClass}>{formatPrice(product.oldPriceBRL, 'BRL')}</td>
-                                  )}
-                                  {columns.brl && (
-                                    <td className={priceCellClass}>{formatPrice(product.priceBRL, 'BRL')}</td>
-                                  )}
-                                  {columns.usd && columns.oldPrices && (
-                                    <td className={oldPriceCellClass}>{formatPrice(product.oldPriceUSD, 'USD')}</td>
-                                  )}
-                                  {columns.usd && (
-                                    <td className={priceCellClass}>{formatPrice(product.priceUSD, 'USD')}</td>
-                                  )}
-                                  {columns.eur && columns.oldPrices && (
-                                    <td className={oldPriceCellClass}>{formatPrice(product.oldPriceEUR, 'EUR')}</td>
-                                  )}
-                                  {columns.eur && (
-                                    <td className={priceCellClass}>{formatPrice(product.priceEUR, 'EUR')}</td>
-                                  )}
-                                  {columns.usdDistributor && (
-                                    <td className={priceCellClass}>
-                                      {formatPrice(product.priceUSDDistributor, 'USD')}
-                                    </td>
-                                  )}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )
-                  })}
+                            ))}
+                          </tbody>
+                        )
+                      })}
+                    </table>
+                  </div>
                 </div>
               </section>
             )
